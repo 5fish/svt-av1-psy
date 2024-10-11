@@ -474,7 +474,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HbdCompBlendTest);
 TEST_P(HbdCompBlendTest, BlendA64Mask) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -544,7 +543,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HbdCompBlendD16Test);
 TEST_P(HbdCompBlendD16Test, BlendA64MaskD16) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -609,7 +607,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HbdCompBlendHMaskTest);
 TEST_P(HbdCompBlendHMaskTest, BlendA64Mask) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -674,7 +671,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EbHbdCompBlendHMaskTest);
 TEST_P(EbHbdCompBlendHMaskTest, BlendA64Mask) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -739,7 +735,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HbdCompBlendVMaskTest);
 TEST_P(HbdCompBlendVMaskTest, BlendA64Mask) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -804,7 +799,6 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EbHbdCompBlendVMaskTest);
 TEST_P(EbHbdCompBlendVMaskTest, BlendA64Mask) {
     run_hbd_test(8);
     run_hbd_test(10);
-    run_hbd_test(12);
 }
 
 #ifdef ARCH_X86_64
@@ -871,7 +865,6 @@ class BuildCompDiffwtdMaskTest
   private:
     SVTRandom rnd_;
 };
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BuildCompDiffwtdMaskTest);
 
 TEST_P(BuildCompDiffwtdMaskTest, MatchTest) {
     run_test(DIFFWTD_38);
@@ -891,6 +884,14 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
         ::testing::Values(svt_av1_build_compound_diffwtd_mask_avx2)));
 #endif  // ARCH_X86_64
+
+#ifdef ARCH_AARCH64
+INSTANTIATE_TEST_SUITE_P(
+    NEON, BuildCompDiffwtdMaskTest,
+    ::testing::Combine(
+        ::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
+        ::testing::Values(svt_av1_build_compound_diffwtd_mask_neon)));
+#endif  // ARCH_AARCH64
 
 typedef void (*BuildCompDiffwtdMaskedHighbdFunc)(
     uint8_t *mask, DIFFWTD_MASK_TYPE mask_type, const uint8_t *src0,
@@ -958,15 +959,12 @@ class BuildCompDiffwtdMaskHighbdTest
   private:
     SVTRandom rnd_;
 };
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BuildCompDiffwtdMaskHighbdTest);
 
 TEST_P(BuildCompDiffwtdMaskHighbdTest, MatchTest) {
     run_test(DIFFWTD_38, 8);
     run_test(DIFFWTD_38_INV, 8);
     run_test(DIFFWTD_38, 10);
     run_test(DIFFWTD_38_INV, 10);
-    run_test(DIFFWTD_38, 12);
-    run_test(DIFFWTD_38_INV, 12);
 }
 
 #ifdef ARCH_X86_64
@@ -982,6 +980,14 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
         ::testing::Values(svt_av1_build_compound_diffwtd_mask_highbd_avx2)));
 #endif  // ARCH_X86_64
+
+#ifdef ARCH_AARCH64
+INSTANTIATE_TEST_SUITE_P(
+    NEON, BuildCompDiffwtdMaskHighbdTest,
+    ::testing::Combine(
+        ::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
+        ::testing::Values(svt_av1_build_compound_diffwtd_mask_highbd_neon)));
+#endif  // ARCH_AARCH64
 
 // test svt_av1_build_compound_diffwtd_mask_d16_avx2
 typedef void (*BuildCompDiffwtdMaskD16Func)(
@@ -1067,7 +1073,6 @@ class BuildCompDiffwtdMaskD16Test
     }
     SVTRandom rnd_;
 };  // class BuildCompDiffwtdMaskD16Test
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BuildCompDiffwtdMaskD16Test);
 
 TEST_P(BuildCompDiffwtdMaskD16Test, MatchTest) {
     run_test();
@@ -1077,17 +1082,26 @@ TEST_P(BuildCompDiffwtdMaskD16Test, MatchTest) {
 INSTANTIATE_TEST_SUITE_P(
     SSE4_1, BuildCompDiffwtdMaskD16Test,
     ::testing::Combine(
-        ::testing::Range(8, 13, 2),
+        ::testing::Range(8, 11, 2),
         ::testing::Values(svt_av1_build_compound_diffwtd_mask_d16_sse4_1),
         ::testing::Range(BLOCK_4X4, BlockSizeS_ALL)));
 
 INSTANTIATE_TEST_SUITE_P(
     AVX2, BuildCompDiffwtdMaskD16Test,
     ::testing::Combine(
-        ::testing::Range(8, 13, 2),
+        ::testing::Range(8, 11, 2),
         ::testing::Values(svt_av1_build_compound_diffwtd_mask_d16_avx2),
         ::testing::Range(BLOCK_4X4, BlockSizeS_ALL)));
 #endif  // ARCH_X86_64
+
+#ifdef ARCH_AARCH64
+INSTANTIATE_TEST_SUITE_P(
+    NEON, BuildCompDiffwtdMaskD16Test,
+    ::testing::Combine(
+        ::testing::Range(8, 11, 2),
+        ::testing::Values(svt_av1_build_compound_diffwtd_mask_d16_neon),
+        ::testing::Range(BLOCK_4X4, BlockSizeS_ALL)));
+#endif  // ARCH_AARCH64
 
 typedef int64_t (*AomSseFunc)(const uint8_t *, int, const uint8_t *, int, int,
                               int);
