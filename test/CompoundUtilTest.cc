@@ -1161,6 +1161,13 @@ INSTANTIATE_TEST_SUITE_P(
     NEON, AomSseTest,
     ::testing::Combine(::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
                        ::testing::Values(svt_aom_sse_neon)));
+
+#if HAVE_NEON_DOTPROD
+INSTANTIATE_TEST_SUITE_P(
+    NEON_DOTPROD, AomSseTest,
+    ::testing::Combine(::testing::Range(BLOCK_4X4, BlockSizeS_ALL),
+                       ::testing::Values(svt_aom_sse_neon_dotprod)));
+#endif  // HAVE_NEON_DOTPROD
 #endif  // ARCH_AARCH64
 
 class AomSseHighbdTest : public ::testing::TestWithParam<AomSseParam> {
@@ -1240,6 +1247,13 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Range(BLOCK_4X4,
                                         (BlockSize)(BlockSizeS_ALL + 2)),
                        ::testing::Values(svt_aom_highbd_sse_neon)));
+#if HAVE_SVE
+INSTANTIATE_TEST_SUITE_P(
+    SVE, AomSseHighbdTest,
+    ::testing::Combine(::testing::Range(BLOCK_4X4,
+                                        (BlockSize)(BlockSizeS_ALL + 2)),
+                       ::testing::Values(svt_aom_highbd_sse_sve)));
+#endif  // HAVE_SVE
 #endif  // ARCH_AARCH64
 
 typedef void (*AomSubtractBlockFunc)(int, int, int16_t *, ptrdiff_t,
