@@ -1017,7 +1017,15 @@ typedef struct EbSvtAv1EncConfiguration {
      * 2: partial (interpolation filter tweaks only)
      * Default is 0
      */
-    uint8_t spy_rd;
+     uint8_t spy_rd;
+
+    /**
+     * @brief Prevent macroblocks from being boosted to very low q.
+     *
+     * Default is 0. 0 = off, 1 = on.
+     */
+     bool low_q_taper;
+
 
     /**
      * @brief Enable sharp-tx, a toggle that enables much sharper transforms decisions for higher fidelity ouput,
@@ -1039,7 +1047,7 @@ typedef struct EbSvtAv1EncConfiguration {
      uint8_t hbd_mds;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 1 * sizeof(bool) - 9 * sizeof(uint8_t) - sizeof(double)];
+    uint8_t padding[128 - 2 * sizeof(bool) - 9 * sizeof(uint8_t) - sizeof(double)];
 } EbSvtAv1EncConfiguration;
 
 /**
