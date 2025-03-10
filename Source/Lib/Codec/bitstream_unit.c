@@ -21,6 +21,10 @@
 #include <stdio.h>
 #endif
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 static void output_bitstream_unit_dctor(EbPtr p) {
     OutputBitstreamUnit *obj = (OutputBitstreamUnit *)p;
     EB_FREE_ARRAY(obj->buffer_begin_av1);

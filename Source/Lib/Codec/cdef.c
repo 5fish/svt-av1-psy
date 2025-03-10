@@ -13,6 +13,10 @@
 #include "common_dsp_rtcd.h"
 #include "bitstream_unit.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 //-------memory stuff
 
 #define ADDRESS_STORAGE_SIZE sizeof(size_t)

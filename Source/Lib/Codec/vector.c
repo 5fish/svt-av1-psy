@@ -25,6 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string.h>
 
 #include "vector.h"
+
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 int svt_aom_vector_setup(Vector *vector, uint32_t capacity, uint32_t element_size) {
     assert(vector != NULL);

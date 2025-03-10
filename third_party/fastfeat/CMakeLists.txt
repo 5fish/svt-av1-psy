@@ -6,6 +6,9 @@
 
 # Include fastfeat subdirectory
 include_directories(${PROJECT_SOURCE_DIR}/third_party/fastfeat/)
+if(USE_MIMALLOC)
+    include_directories(${PROJECT_SOURCE_DIR}/third_party/mimalloc/include/)
+endif()
 
 add_library(FASTFEAT OBJECT
     fast.h

@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "fast.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
 
 #define Compare(X, Y) ((X)>=(Y))
 

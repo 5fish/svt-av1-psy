@@ -37,6 +37,10 @@
 
 #include "app_output_ivf.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 /***************************************
  * Macros
  ***************************************/

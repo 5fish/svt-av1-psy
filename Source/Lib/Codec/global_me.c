@@ -21,6 +21,11 @@
 #include "global_motion.h"
 #include "corner_detect.h"
 #include "aom_dsp_rtcd.h"
+
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 // Normalized distortion-based thresholds
 #define GMV_ME_SAD_TH_0 1
 #define GMV_ME_SAD_TH_1 5

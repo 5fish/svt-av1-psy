@@ -14,6 +14,10 @@
 
 #include "corner_detect.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 // Fast_9 wrapper
 #define FAST_BARRIER 18
 int svt_av1_fast_corner_detect(unsigned char *buf, int width, int height, int stride, int *points, int max_points) {

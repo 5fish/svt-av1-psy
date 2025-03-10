@@ -18,6 +18,10 @@
 #include "EbSvtAv1Enc.h"
 #include "svt_log.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 EB_API SvtMetadataT *svt_metadata_alloc(const uint32_t type, const uint8_t *data, const size_t sz) {
     if (!data || sz == 0)
         return NULL;

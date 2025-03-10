@@ -15,6 +15,11 @@ cmake_minimum_required(VERSION 3.5...3.28)
 
 # Include Subdirectories
 include_directories(${PROJECT_SOURCE_DIR}/Source/API/)
+
+if(USE_MIMALLOC)
+    include_directories(${PROJECT_SOURCE_DIR}/third_party/mimalloc/include/)
+endif()
+
 find_package(PkgConfig)
 if(NOT PkgConfig_FOUND)
   message(WARNING "PkgConfig not found; disabled building with dovi & hdr10plus.")

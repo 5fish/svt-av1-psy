@@ -16,6 +16,10 @@
 #include "EbSvtAv1Enc.h"
 #include "definitions.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 #ifndef NDEBUG
 #define DEBUG_MEMORY_USAGE
 #endif

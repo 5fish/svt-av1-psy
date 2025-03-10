@@ -51,6 +51,10 @@
 #include <unistd.h>
 #endif
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 #if LOG_ENC_DONE
 int tot_frames_done = 0;
 #endif

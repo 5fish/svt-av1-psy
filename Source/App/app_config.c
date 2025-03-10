@@ -34,6 +34,10 @@
 #include "third_party/safestringlib/safe_str_lib.h"
 #endif
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 /**********************************
  * Defines
  **********************************/

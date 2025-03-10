@@ -34,6 +34,10 @@
 #include <unistd.h>
 #endif
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 /******************************************
 * Verify Settings
 ******************************************/

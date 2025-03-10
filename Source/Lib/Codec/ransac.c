@@ -19,6 +19,10 @@
 #include "common_dsp_rtcd.h"
 #include "utility.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 #define MAX_MINPTS 4
 #define MAX_DEGENERATE_ITER 10
 #define MINPTS_MULTIPLIER 5

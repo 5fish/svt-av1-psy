@@ -19,6 +19,10 @@
 #include "svt_log.h"
 #include "rd_cost.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 void                   svt_aom_get_recon_pic(PictureControlSet *pcs, EbPictureBufferDesc **recon_ptr, bool is_highbd);
 static INLINE uint64_t dist_8xn_16bit_c(const uint16_t *src, const uint16_t *dst, const int32_t dstride,
                                         const int32_t coeff_shift, int8_t height, uint8_t subsampling_factor) {
