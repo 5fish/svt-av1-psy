@@ -10,7 +10,7 @@
 * PATENTS file, you can obtain it at https://www.aomedia.org/license/patent-license.
 */
 
-#include <stdlib.h>
+//#include <stdlib.h>
 
 #include "enc_handle.h"
 #include "enc_dec_tasks.h"
@@ -26,6 +26,7 @@
 #include "pic_analysis_process.h"
 #include "resize.h"
 #include "enc_mode_config.h"
+#include "object.h"
 
 void svt_aom_get_recon_pic(PictureControlSet *pcs, EbPictureBufferDesc **recon_ptr, bool is_highbd);
 void copy_mv_rate(PictureControlSet *pcs, MdRateEstimationContext *dst_rate);

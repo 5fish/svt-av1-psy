@@ -18,6 +18,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 // Solves Ax = b, where x and b are column vectors of size nx1 and A is nxn
 static INLINE int32_t linsolve(int32_t n, double *A, int32_t stride, double *b, double *x) {
     const double tiny_near_zero = 1.0E-16;

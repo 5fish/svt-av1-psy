@@ -2,6 +2,10 @@
 /*This is mechanically generated code*/
 #include <stdlib.h>
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 typedef struct { int x, y; } xy;
 typedef unsigned char byte;
 

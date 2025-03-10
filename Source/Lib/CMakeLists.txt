@@ -49,6 +49,10 @@ include_directories(${PROJECT_SOURCE_DIR}/Source/API/
     ${PROJECT_SOURCE_DIR}/Source/Lib/C_DEFAULT/
     ${PROJECT_SOURCE_DIR}/third_party/fastfeat/)
 
+if(USE_MIMALLOC)
+    include_directories(${PROJECT_SOURCE_DIR}/third_party/mimalloc/include/)
+endif()
+
 add_library(SvtAv1Enc)
 # Required for cmake to be able to tell Xcode how to link all of the object files
 if(CMAKE_GENERATOR STREQUAL "Xcode")
@@ -138,6 +142,14 @@ set_target_properties(SvtAv1Enc PROPERTIES SOVERSION ${ENC_VERSION_MAJOR})
 set_target_properties(SvtAv1Enc PROPERTIES C_VISIBILITY_PRESET hidden)
 target_link_libraries(SvtAv1Enc PUBLIC ${PLATFORM_LIBS})
 target_link_libraries(SvtAv1Enc PRIVATE cpuinfo::cpuinfo)
+
+if(USE_MIMALLOC)
+    if(BUILD_SHARED_LIBS)
+        target_link_libraries(SvtAv1Enc PUBLIC mimalloc)
+    else()
+        target_link_libraries(SvtAv1Enc PUBLIC mimalloc-static)
+    endif()
+endif()
 
 set(ENC_PKG_CONFIG_EXTRA_CFLAGS "")
 if (BUILD_SHARED_LIBS)

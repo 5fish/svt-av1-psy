@@ -20,6 +20,10 @@
 #include "grainSynthesis.h"
 #include "svt_log.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
+
 // Samples with Gaussian distribution in the range of [-2048, 2047] (12 bits)
 // with zero mean and standard deviation of about 512.
 // should be divided by 4 for 10-bit range and 16 for 8-bit range.

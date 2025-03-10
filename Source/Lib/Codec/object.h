@@ -10,7 +10,6 @@
 */
 #ifndef EbObject_h
 #define EbObject_h
-#include <stdlib.h>
 
 #include "EbSvtAv1Enc.h"
 #include "svt_malloc.h"

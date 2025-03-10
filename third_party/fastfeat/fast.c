@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "fast.h"
 
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
 
 xy* svt_aom_fast9_detect_nonmax(const byte* im, int xsize, int ysize, int stride, int b, int* ret_num_corners)
 {

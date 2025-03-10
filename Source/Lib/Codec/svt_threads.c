@@ -48,6 +48,9 @@
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #endif
+#if SVT_USE_MIMALLOC
+#include "mimalloc-override.h"
+#endif
 #if PRINTF_TIME
 #include <time.h>
 #ifdef _WIN32
