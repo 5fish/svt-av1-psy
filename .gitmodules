@@ -1,0 +1,4 @@
+[submodule "third_party/mimalloc"]
+	path = third_party/mimalloc
+	url = https://github.com/SwareJonge/mimalloc.git
+	branch = dev3-svt
