@@ -3392,43 +3392,52 @@ static void mctf_frame(
             pd_ctx);
         pcs->temp_filt_prep_done = 0;
         pcs->tf_tot_horz_blks = pcs->tf_tot_vert_blks = 0;
-
-        // Start Filtering in ME processes
-        {
-            int16_t seg_idx;
-
-            // Initialize Segments
-            pcs->tf_segments_column_count = scs->tf_segment_column_count;
-            pcs->tf_segments_row_count = scs->tf_segment_row_count;
-            pcs->tf_segments_total_count = (uint16_t)(pcs->tf_segments_column_count  * pcs->tf_segments_row_count);
-            pcs->temp_filt_seg_acc = 0;
-            for (seg_idx = 0; seg_idx < pcs->tf_segments_total_count; ++seg_idx) {
-
-                EbObjectWrapper               *out_results_wrapper;
-                PictureDecisionResults        *out_results;
-
-                svt_get_empty_object(
-                    pd_ctx->picture_decision_results_output_fifo_ptr,
-                    &out_results_wrapper);
-                out_results = (PictureDecisionResults*)out_results_wrapper->object_ptr;
-                out_results->pcs_wrapper = pcs->p_pcs_wrapper_ptr;
-                out_results->segment_index = seg_idx;
-                out_results->task_type = 1;
-                svt_post_full_object(out_results_wrapper);
-            }
-
-            svt_block_on_semaphore(pcs->temp_filt_done_semaphore);
-        }
-
-        if (pcs->tf_tot_horz_blks > pcs->tf_tot_vert_blks * 6 / 4){
-            pd_ctx->tf_motion_direction = 0;
-        }
-        else  if (pcs->tf_tot_vert_blks > pcs->tf_tot_horz_blks * 6 / 4) {
-            pd_ctx->tf_motion_direction = 1;
+        
+        if (scs->static_config.enable_tf > 2 && pd_ctx->last_i_noise_levels_log1p_fp16[0] >= scs->static_config.tf_noise_thr) {
+            if (scs->static_config.enable_tf == 4)
+                SVT_INFO("[EXP] TF disabled, noise level %i\n", pd_ctx->last_i_noise_levels_log1p_fp16[0]);
+            pcs->do_tf = FALSE;
         }
         else {
-            pd_ctx->tf_motion_direction = -1;
-        }
+            if (scs->static_config.enable_tf == 4)
+                SVT_INFO("[EXP] TF enabled, noise level %i\n", pd_ctx->last_i_noise_levels_log1p_fp16[0]);
+            // Start Filtering in ME processes
+            {
+                int16_t seg_idx;
+
+                // Initialize Segments
+                pcs->tf_segments_column_count = scs->tf_segment_column_count;
+                pcs->tf_segments_row_count = scs->tf_segment_row_count;
+                pcs->tf_segments_total_count = (uint16_t)(pcs->tf_segments_column_count  * pcs->tf_segments_row_count);
+                pcs->temp_filt_seg_acc = 0;
+                for (seg_idx = 0; seg_idx < pcs->tf_segments_total_count; ++seg_idx) {
+
+                    EbObjectWrapper               *out_results_wrapper;
+                    PictureDecisionResults        *out_results;
+
+                    svt_get_empty_object(
+                        pd_ctx->picture_decision_results_output_fifo_ptr,
+                        &out_results_wrapper);
+                    out_results = (PictureDecisionResults*)out_results_wrapper->object_ptr;
+                    out_results->pcs_wrapper = pcs->p_pcs_wrapper_ptr;
+                    out_results->segment_index = seg_idx;
+                    out_results->task_type = 1;
+                    svt_post_full_object(out_results_wrapper);
+                }
+
+                svt_block_on_semaphore(pcs->temp_filt_done_semaphore);
+            }
+
+            if (pcs->tf_tot_horz_blks > pcs->tf_tot_vert_blks * 6 / 4){
+                pd_ctx->tf_motion_direction = 0;
+            }
+            else  if (pcs->tf_tot_vert_blks > pcs->tf_tot_horz_blks * 6 / 4) {
+                pd_ctx->tf_motion_direction = 1;
+            }
+            else {
+                pd_ctx->tf_motion_direction = -1;
+            }
+        }      
     }
     else
         pcs->do_tf = FALSE; // set temporal filtering flag OFF for current picture

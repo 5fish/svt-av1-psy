@@ -5087,6 +5087,9 @@ static void copy_api_from_app(
     // AC bias
     scs->static_config.ac_bias = config_struct->ac_bias;
 
+    // Noise-adaptive TF threshold
+    scs->static_config.tf_noise_thr = config_struct->tf_noise_thr;
+
     // Override settings for Still Picture tune
     if (scs->static_config.tune == 4) {
         SVT_WARN("Tune 4: Still Picture is experimental, expect frequent changes that may modify present behavior.\n");

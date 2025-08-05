@@ -2961,7 +2961,7 @@ static EbErrorType produce_temporally_filtered_pic(
         } else {
             adaptive_tf_shift_factor = 12;
         }
-        if (scs->static_config.enable_tf > 1) {
+        if (scs->static_config.enable_tf == 2) {
             svt_av1_calculate_decay_factor(ctx->tf_decay_factor_fp16, &n_decay_fp10, q_decay_fp8, decay_control[C_U],
                 decay_control[C_V], const_0dot7_fp16, noise_levels_log1p_fp16, adaptive_tf_shift_factor, ctx->tf_chroma);
         } else {
@@ -3502,7 +3502,7 @@ static EbErrorType produce_temporally_filtered_pic_ld(
     } else {
         adaptive_tf_shift_factor = 12;
     }
-    if (scs->static_config.enable_tf > 1) {
+    if (scs->static_config.enable_tf == 2) {
         svt_av1_calculate_decay_factor(ctx->tf_decay_factor_fp16, &n_decay_fp10, q_decay_fp8, decay_control,
             decay_control, const_0dot7_fp16, noise_levels_log1p_fp16, adaptive_tf_shift_factor, ctx->tf_chroma);
     } else {

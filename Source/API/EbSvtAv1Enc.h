@@ -713,7 +713,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /**
      * @brief Enable use of ALT-REF (temporally filtered) frames.
      *
-     * Default is 1. 0 = off, 1 = on, 2 = adaptive.
+     * Default is 1. 0 = off, 1 = on, 2 = adaptive, 3 = noise-adaptive on/off, 4 = noise-adaptive on/off with logs.
      */
     uint8_t enable_tf;
 
@@ -1142,8 +1142,15 @@ typedef struct EbSvtAv1EncConfiguration {
      */
      double ac_bias;
 
+    /**
+     * @brief Control for noise threshold on noise-adaptive TF
+     * Default is 17500
+     * (CDEF/restoration noise threshold is 15000 as reference)
+     */
+    uint32_t tf_noise_thr;
+
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(uint32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(uint32_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

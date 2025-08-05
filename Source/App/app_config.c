@@ -232,6 +232,7 @@
 #define LUMINANCE_QP_BIAS_TOKEN "--luminance-qp-bias"
 #define FILTERING_NOISE_DETECTION_TOKEN "--filtering-noise-detection"
 #define AC_BIAS_TOKEN "--ac-bias"
+#define TF_NOISE_THR_TOKEN "--tf-noise-thr"
 
 static EbErrorType validate_error(EbErrorType err, const char *token, const char *value) {
     switch (err) {
@@ -1107,7 +1108,7 @@ ConfigEntry config_entry_specific[] = {
     // --- start: ALTREF_FILTERING_SUPPORT
     {SINGLE_INPUT,
      ENABLE_TF_TOKEN,
-     "Enable ALT-REF (temporally filtered) frames, default is 1 [0-2]",
+     "Enable ALT-REF (temporally filtered) frames, default is 1 [0-4]",
      set_cfg_generic_token},
 
     {SINGLE_INPUT,
@@ -1369,6 +1370,10 @@ ConfigEntry config_entry_psy[] = {
      AC_BIAS_TOKEN,
      "Strength of AC bias in rate distortion, default is 0.0 [0.0-8.0]",
      set_cfg_generic_token},
+    {SINGLE_INPUT,
+     TF_NOISE_THR_TOKEN,
+     "[EXP] Noise threshold for noise-adaptive TF, default is 17500",
+     set_cfg_generic_token},
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};
 
@@ -1612,6 +1617,9 @@ ConfigEntry config_entry[] = {
 
     // AC bias strength
     {SINGLE_INPUT, AC_BIAS_TOKEN, "AcBias", set_cfg_generic_token},
+    
+    // Noise-adaptive TF threshold
+    {SINGLE_INPUT, TF_NOISE_THR_TOKEN, "TFNoiseThr", set_cfg_generic_token},
 
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};
