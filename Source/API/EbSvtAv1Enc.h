@@ -1120,8 +1120,16 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint8_t filtering_noise_detection;
 
+    /**
+     * @brief Control whether chroma grain is applied when using film grain
+     * 0: off
+     * 1: on
+     * Default is 1.
+     */
+    Bool chroma_grain;
+
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 8 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 
