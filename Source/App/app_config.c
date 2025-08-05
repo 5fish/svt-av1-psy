@@ -233,6 +233,7 @@
 #define FILTERING_NOISE_DETECTION_TOKEN "--filtering-noise-detection"
 #define AC_BIAS_TOKEN "--ac-bias"
 #define TF_NOISE_THR_TOKEN "--tf-noise-thr"
+#define CHROMA_GRAIN_TOKEN "--chroma-grain"
 
 static EbErrorType validate_error(EbErrorType err, const char *token, const char *value) {
     switch (err) {
@@ -1374,6 +1375,10 @@ ConfigEntry config_entry_psy[] = {
      TF_NOISE_THR_TOKEN,
      "[EXP] Noise threshold for noise-adaptive TF, default is 17500",
      set_cfg_generic_token},
+    {SINGLE_INPUT,
+     CHROMA_GRAIN_TOKEN,
+     "[EXP] Control whether chroma grain is applied when using film grain, default is 1 [0-1]",
+     set_cfg_generic_token},
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};
 
@@ -1620,6 +1625,9 @@ ConfigEntry config_entry[] = {
     
     // Noise-adaptive TF threshold
     {SINGLE_INPUT, TF_NOISE_THR_TOKEN, "TFNoiseThr", set_cfg_generic_token},
+
+    // Chroma grain
+    {SINGLE_INPUT, CHROMA_GRAIN_TOKEN, "ChromaGrain", set_cfg_generic_token},
 
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};

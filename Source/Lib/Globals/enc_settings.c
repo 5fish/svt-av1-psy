@@ -1163,6 +1163,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->filtering_noise_detection         = 0;
     config_ptr->ac_bias                           = 0.0;
     config_ptr->tf_noise_thr                      = 17500;
+    config_ptr->chroma_grain                      = TRUE;
     return return_error;
 }
 
@@ -1292,6 +1293,9 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                          config->film_grain_denoise_strength);
             }
         }
+
+        if (config->chroma_grain == 0)
+            SVT_INFO("SVT [config]: chroma grain \t\t\t\t\t\t\t: disabled\n");
 
         SVT_INFO("SVT [config]: sharpness / QP scale compress strength / frame low-luma bias \t: %d / %.2f / %d\n",
                  config->sharpness,
@@ -2428,6 +2432,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"low-q-taper", &config_struct->low_q_taper},
         {"sharp-tx", &config_struct->sharp_tx},
         {"alt-ssim-tuning", &config_struct->alt_ssim_tuning},
+        {"chroma-grain", &config_struct->chroma_grain},
     };
     const size_t bool_opts_size = sizeof(bool_opts) / sizeof(bool_opts[0]);
 
