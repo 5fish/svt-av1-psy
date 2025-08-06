@@ -1239,6 +1239,7 @@ typedef struct PictureControlSetInitData {
     uint8_t complex_hvs;
     Bool    alt_ssim_tuning;
     Bool    chroma_grain;
+    Bool    alt_tf_decay;
 } PictureControlSetInitData;
 
 typedef struct Av1Comp {
