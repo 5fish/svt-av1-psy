@@ -294,13 +294,13 @@ uint64_t get_svt_psy_full_dist(const void* s, uint32_t so, uint32_t sp,
 
 double get_effective_psy_rd(double psy_rd, bool is_islice, uint8_t temporal_layer_index) {
     if (is_islice) {
-        return psy_rd * 0.4;
+        return psy_rd * 0.3;
     } else if (temporal_layer_index == 0) {
-        return psy_rd * 0.75;
+        return psy_rd * 0.6;
     } else if (temporal_layer_index == 1) {
-        return psy_rd * 0.9;
+        return psy_rd * 0.8;
     } else if (temporal_layer_index == 2) {
-        return psy_rd * 0.95;
+        return psy_rd * 0.9;
     } else {
         return psy_rd;
     }
