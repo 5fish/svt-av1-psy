@@ -22,9 +22,9 @@ Provides control over our augmented AQ Modes 0 and 2 which can utilize variance 
 
 Controls how "selective" the algorithm is when boosting superblocks, based on their low/high 8x8 variance ratio. A value of 1 is the least selective, and will readily boost a superblock if only 1/8th of the superblock is low variance. Conversely, a value of 8 will only boost if the *entire* superblock is low variance. Lower values increase bitrate. The default value is 5.
 
-- `--enable-alt-curve` *0 and 1* (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/merge_requests/2357)**)
+- `--variance-boost-curve` *0 to 2* (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/merge_requests/2357)**)
 
-Enable an alternative variance boost curve, with different bit allocation and visual characteristics. The default is 0.
+Enables different kinds of variance boost curves, with different bit allocation and visual characteristics. The default is 0.
 
 - `Presets -2 & -3`
 

@@ -203,7 +203,7 @@
 #define ENABLE_VARIANCE_BOOST_TOKEN "--enable-variance-boost"
 #define VARIANCE_BOOST_STRENGTH_TOKEN "--variance-boost-strength"
 #define VARIANCE_OCTILE_TOKEN "--variance-octile"
-#define ENABLE_ALT_CURVE_TOKEN "--enable-alt-curve"
+#define VARIANCE_BOOST_CURVE_TOKEN "--variance-boost-curve"
 
 #define SHARPNESS_TOKEN "--sharpness"
 
@@ -1282,8 +1282,8 @@ ConfigEntry config_entry_psy[] = {
      "Octile for variance boost, default is 5 [1-8]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     ENABLE_ALT_CURVE_TOKEN,
-     "[PSY] Enable alternative curve for variance boost (different boosting trade-offs), default is 0 [0-1]",
+     VARIANCE_BOOST_CURVE_TOKEN,
+     "Curve for variance boost, default is 0 [0-2]",
      set_cfg_generic_token},
     // Sharpness
     {SINGLE_INPUT,
@@ -1556,7 +1556,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, ENABLE_VARIANCE_BOOST_TOKEN, "EnableVarianceBoost", set_cfg_generic_token},
     {SINGLE_INPUT, VARIANCE_BOOST_STRENGTH_TOKEN, "VarianceBoostStrength", set_cfg_generic_token},
     {SINGLE_INPUT, VARIANCE_OCTILE_TOKEN, "VarianceOctile", set_cfg_generic_token},
-    {SINGLE_INPUT, ENABLE_ALT_CURVE_TOKEN, "EnableAltCurve", set_cfg_generic_token},
+    {SINGLE_INPUT, VARIANCE_BOOST_CURVE_TOKEN, "VarianceBoostCurve", set_cfg_generic_token},
 
     // Sharpness
     {SINGLE_INPUT, SHARPNESS_TOKEN, "Sharpness", set_cfg_generic_token},
