@@ -1162,6 +1162,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->alt_ssim_tuning                   = FALSE;
     config_ptr->luminance_qp_bias                 = 0;
     config_ptr->filtering_noise_detection         = 0;
+    config_ptr->ac_bias                           = &config_ptr->psy_rd;
     return return_error;
 }
 
@@ -2307,6 +2308,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } double_opts[] = {
         {"qp-scale-compress-strength", &config_struct->qp_scale_compress_strength},
         {"psy-rd", &config_struct->psy_rd},
+        {"ac-bias", config_struct->ac_bias},
     };
     const size_t double_opts_size = sizeof(double_opts) / sizeof(double_opts[0]);
 

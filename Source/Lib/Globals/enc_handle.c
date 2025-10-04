@@ -1959,6 +1959,7 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.complex_hvs = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.complex_hvs;
         input_data.alt_ssim_tuning = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.alt_ssim_tuning;
         input_data.luminance_qp_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.luminance_qp_bias;
+        input_data.filtering_noise_detection = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.filtering_noise_detection;
         input_data.static_config = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config;
 
         EB_NEW(

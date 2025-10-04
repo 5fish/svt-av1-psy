@@ -1156,13 +1156,23 @@ typedef struct EbSvtAv1EncConfiguration {
      * 3: on (restoration only)
      * Default is 0
      */
-     uint8_t filtering_noise_detection;
+    uint8_t filtering_noise_detection;
+
+    /**
+     * @brief Alias for PSY-RD to provide parameter parity with -HDR/mainline implementation
+     * If both --psy-rd and --ac-bias are passed, --ac-bias will take precedence
+     * Enable psychovisual rate distortion
+     * 0.00: disable PSY-RD
+     * 4.00: enable PSY-RD with a strength of 4.00
+     * Default is 1.00.
+     */
+    double* ac_bias;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
 #if CLN_LP_LVLS
-    uint8_t padding[128 - 6 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(uint32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 6 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(uint32_t) - 3 * sizeof(double)];
 #else
-    uint8_t padding[128 - 6 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 6 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - 3 * sizeof(double)];
 #endif
 
 } EbSvtAv1EncConfiguration;

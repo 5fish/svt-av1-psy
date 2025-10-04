@@ -1239,6 +1239,7 @@ typedef struct PictureControlSetInitData {
     uint8_t complex_hvs;
     Bool    alt_ssim_tuning;
     uint8_t luminance_qp_bias;
+    uint8_t filtering_noise_detection;
 } PictureControlSetInitData;
 
 typedef struct Av1Comp {
