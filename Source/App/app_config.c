@@ -224,6 +224,8 @@
 #define AC_BIAS_TOKEN "--ac-bias"
 #define TX_BIAS_TOKEN "--tx-bias"
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
+#define CHROMA_DISTORTION_TAPER_TOKEN "--chroma-distortion-taper"
+#define SKIP_TAPER_TOKEN "--skip-taper"
 #define SHARP_TX_TOKEN "--sharp-tx"
 #define HBD_MDS_TOKEN "--hbd-mds"
 #define COMPLEX_HVS_TOKEN "--complex-hvs"
@@ -1353,6 +1355,14 @@ ConfigEntry config_entry_psy[] = {
      "Low q taper. If macroblocks are boosted below q11, taper the effect. Default is 0 (off).",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     CHROMA_DISTORTION_TAPER_TOKEN,
+     "[PSY] Chroma distortion taper, default is 0 [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     SKIP_TAPER_TOKEN,
+     "[PSY] Skip taper, default is 0 [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      SHARP_TX_TOKEN,
      "[PSY] Sharp transform optimization, default is 1; best used in combination with AC bias [0-1]",
      set_cfg_generic_token},
@@ -1605,6 +1615,12 @@ ConfigEntry config_entry[] = {
 
 	// Low q taper
     {SINGLE_INPUT, LOW_Q_TAPER_TOKEN, "LowQTaper", set_cfg_generic_token},
+
+    // Chroma Distortion Taper
+    {SINGLE_INPUT, CHROMA_DISTORTION_TAPER_TOKEN, "ChromaDistortionTaper", set_cfg_generic_token},
+
+    // Skip Taper
+    {SINGLE_INPUT, SKIP_TAPER_TOKEN, "SkipTaper", set_cfg_generic_token},
 
     // Sharp TX
     {SINGLE_INPUT, SHARP_TX_TOKEN, "SharpTX", set_cfg_generic_token},

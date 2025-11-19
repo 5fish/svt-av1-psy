@@ -1,6 +1,9 @@
 Experimental additions currently available on `exp`:
 - `--chroma-grain`
 - `--alt-tf-decay`
+- `--chroma-distortion-taper`, `--skip-taper` ([@Akatmks](https://github.com/Akatmks))
+
+Thank you to [@Akatmks](https://github.com/Akatmks) for the contribution of various features.
 
 Please see [Parameters](Docs/Parameters.md), or their respective commits, for further details on functionality.
 
