@@ -2,6 +2,7 @@ Experimental additions currently available on `exp`:
 - `--enable-tf 3/4`, `--tf-noise-thr` * currently partially broken, use with caution 
 - `--chroma-grain`
 - `--alt-tf-decay`
+- `--chroma-distortion-taper`, `--skip-taper` (thanks to [@Akatmks](https://github.com/Akatmks)!)
 
 Please see their respective commits for further details on functionality.
 
