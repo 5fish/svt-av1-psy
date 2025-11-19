@@ -1089,16 +1089,17 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief Limit the chroma distortion prediction from dropping too low in full mode decision
-     * Min value is 0.
-     * Max value is 1.
+     * 0: off
+     * 1: on
      * Default is 0.
      */
     uint8_t chroma_distortion_taper;
 
     /**
-     * @brief Completely disable skip mode and skip (as defined in section 6.10.10 and 6.10.11)
-     * Min value is 0.
-     * Max value is 1.
+     * @brief Disable skip mode and skip (as defined in section 6.10.10 and 6.10.11)
+     * 0: off
+     * 1: completely disable skip mode and skip
+     * 2: disable cost-based skip mode and skip selection
      * Default is 0.
      */
     uint8_t skip_taper;

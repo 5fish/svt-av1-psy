@@ -970,8 +970,8 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->skip_taper > 1) {
-        SVT_ERROR("Instance %u: skip-taper must be between 0 and 1\n", channel_number + 1);
+    if (config->skip_taper > 2) {
+        SVT_ERROR("Instance %u: skip-taper must be between 0 and 2\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1405,7 +1405,8 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
         }
         
 		if (config->skip_taper) {
-            SVT_INFO("SVT [config]: skip taper \t\t\t\t\t\t\t: on\n");
+            SVT_INFO("SVT [config]: skip taper \t\t\t\t\t\t\t: %s\n",
+                     config->skip_taper == 1 ? "full" : "cost taper");
         }
         
         switch (config->filtering_noise_detection) {

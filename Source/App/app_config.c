@@ -1356,7 +1356,7 @@ ConfigEntry config_entry_psy[] = {
      set_cfg_generic_token},
     {SINGLE_INPUT,
      SKIP_TAPER_TOKEN,
-     "[PSY] Skip taper, default is 0 [0-1]",
+     "[PSY] Skip taper, default is 0 [0-2]; 1 = completely disable skip mode and skip, 2 = disable cost-based skip mode and skip selection",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      SHARP_TX_TOKEN,

@@ -1555,6 +1555,10 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
                 ((uint64_t)ctx->md_rate_est_ctx->skip_fac_bits[skip_coeff_ctx][1]) + skip_tx_size_bits,
                 (y_distortion[DIST_SSD][1] + cb_distortion[DIST_SSD][1] + cr_distortion[DIST_SSD][1]));
         } else {
+            // The use of qstep table here is completely arbitrary. It needs
+            // something in the range of a few hundred to a few thousand, and it
+            // needs something that corresponds with quality, and the qstep table
+            // just happenes to fit both of these two points.
             non_skip_cost = RDCOST(
                 lambda,
                 (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits + non_skip_tx_size_bits +
@@ -1616,10 +1620,6 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
             ? y_distortion[DIST_SSIM][0] + cb_distortion[DIST_SSIM][0] + cr_distortion[DIST_SSIM][0]
             : 0;
     } else {
-        // The use of qstep table here is completely arbitrary. It needs
-        // something in the range of a few hundred to a few thousand, and it
-        // needs something that corresponds with quality, and the qstep table
-        // just happenes to fit both of these two points.
         mode_distortion      = y_distortion[DIST_SSD][0] +
             AOMMAX(cb_distortion[DIST_SSD][0] + cr_distortion[DIST_SSD][0],
                    (uint64_t)(1.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
