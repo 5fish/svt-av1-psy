@@ -130,7 +130,9 @@ EbErrorType svt_aom_enc_dec_context_ctor(EbThreadContext *thread_ctx, const EbEn
            0,
            enable_hbd_mode_decision == DEFAULT ? 2 : enable_hbd_mode_decision,
            static_config->screen_content_mode,
-           enc_handle_ptr->scs_instance_array[0]->scs->seq_qp_mod);
+           enc_handle_ptr->scs_instance_array[0]->scs->seq_qp_mod,
+           static_config->lineart_psy_bias,
+           static_config->high_quality_encode_psy_bias);
 
     if (enable_hbd_mode_decision)
         ed_ctx->md_ctx->input_sample16bit_buffer = ed_ctx->input_sample16bit_buffer;
@@ -2225,11 +2227,11 @@ static void build_cand_block_array(SequenceControlSet *scs, PictureControlSet *p
         : ctx->disallow_4x4                                                                                   ? 8
                                                                                                               : 4;
     // Safety check: Restrict min sq size so mode decision can always find at least one valid partition scheme
-    min_sq_size = scs->static_config.max_32_tx_size ? MIN(min_sq_size, 32) : min_sq_size;
+    min_sq_size = ctx->max_32_blk_size ? MIN(min_sq_size, 32) : min_sq_size;
 
     while (blk_index < max_block_cnt) {
         const BlockGeom *blk_geom = get_blk_geom_mds(blk_index);
-        int32_t max_sq_size = (blk_geom->sq_size > 32 && scs->static_config.max_32_tx_size) ? 32 : blk_geom->sq_size;
+        int32_t max_sq_size = (blk_geom->sq_size > 32 && ctx->max_32_blk_size) ? 32 : blk_geom->sq_size;
 
         assert(min_sq_size <= max_sq_size);
 
@@ -2619,7 +2621,7 @@ static void perform_pred_depth_refinement(SequenceControlSet *scs, PictureContro
                             update_pred_th_offset(ctx, blk_geom, &s_depth, &e_depth, &th_offset);
                         }
 
-                        if (scs->static_config.max_32_tx_size) {
+                        if (ctx->max_32_blk_size) {
                             // Don't test depths that result in blocks greater than 32x32
                             switch (blk_geom->sq_size) {
                                 case 4:
@@ -3306,7 +3308,9 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                  pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                                  pcs->ppcs->enable_restoration,
                                                  pcs->ppcs->frm_hdr.allow_intrabc,
-                                                 &pcs->md_frame_context);
+                                                 &pcs->md_frame_context,
+                                                 scs->static_config.lineart_psy_bias,
+                                                 scs->static_config.texture_psy_bias);
                 if (!pcs->cdf_ctrl.update_coef)
                     svt_aom_estimate_coefficients_rate(ed_ctx->md_ctx->rate_est_table, &pcs->md_frame_context);
             }
@@ -3361,6 +3365,7 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                         ed_ctx->md_ctx->sb_origin_y = sb_origin_y;
                         mdc_ptr                     = &(ed_ctx->md_ctx->mdc_sb_array);
                         ed_ctx->sb_index            = sb_index;
+
                         if (pcs->cdf_ctrl.enabled) {
                             if (scs->pic_based_rate_est &&
                                 scs->enc_dec_segment_row_count_array[pcs->temporal_layer_index] == 1 &&
@@ -3402,7 +3407,9 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                              pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                                              pcs->ppcs->enable_restoration,
                                                              pcs->ppcs->frm_hdr.allow_intrabc,
-                                                             &pcs->ec_ctx_array[sb_index]);
+                                                             &pcs->ec_ctx_array[sb_index],
+                                                             scs->static_config.lineart_psy_bias,
+                                                             scs->static_config.texture_psy_bias);
                             // Initial Rate Estimation of the Motion vectors
                             if (pcs->cdf_ctrl.update_mv)
                                 svt_aom_estimate_mv_rate(

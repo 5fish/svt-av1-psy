@@ -376,6 +376,8 @@ typedef struct PictureControlSet {
     uint8_t md_sq_mv_search_level;
     uint8_t md_nsq_mv_search_level;
     uint8_t md_pme_level;
+    // The levels of mds0_level has been changed in 5fish/SVT-AV1-PSY compared to mainline.
+    // Be careful when backporting.
     uint8_t mds0_level;
     uint8_t pic_disallow_4x4; // disallow 4x4 at pic level
     uint8_t pic_disallow_below_16x16; // disallow_below_16x16 signal at pic level
@@ -441,6 +443,8 @@ typedef struct PictureControlSet {
     // different with input frame when reference scaling is enabled
     EbPictureBufferDesc *scaled_input_pic;
     bool                 rtc_tune;
+
+    QmVal satd_bias_qmatrix[16 + 64]; // 4x4 table then 8x8 table
 } PictureControlSet;
 
 // To optimize based on the max input size
@@ -818,6 +822,7 @@ typedef struct PictureParentControlSet {
     EbObjectWrapper *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     uint64_t         ref_pic_poc_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     uint16_t       **variance;
+    uint16_t        *balancing_luminance;
     uint32_t         pre_assignment_buffer_count;
     uint16_t         pic_avg_variance;
 
@@ -1133,6 +1138,8 @@ typedef struct PictureParentControlSet {
     uint32_t         tf_tot_horz_blks; // total horizontal motion blocks in TF
     int8_t           tf_motion_direction; // motion direction in TF   -1:invalid   0:horz  1:vert
     int32_t          is_noise_level;
+    int32_t          noise_level;
+    int32_t          noise_level_thr;
     bool             r0_based_qps_qpm;
     uint32_t         dpb_order_hint[REF_FRAMES]; // spec 6.8.2. ref_order_hint[]
     DGDetectorSeg   *dg_detector; // dg detector segments control struct
@@ -1223,20 +1230,16 @@ typedef struct PictureControlSetInitData {
     uint8_t variance_boost_strength;
     uint8_t variance_octile;
     Bool    enable_alt_curve;
-    int8_t  sharpness;
     double  qp_scale_compress_strength;
     uint8_t frame_luma_bias;
     uint8_t luminance_qp_bias; // alias for frame luma bias
-    Bool    max_32_tx_size;
     Bool    adaptive_film_grain;
     uint8_t tf_strength;
     uint8_t kf_tf_strength;
-    uint8_t noise_norm_strength;
     double  ac_bias;
     uint8_t tx_bias;
     Bool    sharp_tx;
     uint8_t hbd_mds;
-    uint8_t complex_hvs;
     Bool    alt_ssim_tuning;
     Bool    auto_tiling;
     Bool    chroma_grain;

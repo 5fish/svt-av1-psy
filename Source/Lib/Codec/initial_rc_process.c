@@ -702,10 +702,9 @@ void *svt_aom_initial_rate_control_kernel(void *input_ptr) {
                                   scs->max_input_luma_height);
 
             pcs->r0_based_qps_qpm = pcs->tpl_ctrls.enable &&
-                (pcs->temporal_layer_index == 0 ||
-                 (scs->static_config.rate_control_mode == SVT_AV1_RC_MODE_CQP_OR_CRF &&
-                  ((pcs->hierarchical_levels == 5 && pcs->temporal_layer_index <= 2) ||
-                   (pcs->hierarchical_levels >= 4 && pcs->temporal_layer_index <= 1))));
+                                    (pcs->temporal_layer_index == 0 ||
+                                     (scs->static_config.rate_control_mode == SVT_AV1_RC_MODE_CQP_OR_CRF &&
+                                      (int8_t)pcs->temporal_layer_index <= (int8_t)pcs->hierarchical_levels + scs->static_config.balancing_r0_based_layer));
 
             // If TPL results are needed for the current hierarchical layer, but are not available, shut r0-based QPS/QPM
             if (pcs->r0_based_qps_qpm && pcs->tpl_ctrls.reduced_tpl_group >= 0 &&
