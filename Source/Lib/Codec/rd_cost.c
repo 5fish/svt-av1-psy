@@ -1514,6 +1514,450 @@ EbErrorType svt_aom_full_cost_light_pd0(ModeDecisionContext *ctx, struct ModeDec
         lambda, coeff_rate + ctx->md_rate_est_ctx->partition_fac_bits[0][PARTITION_NONE], y_distortion[0]);
     return return_error;
 }
+
+static INLINE void variance_md_bias_mult_dist(uint64_t *mode_distortion, uint64_t *mode_ssim_distortion, const double ratio) {
+    (*mode_distortion) *= ratio;
+    (*mode_ssim_distortion) *= ratio;
+}
+static INLINE uint64_t variance_md_bias_shift_const(ModeDecisionContext *ctx, const int8_t lshift) {
+    if (lshift > 0)
+        return ctx->variance_md_cost_const << lshift;
+    else if (lshift == 0)
+        return ctx->variance_md_cost_const;
+    else
+        return ctx->variance_md_cost_const >> -lshift;
+}
+static INLINE void variance_md_bias_add_dist(ModeDecisionContext *ctx, uint64_t *mode_distortion, uint64_t *mode_ssim_distortion, const int8_t lshift) {
+    switch (ctx->blk_geom->bsize) {
+        case BLOCK_4X4:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift);
+            break;
+        case BLOCK_4X8: case BLOCK_8X4:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 1);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 1);
+            break;
+        case BLOCK_4X16: case BLOCK_16X4: case BLOCK_8X8:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 2);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 2);
+            break;
+        case BLOCK_8X16: case BLOCK_16X8:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 3);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 3);
+            break;
+        case BLOCK_8X32: case BLOCK_32X8: case BLOCK_16X16:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 4);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 4);
+            break;
+        case BLOCK_16X32: case BLOCK_32X16:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 5);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 5);
+            break;
+        case BLOCK_16X64: case BLOCK_64X16: case BLOCK_32X32:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 6);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 6);
+            break;
+        case BLOCK_32X64: case BLOCK_64X32:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 7);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 7);
+            break;
+        case BLOCK_64X64:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 8);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 8);
+            break;
+        case BLOCK_64X128: case BLOCK_128X64:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 9);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 9);
+            break;
+        case BLOCK_128X128:
+            (*mode_distortion) += variance_md_bias_shift_const(ctx, lshift + 10);
+            (*mode_ssim_distortion) += variance_md_bias_shift_const(ctx, lshift + 10);
+            break;
+        case BlockSizeS_ALL: case BLOCK_INVALID: break;
+    }
+}
+static INLINE void variance_md_bias_add_dist_min(ModeDecisionContext *ctx, uint64_t *mode_distortion, uint64_t *mode_ssim_distortion, const int8_t lshift, const uint64_t min_addition) {
+    switch (ctx->blk_geom->bsize) {
+        case BLOCK_4X4:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift), min_addition);
+            break;
+        case BLOCK_4X8: case BLOCK_8X4:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 1), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 1), min_addition);
+            break;
+        case BLOCK_4X16: case BLOCK_16X4: case BLOCK_8X8:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 2), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 2), min_addition);
+            break;
+        case BLOCK_8X16: case BLOCK_16X8:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 3), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 3), min_addition);
+            break;
+        case BLOCK_8X32: case BLOCK_32X8: case BLOCK_16X16:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 4), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 4), min_addition);
+            break;
+        case BLOCK_16X32: case BLOCK_32X16:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 5), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 5), min_addition);
+            break;
+        case BLOCK_16X64: case BLOCK_64X16: case BLOCK_32X32:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 6), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 6), min_addition);
+            break;
+        case BLOCK_32X64: case BLOCK_64X32:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 7), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 7), min_addition);
+            break;
+        case BLOCK_64X64:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 8), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 8), min_addition);
+            break;
+        case BLOCK_64X128: case BLOCK_128X64:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 9), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 9), min_addition);
+            break;
+        case BLOCK_128X128:
+            (*mode_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 10), min_addition);
+            (*mode_ssim_distortion) += AOMMAX(variance_md_bias_shift_const(ctx, lshift + 10), min_addition);
+            break;
+        case BlockSizeS_ALL: case BLOCK_INVALID: break;
+    }
+}
+static INLINE void variance_md_bias_sub_dist(ModeDecisionContext *ctx, uint64_t *mode_distortion, uint64_t *mode_ssim_distortion, const int8_t lshift) {
+    switch (ctx->blk_geom->bsize) {
+        case BLOCK_4X4:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift);
+            break;
+        case BLOCK_4X8: case BLOCK_8X4:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 1);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 1);
+            break;
+        case BLOCK_4X16: case BLOCK_16X4: case BLOCK_8X8:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 2);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 2);
+            break;
+        case BLOCK_8X16: case BLOCK_16X8:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 3);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 3);
+            break;
+        case BLOCK_8X32: case BLOCK_32X8: case BLOCK_16X16:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 4);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 4);
+            break;
+        case BLOCK_16X32: case BLOCK_32X16:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 5);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 5);
+            break;
+        case BLOCK_16X64: case BLOCK_64X16: case BLOCK_32X32:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 6);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 6);
+            break;
+        case BLOCK_32X64: case BLOCK_64X32:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 7);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 7);
+            break;
+        case BLOCK_64X64:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 8);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 8);
+            break;
+        case BLOCK_64X128: case BLOCK_128X64:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 9);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 9);
+            break;
+        case BLOCK_128X128:
+            (*mode_distortion) -= variance_md_bias_shift_const(ctx, lshift + 10);
+            (*mode_ssim_distortion) -= variance_md_bias_shift_const(ctx, lshift + 10);
+            break;
+        case BlockSizeS_ALL: case BLOCK_INVALID: break;
+    }
+}
+// Apply `--variance-md-bias` and `--texture-preserving-md-bias`
+static void variance_md_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, struct ModeDecisionCandidateBuffer *cand_bf,
+                                   uint64_t *dist, uint64_t *ssim_dist) {
+    const bool block_no_coeff = !cand_bf->y_has_coeff || (!cand_bf->u_has_coeff && !cand_bf->v_has_coeff);
+
+    if (pcs->scs->static_config.variance_md_bias) {
+        // Bias mode
+        if (cand_bf->variance_md_mode_bias >= 1) {
+            switch (cand_bf->cand->pred_mode) {
+                case SMOOTH_PRED: case SMOOTH_V_PRED: case SMOOTH_H_PRED: variance_md_bias_mult_dist(dist, ssim_dist, 1.40); break;
+                case NEAREST_NEARESTMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.20); break;
+                case NEWMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.08); break;
+                case NEARESTMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.04); break;
+                case V_PRED: case H_PRED: case D45_PRED: case D135_PRED: case D113_PRED: case D157_PRED: case D203_PRED: case D67_PRED: case PAETH_PRED:
+                    variance_md_bias_mult_dist(dist, ssim_dist, 1.02); break;
+                case NEW_NEWMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.98); break;
+                case NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.94); break;
+                case NEAR_NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.92); break;
+                default: break;
+            }
+        }
+        else {
+            switch (cand_bf->cand->pred_mode) {
+                case SMOOTH_PRED: case SMOOTH_V_PRED: case SMOOTH_H_PRED: variance_md_bias_mult_dist(dist, ssim_dist, 1.20); break;
+                case NEAREST_NEARESTMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.10); break;
+                case NEWMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.04); break;
+                case NEARESTMV: variance_md_bias_mult_dist(dist, ssim_dist, 1.02); break;
+                case V_PRED: case H_PRED: case D45_PRED: case D135_PRED: case D113_PRED: case D157_PRED: case D203_PRED: case D67_PRED: case PAETH_PRED:
+                    variance_md_bias_mult_dist(dist, ssim_dist, 1.01); break;
+                case NEW_NEWMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.99); break;
+                case NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.97); break;
+                case NEAR_NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.96); break;
+                default: break;
+            }
+        }
+
+        // Bias block size
+        switch (cand_bf->variance_md_mode_bias) {
+            case 2:
+                if (!block_no_coeff) {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X16: case BLOCK_16X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -1); break;
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -2); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -3); break;
+                        case BLOCK_4X4:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_8X8:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -6); break;
+                        case BLOCK_16X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -8); break;
+                        default: break;
+                    }
+                }
+                else {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X16: case BLOCK_16X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, 0); break;
+                        case BLOCK_4X8: case BLOCK_8X4:
+                        case BLOCK_8X32: case BLOCK_32X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -2); break;
+                        case BLOCK_4X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -3); break;
+                        case BLOCK_8X16: case BLOCK_16X8:
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_8X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -6); break;
+                        case BLOCK_16X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -7); break;
+                        default: break;
+                    }
+                }
+                break;
+
+            case 1:
+                if (!block_no_coeff) {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X16: case BLOCK_16X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -2); break;
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -3); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_4X4:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -6); break;
+                        case BLOCK_8X8:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -7); break;
+                        case BLOCK_16X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -9); break;
+                        default: break;
+                    }
+                }
+                else {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X16: case BLOCK_16X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -1); break;
+                        case BLOCK_4X8: case BLOCK_8X4:
+                        case BLOCK_8X32: case BLOCK_32X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -3); break;
+                        case BLOCK_4X4:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_8X16: case BLOCK_16X8:
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_8X8:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -6); break;
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -7); break;
+                        case BLOCK_16X16:
+                            variance_md_bias_add_dist(ctx, dist, ssim_dist, -8); break;
+                        default: break;
+                    }
+                }
+                break;
+
+            case 0:
+                switch (ctx->blk_geom->bsize) {
+                    case BLOCK_4X16: case BLOCK_16X4:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -3); break;
+                    case BLOCK_4X8: case BLOCK_8X4:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -4); break;
+                    case BLOCK_8X32: case BLOCK_32X8:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -5); break;
+                    case BLOCK_4X4:
+                    case BLOCK_8X16: case BLOCK_16X8:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -6); break;
+                    case BLOCK_16X64: case BLOCK_64X16:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -7); break;
+                    case BLOCK_8X8:
+                    case BLOCK_16X32: case BLOCK_32X16:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -8); break;
+                    case BLOCK_16X16:
+                        variance_md_bias_add_dist(ctx, dist, ssim_dist, -10); break;
+                    default: break;
+                }
+                break;
+
+            case -1:
+                if (!block_no_coeff) {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X4:
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            // This has become sub instead of add
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -3); break;
+                            break;
+                        case BLOCK_4X16: case BLOCK_16X4: // Not encouraging elongated shapes
+                        case BLOCK_8X8:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                        case BLOCK_16X16:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -7); break;
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -9); break;
+                        default: break;
+                    }
+                }
+                else {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X4:
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            // This has become sub instead of add
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_4X16: case BLOCK_16X4:
+                        case BLOCK_8X8:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -6); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                        case BLOCK_16X16:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -8); break;
+                        case BLOCK_16X64: case BLOCK_64X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -10); break;
+                        default: break;
+                    }
+                }
+                break;
+
+            case -2:
+                if (!block_no_coeff) {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X4:
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -2); break;
+                        case BLOCK_4X16: case BLOCK_16X4:
+                        case BLOCK_8X8:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -4); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                        case BLOCK_16X16:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -6); break;
+                        default: break;
+                    }
+                    break;
+                }
+                else {
+                    switch (ctx->blk_geom->bsize) {
+                        case BLOCK_4X4:
+                        case BLOCK_4X8: case BLOCK_8X4:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -3); break;
+                        case BLOCK_4X16: case BLOCK_16X4:
+                        case BLOCK_8X8:
+                        case BLOCK_8X16: case BLOCK_16X8:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -5); break;
+                        case BLOCK_8X32: case BLOCK_32X8:
+                        case BLOCK_16X16:
+                        case BLOCK_16X32: case BLOCK_32X16:
+                            variance_md_bias_sub_dist(ctx, dist, ssim_dist, -7); break;
+                        default: break;
+                    }
+                    break;
+                }
+        }
+
+        // Bias very big block size
+        switch (ctx->blk_geom->bsize) {
+            case BLOCK_32X64: case BLOCK_64X32: // Mhm?
+            case BLOCK_64X64:
+                if (cand_bf->variance_md_32_blk_size_bias == 2) {
+                    variance_md_bias_add_dist(ctx, dist, ssim_dist, -9);
+                }
+                else if (cand_bf->variance_md_32_blk_size_bias == 1) {
+                    variance_md_bias_add_dist(ctx, dist, ssim_dist, -10);
+                }
+                break;
+            case BLOCK_64X128: case BLOCK_128X64:
+            case BLOCK_128X128:
+                if (cand_bf->variance_md_32_blk_size_bias == 2) {
+                    variance_md_bias_add_dist(ctx, dist, ssim_dist, -7);
+                }
+                else if (cand_bf->variance_md_32_blk_size_bias == 1) {
+                    variance_md_bias_add_dist(ctx, dist, ssim_dist, -8);
+                }
+                break;
+            default: break;
+        }
+    }
+
+    // `--texture-preserving-md-bias`
+    if (pcs->scs->static_config.texture_preserving_md_bias && cand_bf->texture_preserving_md_bias) {
+        if (!block_no_coeff) {
+            switch (cand_bf->cand->pred_mode) {
+                case NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.94); break;
+                case DC_PRED: variance_md_bias_mult_dist(dist, ssim_dist, 0.92); break;
+                default: break;
+            }
+
+            switch (ctx->blk_geom->bsize) {
+                case BLOCK_16X32: case BLOCK_32X16:
+                    variance_md_bias_add_dist_min(ctx, dist, ssim_dist, -5, *dist >> 2); break;
+                case BLOCK_32X64: case BLOCK_64X32: // Mhm?
+                case BLOCK_64X64:
+                    variance_md_bias_add_dist_min(ctx, dist, ssim_dist, -4, *dist << 1); break;
+                case BLOCK_64X128: case BLOCK_128X64:
+                case BLOCK_128X128:
+                    variance_md_bias_add_dist_min(ctx, dist, ssim_dist, -3, *dist << 2); break;
+                default: break;
+            }
+        }
+        else {
+            switch (cand_bf->cand->pred_mode) {
+                case NEARMV: variance_md_bias_mult_dist(dist, ssim_dist, 0.99); break;
+                case DC_PRED: variance_md_bias_mult_dist(dist, ssim_dist, 0.97); break;
+                default: break;
+            }
+        }
+    }
+}
+
 /*********************************************************************************
  * svt_aom_av1_full_cost function is used to estimate the cost of a candidate mode
  * for full mode decision module.
@@ -1541,7 +1985,8 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
     assert(IMPLIES(is_inter_mode(cand_bf->cand->pred_mode), skip_tx_size_bits == 0));
 
     // Decide if block should be signalled as skip (send no coeffs)
-    if (ctx->blk_skip_decision && cand_bf->block_has_coeff && is_inter_mode(cand_bf->cand->pred_mode) && !pcs->scs->static_config.skip_taper) {
+    if (ctx->blk_skip_decision && cand_bf->block_has_coeff && is_inter_mode(cand_bf->cand->pred_mode) &&
+        !cand_bf->variance_md_skip_taper_active) {
         uint64_t non_skip_cost;
         uint64_t skip_cost;
         if (!pcs->scs->static_config.chroma_distortion_taper) {
@@ -1559,19 +2004,13 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
                 lambda,
                 (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits + non_skip_tx_size_bits +
                  (uint64_t)ctx->md_rate_est_ctx->skip_fac_bits[skip_coeff_ctx][0]),
-                (y_distortion[DIST_SSD][0] +
-                 AOMMAX(cb_distortion[DIST_SSD][0] + cr_distortion[DIST_SSD][0],
-                        (uint64_t)(1.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                              0,
-                                                              pcs->scs->encoder_bit_depth)))));
+                (y_distortion[DIST_SSD][0] + AOMMAX(cb_distortion[DIST_SSD][0] + cr_distortion[DIST_SSD][0],
+                                                    ctx->variance_md_cost_const + (ctx->variance_md_cost_const >> 1)))); // aka 1.5 times
             skip_cost = RDCOST(
                 lambda,
                 ((uint64_t)ctx->md_rate_est_ctx->skip_fac_bits[skip_coeff_ctx][1]) + skip_tx_size_bits,
-                (y_distortion[DIST_SSD][1] +
-                 AOMMAX(cb_distortion[DIST_SSD][1] + cr_distortion[DIST_SSD][1],
-                        (uint64_t)(2.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                              0,
-                                                              pcs->scs->encoder_bit_depth)))));
+                (y_distortion[DIST_SSD][1] + AOMMAX(cb_distortion[DIST_SSD][1] + cr_distortion[DIST_SSD][1],
+                                                    (ctx->variance_md_cost_const << 1) + (ctx->variance_md_cost_const >> 1)))); // aka 2.5 times
         }
 
         // Update signals to correspond to skip_mode values (no coeffs, etc.)
@@ -1620,23 +2059,18 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
         // something in the range of a few hundred to a few thousand, and it
         // needs something that corresponds with quality, and the qstep table
         // just happenes to fit both of these two points.
-        mode_distortion      = y_distortion[DIST_SSD][0] +
-            AOMMAX(cb_distortion[DIST_SSD][0] + cr_distortion[DIST_SSD][0],
-                   (uint64_t)(1.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                         0,
-                                                         pcs->scs->encoder_bit_depth)));
+        mode_distortion      = y_distortion[DIST_SSD][0] + AOMMAX(cb_distortion[DIST_SSD][0] + cr_distortion[DIST_SSD][0],
+                                                                  ctx->variance_md_cost_const + (ctx->variance_md_cost_const >> 1));
         mode_ssim_distortion = update_full_cost_ssim
-            ? y_distortion[DIST_SSIM][0] +
-                AOMMAX(cb_distortion[DIST_SSIM][0] + cr_distortion[DIST_SSIM][0],
-                       (uint64_t)(1.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                             0,
-                                                             pcs->scs->encoder_bit_depth)))
+            ? y_distortion[DIST_SSIM][0] + AOMMAX(cb_distortion[DIST_SSIM][0] + cr_distortion[DIST_SSIM][0],
+                                                  ctx->variance_md_cost_const + (ctx->variance_md_cost_const >> 1))
             : 0;
     }
+    variance_md_bias_apply(pcs, ctx, cand_bf, &mode_distortion, &mode_ssim_distortion);
     uint64_t mode_cost       = RDCOST(lambda, mode_rate, mode_distortion);
 
     // If skip_mode is allowed for this candidate, check cost of skip mode compared to regular cost
-    if (cand_bf->cand->skip_mode_allowed == TRUE && !pcs->scs->static_config.skip_taper) {
+    if (cand_bf->cand->skip_mode_allowed == TRUE && !cand_bf->variance_md_skip_taper_active) {
         const uint8_t skip_mode_ctx = ctx->skip_mode_ctx;
 
         // Skip mode cost
@@ -1649,19 +2083,14 @@ void svt_aom_full_cost(PictureControlSet *pcs, ModeDecisionContext *ctx, struct 
                 ? y_distortion[DIST_SSIM][1] + cb_distortion[DIST_SSIM][1] + cr_distortion[DIST_SSIM][1]
                 : 0;
         } else {
-            skip_mode_distortion      = y_distortion[DIST_SSD][1] +
-                AOMMAX(cb_distortion[DIST_SSD][1] + cr_distortion[DIST_SSD][1],
-                       (uint64_t)(2.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                             0,
-                                                             pcs->scs->encoder_bit_depth)));
+            skip_mode_distortion      = y_distortion[DIST_SSD][1] + AOMMAX(cb_distortion[DIST_SSD][1] + cr_distortion[DIST_SSD][1],
+                                                                           (ctx->variance_md_cost_const << 1) + (ctx->variance_md_cost_const >> 1));
             skip_mode_ssim_distortion = update_full_cost_ssim
-                ? y_distortion[DIST_SSIM][1] +
-                    AOMMAX(cb_distortion[DIST_SSIM][1] + cr_distortion[DIST_SSIM][1],
-                           (uint64_t)(2.5 * svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)pcs->scs->static_config.qp] + pcs->scs->static_config.extended_crf_qindex_offset,
-                                                                 0,
-                                                                 pcs->scs->encoder_bit_depth)))
+                ? y_distortion[DIST_SSIM][1] + AOMMAX(cb_distortion[DIST_SSIM][1] + cr_distortion[DIST_SSIM][1],
+                                                      (ctx->variance_md_cost_const << 1) + (ctx->variance_md_cost_const >> 1))
                 : 0;
         }
+        variance_md_bias_apply(pcs, ctx, cand_bf, &skip_mode_distortion, &skip_mode_ssim_distortion);
         const uint64_t skip_mode_cost = RDCOST(lambda, skip_mode_rate, skip_mode_distortion);
 
         cand_bf->cand->skip_mode = FALSE;

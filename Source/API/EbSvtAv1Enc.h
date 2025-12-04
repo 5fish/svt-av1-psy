@@ -1088,20 +1088,33 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool low_q_taper;
 
     /**
+     * @brief Bias prediction mode, skip, and block size based on variance
+     * 0: disabled
+     * 1: enabled
+     * Default is 0.
+     */
+    uint8_t variance_md_bias;
+    /**
+     * @brief Bias prediction mode, skip, and block size based on variance
+     * Calculated from `--variance-md-bias-thr` commandline parameter via `pow(2, "variance-md-bias-thr") - 1`.
+     */
+    uint16_t variance_md_bias_thr;
+
+    /**
+     * @brief Bias smaller block size in aid of texture and noise retention
+     * 0: disabled
+     * 1: texture preserving
+     * Default is 0.
+     */
+    uint8_t texture_preserving_md_bias;
+
+    /**
      * @brief Limit the chroma distortion prediction from dropping too low in full mode decision
-     * Min value is 0.
-     * Max value is 1.
+     * 0: disabled
+     * 1: enabled
      * Default is 0.
      */
     uint8_t chroma_distortion_taper;
-
-    /**
-     * @brief Completely disable skip mode and skip (as defined in section 6.10.10 and 6.10.11)
-     * Min value is 0.
-     * Max value is 1.
-     * Default is 0.
-     */
-    uint8_t skip_taper;
 
     /**
      * @brief Enable sharp-tx, a toggle that enables much sharper transforms decisions for higher fidelity ouput,
@@ -1180,7 +1193,7 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 9 * sizeof(Bool) - 16 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(uint32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 9 * sizeof(Bool) - 17 * sizeof(uint8_t) - sizeof(int8_t) - 1 * sizeof(uint16_t) - 2 * sizeof(uint32_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

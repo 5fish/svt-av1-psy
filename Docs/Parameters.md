@@ -81,14 +81,16 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **Tune**                         | --tune                      | [0-4]                          | 2           | Optimize the encoding process for different desired outcomes [0 = VQ, 1 = PSNR, 2 = SSIM, 3 = Subjective SSIM, 4 = Still Picture] |
 | **Sharpness**                    | --sharpness                 | [-7-7]                         | 1           | Bias towards block sharpness in rate-distortion optimization of transform coefficients                        |
 | **FrameLumaBias**                | --frame-luma-bias           | [0-100]                        | 0           | Adjusts frame-level QP based on average luminance across each frame                                           |
-| **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)       |
 | **AltSSIMTuning**                | --alt-ssim-tuning           | [0-1]                          | 0           | Enables the usage of VQ optimizations and an alternative SSIM calculation pathway (Only operates with tunes 2 & 4) |
 | **AdaptiveFilmGrain**            | --adaptive-film-grain       | [0,1]                          | 1           | Allows film grain synthesis to be sourced from different block sizes depending on resolution                  |
 | **TemporalFilteringStrength**    |  --tf-strength              | [0-4]                          | 1           | Manually adjust temporal filtering strength. Higher values = stronger temporal filtering                      |
 | **KeyframeTemporalFilteringStrength** |  --kf-tf-strength      | [0-4]                          | 1           | Manually adjust temporal filtering strength for keyframes. Higher values = stronger temporal filtering        |
 | **NoiseNormStrength**            |  --noise-norm-strength      | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
+| **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)      
+| **VarianceMDBias**               |  --variance-md-bias         | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance            |
+| **VarianceMDBiasThr**            |  --variance-md-bias-thr     | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-md-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture             |
+| **TexturePreservingMDBias**      |  --texture-preserving-md-bias | [0-1]                        | 0           | Aggressively bias smaller block size and prediction mode in aid of texture retention [0: disabled, 1: static texture preserving]             |
 | **ChromaDistortionTaper**        |  --chroma-distortion-taper  | [0-1]                          | 0           | Limit the chroma distortion prediction from dropping too low in full mode decision             |
-| **SkipTaper**                    |  --skip-taper               | [0-1]                          | 0           | Completely disable skip mode and skip (as defined in section 6.10.10 and 6.10.11)             |
 
 ## Rate Control Options
 

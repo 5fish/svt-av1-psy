@@ -965,13 +965,18 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     //     return_error = EB_ErrorBadParameter;
     // }
 
-    if (config->chroma_distortion_taper > 1) {
-        SVT_ERROR("Instance %u: chroma-distortion-taper must be between 0 and 1\n", channel_number + 1);
+    if (config->variance_md_bias > 1) {
+        SVT_ERROR("Instance %u: variance-md-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->skip_taper > 1) {
-        SVT_ERROR("Instance %u: skip-taper must be between 0 and 1\n", channel_number + 1);
+    if (config->texture_preserving_md_bias > 1) {
+        SVT_ERROR("Instance %u: texture-preserving-md-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
+    if (config->chroma_distortion_taper > 1) {
+        SVT_ERROR("Instance %u: chroma-distortion-taper must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1166,8 +1171,10 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->psy_rd                            = 0.5;
     config_ptr->spy_rd                            = 0;
     config_ptr->low_q_taper                       = 0;
+    config_ptr->variance_md_bias                  = 0;
+    config_ptr->variance_md_bias_thr              = 89;
+    config_ptr->texture_preserving_md_bias        = 0;
     config_ptr->chroma_distortion_taper           = 0;
-    config_ptr->skip_taper                        = 0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
     config_ptr->complex_hvs                       = 0;
@@ -1400,12 +1407,33 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                     config->low_q_taper ? "on" : "off");
         }
         
-		if (config->chroma_distortion_taper) {
-            SVT_INFO("SVT [config]: chroma distortion taper \t\t\t\t\t: on\n");
+		if (config->variance_md_bias) {
+            if (config->max_32_tx_size)
+                SVT_INFO("SVT [config]: variance md bias threshold / maximum transform size \t\t: %d / 32x32\n",
+                         config->variance_md_bias_thr);
+            else
+                SVT_INFO("SVT [config]: variance md bias threshold / maximum 32x32 tx size threshold \t: %d / %d\n",
+                         config->variance_md_bias_thr,
+                         AOMMAX(4, (config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3)));
+            
+            if (config->chroma_distortion_taper)
+                SVT_INFO("SVT [config]: variance md skip taper threshold / chroma distortion taper \t: %d / on\n",
+                         config->variance_md_bias_thr >> 1);
+            else
+                SVT_INFO("SVT [config]: variance md skip taper threshold \t\t\t\t: %d\n",
+                         config->variance_md_bias_thr >> 1);
+
+            if (config->texture_preserving_md_bias)
+                SVT_INFO("SVT [config]: texture preserving md bias threshold \t\t\t\t: %d\n",
+                         AOMMAX(config->variance_md_bias_thr >> 2, 20));
         }
-        
-		if (config->skip_taper) {
-            SVT_INFO("SVT [config]: skip taper \t\t\t\t\t\t\t: on\n");
+        else {
+            if (config->texture_preserving_md_bias)
+                SVT_INFO("SVT [config]: texture preserving md bias threshold \t\t\t\t: %d\n",
+                         AOMMAX(config->variance_md_bias_thr >> 2, 20));
+
+            if (config->chroma_distortion_taper)
+                SVT_INFO("SVT [config]: chroma distortion taper \t\t\t\t\t: on\n");
         }
         
         switch (config->filtering_noise_detection) {
@@ -2144,6 +2172,22 @@ static EbErrorType str_to_resz_denoms(const char *nptr, SvtAv1FrameScaleEvts *ev
     return parse_list_u32(nptr, evts->resize_denoms, param_count);
 }
 
+static EbErrorType str_to_variance_md_bias_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    double      variance_md_bias_thr;
+    EbErrorType return_error;
+
+    return_error = str_to_double(nptr, &variance_md_bias_thr, NULL);
+
+    if (return_error == EB_ErrorBadParameter)
+        return return_error;
+    if (variance_md_bias_thr < 0 || variance_md_bias_thr > 16)
+        return EB_ErrorBadParameter;
+
+    config_struct->variance_md_bias_thr = (uint16_t)(pow(2, variance_md_bias_thr) - 1);
+
+    return EB_ErrorNone;
+}
+
 #define COLOR_OPT(par, opt)                                          \
     do {                                                             \
         if (!strcmp(name, par)) {                                    \
@@ -2240,6 +2284,9 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     if (!strcmp(name, "frame-resz-denoms"))
         return str_to_resz_denoms(value, &config_struct->frame_scale_evts);
 
+    if (!strcmp(name, "variance-md-bias-thr"))
+        return str_to_variance_md_bias_thr(value, config_struct);
+
     // uint32_t fields
     const struct {
         const char *name;
@@ -2327,8 +2374,9 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"tf-strength", &config_struct->tf_strength},
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
+        {"variance-md-bias", &config_struct->variance_md_bias},
+        {"texture-preserving-md-bias", &config_struct->texture_preserving_md_bias},
         {"chroma-distortion-taper", &config_struct->chroma_distortion_taper},
-        {"skip-taper", &config_struct->skip_taper},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"spy-rd", &config_struct->spy_rd},

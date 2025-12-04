@@ -226,8 +226,10 @@
 #define PSY_RD_TOKEN "--psy-rd"
 #define SPY_RD_TOKEN "--spy-rd"
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
+#define VARIANCE_MD_BIAS_TOKEN "--variance-md-bias"
+#define VARIANCE_MD_BIAS_THR_TOKEN "--variance-md-bias-thr"
+#define TEXTURE_PRESERVING_MD_BIAS "--texture-preserving-md-bias"
 #define CHROMA_DISTORTION_TAPER_TOKEN "--chroma-distortion-taper"
-#define SKIP_TAPER_TOKEN "--skip-taper"
 #define SHARP_TX_TOKEN "--sharp-tx"
 #define HBD_MDS_TOKEN "--hbd-mds"
 #define COMPLEX_HVS_TOKEN "--complex-hvs"
@@ -1351,12 +1353,20 @@ ConfigEntry config_entry_psy[] = {
      "Low q taper. If macroblocks are boosted below q11, taper the effect. Default is 0 (off).",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     CHROMA_DISTORTION_TAPER_TOKEN,
-     "[PSY] Chroma distortion taper, default is 0 [0-1]",
+     VARIANCE_MD_BIAS_TOKEN,
+     "[PSY] Variance md bias, default is 0 [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     SKIP_TAPER_TOKEN,
-     "[PSY] Skip taper, default is 0 [0-1]",
+     VARIANCE_MD_BIAS_THR_TOKEN,
+     "[PSY] Variance md bias threshold, default is 6.5 [0.0-16.0]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     TEXTURE_PRESERVING_MD_BIAS,
+     "[PSY] Texture preserving md bias, default is 0 [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     CHROMA_DISTORTION_TAPER_TOKEN,
+     "[PSY] Chroma distortion taper, default is 0 [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      SHARP_TX_TOKEN,
@@ -1620,11 +1630,15 @@ ConfigEntry config_entry[] = {
 	// Low q taper
     {SINGLE_INPUT, LOW_Q_TAPER_TOKEN, "LowQTaper", set_cfg_generic_token},
 
+    // Variance MD Bias
+    {SINGLE_INPUT, VARIANCE_MD_BIAS_TOKEN, "VarianceMDBias", set_cfg_generic_token},
+    {SINGLE_INPUT, VARIANCE_MD_BIAS_THR_TOKEN, "VarianceMDBiasThr", set_cfg_generic_token},
+
+    // Texture Preserving MD Bias
+    {SINGLE_INPUT, TEXTURE_PRESERVING_MD_BIAS, "TexturePreservingMDBias", set_cfg_generic_token},
+
     // Chroma Distortion Taper
     {SINGLE_INPUT, CHROMA_DISTORTION_TAPER_TOKEN, "ChromaDistortionTaper", set_cfg_generic_token},
-
-    // Skip Taper
-    {SINGLE_INPUT, SKIP_TAPER_TOKEN, "SkipTaper", set_cfg_generic_token},
 
     // Sharp TX
     {SINGLE_INPUT, SHARP_TX_TOKEN, "SharpTX", set_cfg_generic_token},
