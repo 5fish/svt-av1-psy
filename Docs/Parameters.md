@@ -81,14 +81,27 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **Tune**                         | --tune                      | [0-4]                          | 2           | Optimize the encoding process for different desired outcomes [0 = VQ, 1 = PSNR, 2 = SSIM, 3 = Subjective SSIM, 4 = Still Picture] |
 | **Sharpness**                    | --sharpness                 | [-7-7]                         | 1           | Bias towards block sharpness in rate-distortion optimization of transform coefficients                        |
 | **FrameLumaBias**                | --frame-luma-bias           | [0-100]                        | 0           | Adjusts frame-level QP based on average luminance across each frame                                           |
-| **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)       |
 | **AltSSIMTuning**                | --alt-ssim-tuning           | [0-1]                          | 0           | Enables the usage of VQ optimizations and an alternative SSIM calculation pathway (Only operates with tunes 2 & 4) |
 | **AdaptiveFilmGrain**            | --adaptive-film-grain       | [0,1]                          | 1           | Allows film grain synthesis to be sourced from different block sizes depending on resolution                  |
 | **TemporalFilteringStrength**    |  --tf-strength              | [0-4]                          | 1           | Manually adjust temporal filtering strength. Higher values = stronger temporal filtering                      |
 | **KeyframeTemporalFilteringStrength** |  --kf-tf-strength      | [0-4]                          | 1           | Manually adjust temporal filtering strength for keyframes. Higher values = stronger temporal filtering        |
 | **NoiseNormStrength**            |  --noise-norm-strength      | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
+| **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)      |
+| **VarianceMDBias**               |  --variance-md-bias         | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance            |
+| **VarianceMDBiasThr**            |  --variance-md-bias-thr     | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-md-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture             |
+| **TexturePreservingMDBias**      |  --texture-preserving-md-bias | [0-1]                        | 0           | Aggressively bias smaller block size and prediction mode in aid of texture retention [0: disabled, 1: static texture preserving]             |
 | **ChromaDistortionTaper**        |  --chroma-distortion-taper  | [0-1]                          | 0           | Limit the chroma distortion prediction from dropping too low in full mode decision             |
-| **SkipTaper**                    |  --skip-taper               | [0-1]                          | 0           | Completely disable skip mode and skip (as defined in section 6.10.10 and 6.10.11)             |
+
+## Variance bias threshold calculation
+
+Variance bias is based on internal `pcs->ppcs->variance` value calculated for each block. Sharp edges such as strong linearts will have high variance, while texture and weak linearts will have small variance.  
+To understand what `pcs->ppcs->variance` is like, you can use `--variance-md-bias` on a completely still scene, and observe in a frame that's not the keyframe, and see which blocks are allowed to skip or not. This should correspond to the the number displayed as `variance md skip taper threshold` in encoder prinout. Only blocks with variance below the `variance md skip taper threshold` printout are allowed to skip.  
+
+The `--variance-md-bias-thr` commandline parameter specify the threshold that will be used in various variance based bias and tapers.  
+Note that this commandline parameter is not raw `pcs->ppcs->variance` value! Use `pow(2, variance-md-bias-thr) - 1` to convert `--variance-md-bias-thr` to `pcs->ppcs->variance` value. As an example, the default `--variance-md-bias-thr` commandline parameter is `6.5`. This is converted to `pcs->ppcs->variance` value via `pow(2, 6.5) - 1`, which is `89.51`, which gets cut off to integer to `89`.  
+Internally this value is converted several times to different thresholds for different bias.  
+In general, anything above `variance_md_bias_thr >> 1`-ish is treated as strong linearts, anything between `variance_md_bias_thr >> 1` and `variance_md_bias_thr >> 3` is the inbetween area, and anything below `variance_md_bias_thr >> 3`-ish is treated as texture.  
+You can search for `static_config.variance_md_bias_thr` variable in the code for how each individual threshold are calculated. Do note that these thresholds are still being tested out in encodes, and we might readjust individual thresholds in the future.  
 
 ## Rate Control Options
 
@@ -307,6 +320,11 @@ SvtAv1EncApp -i in.y4m -b out.ivf --roi-map-file roi_map.txt
 | **ResizeFrameEvents**              | --frame-resz-events    | any string       | None          | Frame scale events, in a list separated by ',', scaling process starts from the given frame number (0 based) with new denominators, only applicable for mode == 4       |
 | **ResizeFrameKfDenoms**            | --frame-resz-kf-denoms | [8-16]           | 8             | Frame scale denominator for key frames in event, in a list separated by ',', only applicable for mode == 4                                                              |
 | **ResizeFrameDenoms**              | --frame-resz-denoms    | [8-16]           | 8             | Frame scale denominator in event, in a list separated by ',', only applicable for mode == 4                                                                             |
+| **CDEFTaper**                      | --cdef-taper           | [0-1]            | 0             | Taper CDEF strength. Also set the encoder to always use full CDEF search.                        |
+| **CDEFTaperMax**                   | --cdef-taper-max       | any string       | `3,1`         | Max CDEF strength. The first value, primary strength, can be any value betwen `0` and `15`, and the second value, secondary strength, can be either `0`, `1`, `2`, or `4`.               |
+| **CDEFTaperMin**                   | --cdef-taper-min       | any string       | `0,0`         | Min CDEF strength. The first value, primary strength, can be any value betwen `0` and `15`, and the second value, secondary strength, can be either `0`, `1`, `2`, or `4`.               |
+| **CDEFTaperMaxSecRelative**        | --cdef-taper-max-sec-relative | [-12-4]   | 1             | Limit secondary CDEF strength of every filtering block to primary CDEF strength plus this value.                |
+| **CDEFTaperDampingOffset**         | --cdef-taper-damping-offset | [-4-8]      | 0             | Use bigger or smaller CDEF damping. CDEF damping is a CDEF feature (not a `--cdef-taper` feature), normally derived from each frame's `base_q_idx`.                |
 
 #### **Super-Resolution**
 

@@ -35,7 +35,7 @@ void   *svt_aom_malloc(size_t size);
 int32_t svt_sb_all_skip(PictureControlSet *pcs, const Av1Common *const cm, int32_t mi_row, int32_t mi_col);
 int32_t svt_sb_compute_cdef_list(PictureControlSet *pcs, const Av1Common *const cm, int32_t mi_row, int32_t mi_col,
                                  CdefList *dlist, BlockSize bs);
-void    finish_cdef_search(PictureControlSet *pcs);
+void    finish_cdef_search(PictureControlSet *pcs, SequenceControlSet *scs);
 void    svt_av1_cdef_frame(SequenceControlSet *scs, PictureControlSet *pcs);
 void    svt_av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, Av1Common *cm, int32_t after_cdef);
 void    svt_av1_superres_upscale_frame(struct Av1Common *cm, PictureControlSet *pcs, SequenceControlSet *scs);
@@ -136,7 +136,8 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
     const int32_t coeff_shift = AOMMAX(scs->static_config.encoder_bit_depth - 8, 0);
     const int32_t nvfb        = (mi_rows + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
     const int32_t nhfb        = (mi_cols + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
-    const int32_t pri_damping = 3 + (frm_hdr->quantization_params.base_q_idx >> 6);
+    const int32_t pri_damping = 3 + AOMMAX((frm_hdr->quantization_params.base_q_idx >> 6) +
+                                           (scs->static_config.cdef_taper ? scs->static_config.cdef_taper_damping_offset : 0), 0);
     const int32_t sec_damping = pri_damping;
     const int32_t num_planes  = 3;
     CdefList      dlist[MI_SIZE_128X128 * MI_SIZE_128X128];
@@ -255,6 +256,15 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                     int32_t pri_strength = cdef_ctrls->default_first_pass_fs[gi] / CDEF_SEC_STRENGTHS;
                     int32_t sec_strength = cdef_ctrls->default_first_pass_fs[gi] % CDEF_SEC_STRENGTHS;
 
+                    if (scs->static_config.cdef_taper &&
+                        (pri_strength > scs->static_config.cdef_taper_max[0] || pri_strength < scs->static_config.cdef_taper_min[0] ||
+                         sec_strength > scs->static_config.cdef_taper_max[1] || sec_strength < scs->static_config.cdef_taper_min[1] ||
+                         (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_taper_max_sec_relative)) {
+                        pcs->mse_seg[0][fb_idx][gi] = default_mse_uv * 64;
+                        pcs->mse_seg[1][fb_idx][gi] = default_mse_uv * 64;
+                        continue;
+                    }
+
                     svt_cdef_filter_fb(is_16bit ? NULL : (uint8_t *)tmp_dst,
                                        is_16bit ? tmp_dst : NULL,
                                        0,
@@ -306,6 +316,15 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         CDEF_SEC_STRENGTHS;
                     int32_t sec_strength = cdef_ctrls->default_second_pass_fs[gi - first_pass_fs_num] %
                         CDEF_SEC_STRENGTHS;
+
+                    if (scs->static_config.cdef_taper &&
+                        (pri_strength > scs->static_config.cdef_taper_max[0] || pri_strength < scs->static_config.cdef_taper_min[0] ||
+                         sec_strength > scs->static_config.cdef_taper_max[1] || sec_strength < scs->static_config.cdef_taper_min[1] ||
+                         (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_taper_max_sec_relative)) {
+                        pcs->mse_seg[0][fb_idx][gi] = default_mse_uv * 64;
+                        pcs->mse_seg[1][fb_idx][gi] = default_mse_uv * 64;
+                        continue;
+                    }
 
                     svt_cdef_filter_fb(is_16bit ? NULL : (uint8_t *)tmp_dst,
                                        is_16bit ? tmp_dst : NULL,
@@ -395,7 +414,7 @@ void *svt_aom_cdef_kernel(void *input_ptr) {
         if (pcs->tot_seg_searched_cdef == pcs->cdef_segments_total_count) {
             // SVT_LOG("    CDEF all seg here  %i\n", pcs->picture_number);
             if (scs->seq_header.cdef_level && pcs->ppcs->cdef_level) {
-                finish_cdef_search(pcs);
+                finish_cdef_search(pcs, scs);
                 if (ppcs->enable_restoration || pcs->ppcs->is_ref || scs->static_config.recon_enabled) {
                     // Do application iff there are non-zero filters
                     if (frm_hdr->cdef_params.cdef_y_strength[0] != 0 || frm_hdr->cdef_params.cdef_uv_strength[0] != 0 ||

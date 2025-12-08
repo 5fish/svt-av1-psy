@@ -725,7 +725,7 @@ static uint64_t joint_strength_search_dual(int32_t *best_lev0, int32_t *best_lev
     }
     return best_tot_mse;
 }
-void finish_cdef_search(PictureControlSet *pcs) {
+void finish_cdef_search(PictureControlSet *pcs, SequenceControlSet *scs) {
     struct PictureParentControlSet *ppcs    = pcs->ppcs;
     FrameHeader                    *frm_hdr = &ppcs->frm_hdr;
     Av1Common                      *cm      = ppcs->av1_cm;
@@ -786,7 +786,8 @@ void finish_cdef_search(PictureControlSet *pcs) {
         frm_hdr->cdef_params.cdef_bits = 0;
         ppcs->nb_cdef_strengths        = 1;
         //cdef_pri_damping & cdef_sec_damping consolidated to cdef_damping
-        int32_t pri_damping                      = 3 + (frm_hdr->quantization_params.base_q_idx >> 6);
+        int32_t pri_damping                      = 3 + AOMMAX((frm_hdr->quantization_params.base_q_idx >> 6) +
+                                                              (scs->static_config.cdef_taper ? scs->static_config.cdef_taper_damping_offset : 0), 0);
         frm_hdr->cdef_params.cdef_damping        = pri_damping;
         frm_hdr->cdef_params.cdef_y_strength[0]  = cdef_ctrls->pred_y_f;
         frm_hdr->cdef_params.cdef_uv_strength[0] = cdef_ctrls->pred_uv_f;
@@ -918,7 +919,8 @@ void finish_cdef_search(PictureControlSet *pcs) {
         frm_hdr->cdef_params.cdef_uv_strength[i] = filter_map[frm_hdr->cdef_params.cdef_uv_strength[i]];
     }
     //cdef_pri_damping & cdef_sec_damping consolidated to cdef_damping
-    frm_hdr->cdef_params.cdef_damping = 3 + (frm_hdr->quantization_params.base_q_idx >> 6);
+    frm_hdr->cdef_params.cdef_damping = 3 + AOMMAX((frm_hdr->quantization_params.base_q_idx >> 6) +
+                                                   (scs->static_config.cdef_taper ? scs->static_config.cdef_taper_damping_offset : 0), 0);
     free(mse[0]);
     free(mse[1]);
     free(sb_index);

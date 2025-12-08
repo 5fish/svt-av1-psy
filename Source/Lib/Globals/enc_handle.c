@@ -4428,6 +4428,8 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     if (scs->static_config.max_32_tx_size && scs->static_config.qp >= 20 && scs->static_config.tune != 4) {
         SVT_WARN("Restricting transform sizes to a max of 32x32 might reduce coding efficiency at low to medium fidelity settings. Use with caution!\n");
     }
+    if (scs->static_config.texture_preserving_md_bias)
+        SVT_WARN("Texture preservating md bias is limited without fixes on upstream TPL system.\n");
     // scs->static_config.hierarchical_levels = (scs->static_config.rate_control_mode > 1) ? 3 : scs->static_config.hierarchical_levels;
     if (scs->static_config.restricted_motion_vector && scs->super_block_size == 128) {
         scs->static_config.restricted_motion_vector = FALSE;
@@ -5065,11 +5067,22 @@ static void copy_api_from_app(
     // Low Q taper
     scs->static_config.low_q_taper = config_struct->low_q_taper;
 
+    // Variance md bias
+    scs->static_config.variance_md_bias = config_struct->variance_md_bias;
+    scs->static_config.variance_md_bias_thr = config_struct->variance_md_bias_thr;
+
+    // Texturing preserving md bias
+    scs->static_config.texture_preserving_md_bias = config_struct->texture_preserving_md_bias;
+
     // Chroma distortion taper
     scs->static_config.chroma_distortion_taper = config_struct->chroma_distortion_taper;
 
-    // Skip taper
-    scs->static_config.skip_taper = config_struct->skip_taper;
+    // CDEF taper
+    scs->static_config.cdef_taper = config_struct->cdef_taper;
+    memcpy(scs->static_config.cdef_taper_max, config_struct->cdef_taper_max, 2 * sizeof(uint8_t));
+    memcpy(scs->static_config.cdef_taper_min, config_struct->cdef_taper_min, 2 * sizeof(uint8_t));
+    scs->static_config.cdef_taper_max_sec_relative = config_struct->cdef_taper_max_sec_relative;
+    scs->static_config.cdef_taper_damping_offset = config_struct->cdef_taper_damping_offset;
 
     // Sharp TX
     scs->static_config.sharp_tx = config_struct->sharp_tx;
