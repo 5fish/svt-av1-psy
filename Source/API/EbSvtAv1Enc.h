@@ -1099,33 +1099,41 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t chroma_distortion_taper;
 
     /**
-     * @brief Taper CDEF strength. Also set the encoder to always use full CDEF search
+     * @brief Enable CDEF bias, which comes with new SAD & SATD based distortion calculation, cdef strength taper, and various other improvements
      * 0: disabled
      * 1: enabled
      * Default is 0
      */
-    uint8_t cdef_taper;
+    uint8_t cdef_bias;
     /**
-     * @brief Max CDEF strength
+     * @brief Max CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma
      * For secondary CDEF strength, the user input is 0, 1, 2, 4 but in this value it is stored as 0, 1, 2, 3
      */
-    uint8_t cdef_taper_max[2];
+    uint8_t cdef_bias_max_cdef[4];
     /**
-     * @brief Min CDEF strength
+     * @brief Min CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma
      */
-    uint8_t cdef_taper_min[2];
+    uint8_t cdef_bias_min_cdef[4];
     /**
-     * @brief Limit secondary CDEF strength of every filtering block to primary CDEF strength plus this value
+     * @brief Secondary CDEF strength of every filtering block should be smaller than or equal to primary CDEF strength plus this value
      * Min value is -12.
      * Max value is 4.
      */
-    int8_t cdef_taper_max_sec_relative;
+    int8_t cdef_bias_max_sec_cdef_rel;
     /**
      * @brief Use bigger or smaller CDEF damping
      * Min value is -4.
      * Max value is 8.
      */
-    int8_t cdef_taper_damping_offset;
+    int8_t cdef_bias_damping_offset;
+    /**
+     * @brief Change how each individual CDEF options are evaluated
+     * 0: MSE (Default without cdef-bias)
+     * 1: SAD + MSE
+     * 2: SAD + SATD
+     * Default is 1
+     */
+    uint8_t cdef_bias_mode;
 
     /**
      * @brief Enable sharp-tx, a toggle that enables much sharper transforms decisions for higher fidelity ouput,
@@ -1217,7 +1225,7 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 9 * sizeof(Bool) - 23 * sizeof(uint8_t) - 3 * sizeof(int8_t) - 1 * sizeof(uint16_t) - sizeof(uint32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 9 * sizeof(Bool) - 28 * sizeof(uint8_t) - 3 * sizeof(int8_t) - 1 * sizeof(uint16_t) - sizeof(uint32_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

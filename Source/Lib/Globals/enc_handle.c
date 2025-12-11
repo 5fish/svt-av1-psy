@@ -4428,6 +4428,14 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     if (scs->static_config.max_32_tx_size && scs->static_config.qp >= 20 && scs->static_config.tune != 4) {
         SVT_WARN("Restricting transform sizes to a max of 32x32 might reduce coding efficiency at low to medium fidelity settings. Use with caution!\n");
     }
+    if (scs->static_config.cdef_level != 0 && scs->static_config.cdef_bias) {
+        if (!(scs->static_config.cdef_level == DEFAULT || scs->static_config.cdef_level == 1) ||
+            scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B ||
+            scs->static_config.enc_mode > ENC_M4)
+            SVT_WARN("CDEF level is set to 1, or full CDEF decision, when cdef-bias is enabled\n");
+        // Always set to 1
+        scs->static_config.cdef_level = 1;
+    }
     if (scs->static_config.texture_preserving_md_bias)
         SVT_WARN("Texture preservating md bias is limited without fixes on upstream TPL system.\n");
     // scs->static_config.hierarchical_levels = (scs->static_config.rate_control_mode > 1) ? 3 : scs->static_config.hierarchical_levels;
@@ -5078,11 +5086,12 @@ static void copy_api_from_app(
     scs->static_config.chroma_distortion_taper = config_struct->chroma_distortion_taper;
 
     // CDEF taper
-    scs->static_config.cdef_taper = config_struct->cdef_taper;
-    memcpy(scs->static_config.cdef_taper_max, config_struct->cdef_taper_max, 2 * sizeof(uint8_t));
-    memcpy(scs->static_config.cdef_taper_min, config_struct->cdef_taper_min, 2 * sizeof(uint8_t));
-    scs->static_config.cdef_taper_max_sec_relative = config_struct->cdef_taper_max_sec_relative;
-    scs->static_config.cdef_taper_damping_offset = config_struct->cdef_taper_damping_offset;
+    scs->static_config.cdef_bias = config_struct->cdef_bias;
+    memcpy(scs->static_config.cdef_bias_max_cdef, config_struct->cdef_bias_max_cdef, 4 * sizeof(uint8_t));
+    memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
+    scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
+    scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
+    scs->static_config.cdef_bias_mode = config_struct->cdef_bias_mode;
 
     // Sharp TX
     scs->static_config.sharp_tx = config_struct->sharp_tx;
