@@ -962,13 +962,13 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     if (config->variance_md_bias && config->tx_bias)
         SVT_WARN("Instance %u: variance-md-bias is intended to replace tx-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
 
-    if (config->texture_preserving_md_bias > 1) {
-        SVT_ERROR("Instance %u: texture-preserving-md-bias must be between 0 and 1\n", channel_number + 1);
+    if (config->chroma_qmc_bias > 2) {
+        SVT_ERROR("Instance %u: chroma-qmc-bias must be between 0 and 2\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->chroma_distortion_taper > 1) {
-        SVT_ERROR("Instance %u: chroma-distortion-taper must be between 0 and 1\n", channel_number + 1);
+    if (config->texture_preserving_qmc_bias > 1) {
+        SVT_ERROR("Instance %u: texture-preserving-qmc-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1212,10 +1212,10 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->low_q_taper                       = 0;
     config_ptr->variance_md_bias                  = 0;
     config_ptr->variance_md_bias_thr              = 89;
-    config_ptr->texture_preserving_md_bias        = 0;
-    config_ptr->chroma_distortion_taper           = 0;
+    config_ptr->chroma_qmc_bias                   = 0;
+    config_ptr->texture_preserving_qmc_bias       = 0;
     config_ptr->cdef_bias                         = 0;
-    config_ptr->cdef_bias_max_cdef[0]             = 3;
+    config_ptr->cdef_bias_max_cdef[0]             = 4;
     config_ptr->cdef_bias_max_cdef[1]             = 1;
     config_ptr->cdef_bias_max_cdef[2]             = 2;
     config_ptr->cdef_bias_max_cdef[3]             = 0;
@@ -1471,24 +1471,26 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                          config->variance_md_bias_thr,
                          AOMMAX(4, (config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3)));
             
-            if (config->chroma_distortion_taper)
-                SVT_INFO("SVT [config]: variance md skip taper threshold / chroma distortion taper \t: %d / on\n",
-                         config->variance_md_bias_thr >> 1);
+            if (config->chroma_qmc_bias)
+                SVT_INFO("SVT [config]: variance md skip taper threshold / chroma qmc bias \t\t: %d / %s\n",
+                         config->variance_md_bias_thr >> 1,
+                         config->chroma_qmc_bias == 1 ? "full" : "light");
             else
                 SVT_INFO("SVT [config]: variance md skip taper threshold \t\t\t\t: %d\n",
                          config->variance_md_bias_thr >> 1);
 
-            if (config->texture_preserving_md_bias)
-                SVT_INFO("SVT [config]: texture preserving md bias threshold \t\t\t\t: %d\n",
+            if (config->texture_preserving_qmc_bias)
+                SVT_INFO("SVT [config]: texture preserving qmc bias threshold \t\t\t\t: %d\n",
                          AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22));
         }
         else {
-            if (config->texture_preserving_md_bias)
-                SVT_INFO("SVT [config]: texture preserving md bias threshold \t\t\t\t: %d\n",
+            if (config->texture_preserving_qmc_bias)
+                SVT_INFO("SVT [config]: texture preserving qmc bias threshold \t\t\t\t: %d\n",
                          AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22));
 
-            if (config->chroma_distortion_taper)
-                SVT_INFO("SVT [config]: chroma distortion taper \t\t\t\t\t: on\n");
+            if (config->chroma_qmc_bias)
+                SVT_INFO("SVT [config]: chroma qmc bias \t\t\t\t\t\t: %s\n",
+                         config->chroma_qmc_bias == 1 ? "full" : "light");
         }
         
         if (!config->chroma_grain)
@@ -2453,8 +2455,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"variance-md-bias", &config_struct->variance_md_bias},
-        {"texture-preserving-md-bias", &config_struct->texture_preserving_md_bias},
-        {"chroma-distortion-taper", &config_struct->chroma_distortion_taper},
+        {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
+        {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
         {"cdef-bias-mode", &config_struct->cdef_bias_mode},
         {"fast-decode", &config_struct->fast_decode},

@@ -961,9 +961,15 @@ void finish_cdef_search(PictureControlSet *pcs, SequenceControlSet *scs) {
     }
 
     nb_strength_bits = 0;
+    if (scs->static_config.texture_preserving_qmc_bias) {
+        for (i = 0; i < sb_count; i++) {
+            mse[0][i][0] = (61 * mse[0][i][0]) >> 6;
+            mse[1][i][0] = (61 * mse[1][i][0]) >> 6;
+        }
+    }
     // Scale down the cost of the (0,0) filter strength to bias selection towards off.
     // When off, can save the cost of the application.
-    if (cdef_ctrls->zero_fs_cost_bias) {
+    else if (cdef_ctrls->zero_fs_cost_bias) {
         const uint16_t factor = cdef_ctrls->zero_fs_cost_bias;
         for (i = 0; i < sb_count; i++) {
             mse[0][i][0] = (factor * mse[0][i][0]) >> 6;

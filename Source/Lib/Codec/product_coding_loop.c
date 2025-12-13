@@ -6374,7 +6374,7 @@ static Bool get_perform_tx_flag(PictureControlSet *pcs, ModeDecisionContext *ctx
     }
     return perform_tx;
 }
-// Core for `--variance-md-bias` and `--texture-preserving-md-bias`
+// Core for `--variance-md-bias` and `--texture-preserving-qmc-bias`
 static void variance_md_bias_core(PictureControlSet *pcs, ModeDecisionContext *ctx, struct ModeDecisionCandidateBuffer *cand_bf) {
     const uint16_t variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
     const uint16_t main_thr = pcs->scs->static_config.variance_md_bias_thr;
@@ -6407,12 +6407,12 @@ static void variance_md_bias_core(PictureControlSet *pcs, ModeDecisionContext *c
     else
         cand_bf->variance_md_32_blk_size_bias = 0;
 
-    // Treat it as not protected. Must check `if (pcs->scs->static_config.texture_preserving_md_bias)`!
-    if (pcs->scs->static_config.texture_preserving_md_bias == 1 &&
+    // Treat it as not protected. Must check `if (pcs->scs->static_config.texture_preserving_qmc_bias)`!
+    if (pcs->scs->static_config.texture_preserving_qmc_bias == 1 &&
         variance <= AOMMAX((pcs->scs->static_config.variance_md_bias_thr >> 2) + (pcs->scs->static_config.variance_md_bias_thr >> 3), 22))
-        cand_bf->texture_preserving_md_bias = 1;
+        cand_bf->texture_preserving_qmc_bias = 1;
     else
-        cand_bf->texture_preserving_md_bias = 0;
+        cand_bf->texture_preserving_qmc_bias = 0;
 }
 /*
    full loop core for light PD1 path

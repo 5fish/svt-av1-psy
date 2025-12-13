@@ -344,6 +344,13 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         subsampling_factor,
                         is_16bit);
 
+                    if (pli) {
+                        if (scs->static_config.chroma_qmc_bias == 1)
+                            curr_mse <<= 1;
+                        else if (scs->static_config.chroma_qmc_bias == 2)
+                            curr_mse += curr_mse >> 1;
+                    }
+
                     if (pli < 2)
                         pcs->mse_seg[pli][fb_idx][gi] = curr_mse * subsampling_factor;
                     else
@@ -416,6 +423,13 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         pli,
                         subsampling_factor,
                         is_16bit);
+
+                    if (pli) {
+                        if (scs->static_config.chroma_qmc_bias == 1)
+                            curr_mse <<= 1;
+                        else if (scs->static_config.chroma_qmc_bias == 2)
+                            curr_mse += curr_mse >> 1;
+                    }
 
                     if (pli < 2)
                         pcs->mse_seg[pli][fb_idx][gi] = curr_mse * subsampling_factor;

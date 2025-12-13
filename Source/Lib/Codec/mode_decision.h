@@ -149,8 +149,8 @@ typedef struct ModeDecisionCandidateBuffer {
     // Not protected. Must check `if (pcs->scs->static_config.variance_md_bias)`!
     int8_t      variance_md_32_blk_size_bias;
     // 0: no bias; 1: active
-    // Not protected. Must check `if (pcs->scs->static_config.texture_preserving_md_bias)`!
-    bool        texture_preserving_md_bias;
+    // Not protected. Must check `if (pcs->scs->static_config.texture_preserving_qmc_bias)`!
+    bool        texture_preserving_qmc_bias;
     bool
         valid_pred; // The prediction of SIMPLE_TRANSLATION is not valid when OBMC face-off is used (where OBMC will re-use the pred buffer of SIMPLE_TRANSLATION)
 } ModeDecisionCandidateBuffer;

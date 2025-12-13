@@ -1083,20 +1083,21 @@ typedef struct EbSvtAv1EncConfiguration {
     uint16_t variance_md_bias_thr;
 
     /**
-     * @brief Bias smaller block size in aid of texture and noise retention
+     * @brief Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision
      * 0: disabled
-     * 1: texture preserving
+     * 1: full
+     * 2: light
      * Default is 0.
      */
-    uint8_t texture_preserving_md_bias;
+    uint8_t chroma_qmc_bias;
 
     /**
-     * @brief Limit the chroma distortion prediction from dropping too low in full mode decision
+     * @brief Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention
      * 0: disabled
      * 1: enabled
      * Default is 0.
      */
-    uint8_t chroma_distortion_taper;
+    uint8_t texture_preserving_qmc_bias;
 
     /**
      * @brief Enable CDEF bias, which comes with new SAD & SATD based distortion calculation, cdef strength taper, and various other improvements

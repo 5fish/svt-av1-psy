@@ -1253,7 +1253,7 @@ typedef struct ModeDecisionContext {
     // SSIM_LVL_2: addition to level 1, also use ssim cost to find best tx type in tx_type_search()
     SsimLevel tune_ssim_level;
 
-    // used in `--variance-md-bias` as well as `--chroma-distortion-taper`
+    // used in `--variance-md-bias` as well as `--chroma-qmc-bias`
     uint64_t   variance_md_cost_const;
 } ModeDecisionContext;
 

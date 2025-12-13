@@ -226,8 +226,8 @@
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
 #define VARIANCE_MD_BIAS_TOKEN "--variance-md-bias"
 #define VARIANCE_MD_BIAS_THR_TOKEN "--variance-md-bias-thr"
-#define TEXTURE_PRESERVING_MD_BIAS "--texture-preserving-md-bias"
-#define CHROMA_DISTORTION_TAPER_TOKEN "--chroma-distortion-taper"
+#define CHROMA_QMC_BIAS_TOKEN "--chroma-qmc-bias"
+#define TEXTURE_PRESERVING_QMC_BIAS_TOKEN "--texture-preserving-qmc-bias"
 #define CDEF_BIAS_TOKEN "--cdef-bias"
 #define CDEF_BIAS_MAX_CDEF_TOKEN "--cdef-bias-max-cdef"
 #define CDEF_BIAS_MIN_CDEF_TOKEN "--cdef-bias-min-cdef"
@@ -1358,12 +1358,12 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Variance md bias threshold, default is 6.5 [0.0-16.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     TEXTURE_PRESERVING_MD_BIAS,
-     "[PSY] Texture preserving md bias, default is 0 [0-1]",
+     CHROMA_QMC_BIAS_TOKEN,
+     "[PSY] Chroma q, md and CDEF bias, default is 0 [0: disable, 1: full, 2: light]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     CHROMA_DISTORTION_TAPER_TOKEN,
-     "[PSY] Chroma distortion taper, default is 0 [0-1]",
+     TEXTURE_PRESERVING_QMC_BIAS_TOKEN,
+     "[PSY] Texture preserving q, md, and CDEF bias, default is 0 [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      CDEF_BIAS_TOKEN,
@@ -1371,7 +1371,7 @@ ConfigEntry config_entry_psy[] = {
      set_cfg_generic_token},
     {SINGLE_INPUT,
      CDEF_BIAS_MAX_CDEF_TOKEN,
-     "[PSY] Max CDEF strength, default is 3,1,2,0",
+     "[PSY] Max CDEF strength, default is 4,1,2,0",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      CDEF_BIAS_MIN_CDEF_TOKEN,
@@ -1653,11 +1653,11 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, VARIANCE_MD_BIAS_TOKEN, "VarianceMDBias", set_cfg_generic_token},
     {SINGLE_INPUT, VARIANCE_MD_BIAS_THR_TOKEN, "VarianceMDBiasThr", set_cfg_generic_token},
 
-    // Texture Preserving MD Bias
-    {SINGLE_INPUT, TEXTURE_PRESERVING_MD_BIAS, "TexturePreservingMDBias", set_cfg_generic_token},
+    // Chroma QMC Bias
+    {SINGLE_INPUT, CHROMA_QMC_BIAS_TOKEN, "ChromaQMCBias", set_cfg_generic_token},
 
-    // Chroma Distortion Taper
-    {SINGLE_INPUT, CHROMA_DISTORTION_TAPER_TOKEN, "ChromaDistortionTaper", set_cfg_generic_token},
+    // Texture Preserving QMC Bias
+    {SINGLE_INPUT, TEXTURE_PRESERVING_QMC_BIAS_TOKEN, "TexturePreservingQMCBias", set_cfg_generic_token},
 
     // CDEF Taper
     {SINGLE_INPUT, CDEF_BIAS_TOKEN, "CDEFBias", set_cfg_generic_token},

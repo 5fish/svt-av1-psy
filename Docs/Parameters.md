@@ -88,9 +88,9 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **NoiseNormStrength**            |  --noise-norm-strength      | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
 | **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)      |
 | **VarianceMDBias**               |  --variance-md-bias         | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance            |
-| **VarianceMDBiasThr**            |  --variance-md-bias-thr     | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-md-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture             |
-| **TexturePreservingMDBias**      |  --texture-preserving-md-bias | [0-1]                        | 0           | Aggressively bias smaller block size and prediction mode in aid of texture retention [0: disabled, 1: static texture preserving]             |
-| **ChromaDistortionTaper**        |  --chroma-distortion-taper  | [0-1]                          | 0           | Limit the chroma distortion prediction from dropping too low in full mode decision             |
+| **VarianceMDBiasThr**            |  --variance-md-bias-thr     | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-qmc-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture             |
+| **ChromaQMCBias**                |  --chroma-qmc-bias          | [0-2]                          | 0           | Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision [0: disabled, 1: full, 2: light]            |
+| **TexturePreservingQMCBias**     |  --texture-preserving-qmc-bias | [0-1]                       | 0           | Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention. Slightly harmful to lineart             |
 
 ## Variance bias threshold calculation
 
@@ -102,6 +102,23 @@ Note that this commandline parameter is not raw `pcs->ppcs->variance` value! Use
 Internally this value is converted several times to different thresholds for different bias.  
 In general, anything above `variance_md_bias_thr >> 1`-ish is treated as strong linearts, anything between `variance_md_bias_thr >> 1` and `variance_md_bias_thr >> 3` is the inbetween area, and anything below `variance_md_bias_thr >> 3`-ish is treated as texture.  
 You can search for `static_config.variance_md_bias_thr` variable in the code for how each individual threshold are calculated. Do note that these thresholds are still being tested out in encodes, and we might readjust individual thresholds in the future.  
+
+## Chroma QMC Bias
+
+`--chroma-qmc-bias 1` (full) is aggressive and only recommended if you actually see chroma issues that you want to address, while `--chroma-qmc-bias 2` (light) can be applied in all encodes.  
+
+You should enable CDEF with `--enable-cdef 1` when using `--chroma-qmc-bias`. CDEF is the most effective tool at preventing distortion in weak chroma lineart. These parameters are set for you:
+* `--cdef-bias 1`.  
+
+## Texture Preserving QMC Bias
+
+In addition to internal adjustments, `--texture-preserving-qmc-bias` also sets these parameters for you:  
+* `--variance-octile 3`: You may manually set a lower octile to override this, but you can not set a higher octile.  
+
+You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but in case you want to still have it enabled to clean up some ringing, it also has a special protective CDEF mode. These parameters are set for you:  
+* `--cdef-bias 1`.  
+* `--cdef-bias-mode 0`: This is required for the protective mode to function.  
+* `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0`: The secondary CDEF filtering is disabled. You may still set primary CDEF filtering to any value you prefer.  
 
 ## Rate Control Options
 
@@ -321,7 +338,7 @@ SvtAv1EncApp -i in.y4m -b out.ivf --roi-map-file roi_map.txt
 | **ResizeFrameKfDenoms**            | --frame-resz-kf-denoms | [8-16]           | 8             | Frame scale denominator for key frames in event, in a list separated by ',', only applicable for mode == 4                                                              |
 | **ResizeFrameDenoms**              | --frame-resz-denoms    | [8-16]           | 8             | Frame scale denominator in event, in a list separated by ',', only applicable for mode == 4                                                                             |
 | **CDEFBias**                       | --cdef-bias            | [0-1]            | 0             | Enable CDEF bias, which comes with new SAD & SATD based distortion calculation, cdef strength taper, and various other improvements.                       |
-| **CDEFBiasMaxCDEF**                | --cdef-bias-max-cdef   | any string       | `3,1,2,0`     | Max CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`.               |
+| **CDEFBiasMaxCDEF**                | --cdef-bias-max-cdef   | any string       | `4,1,2,0`     | Max CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`.               |
 | **CDEFBiasMinCDEF**                | --cdef-bias-min-cdef   | any string       | `0,0,0,0`     | Min CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`.               |
 | **CDEFBiasMaxSecCDEFRel**          | --cdef-bias-max-sec-cdef-rel | [-12-4]    | 1             | Secondary CDEF strength of every filtering block should be smaller than or equal to primary CDEF strength plus this value.                |
 | **CDEFBiasDampingOffset**          | --cdef-bias-damping-offset | [-4-8]       | 0             | Use bigger or smaller CDEF damping. CDEF damping is a CDEF feature (not a `--cdef-bias` feature), normally derived from each frame's `base_q_idx`.                |
