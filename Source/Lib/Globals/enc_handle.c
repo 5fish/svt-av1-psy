@@ -5092,6 +5092,9 @@ static void copy_api_from_app(
     // Low Q taper
     scs->static_config.low_q_taper = config_struct->low_q_taper;
 
+    // Noise level thr
+    scs->static_config.noise_level_thr = config_struct->noise_level_thr;
+
     // Variance md bias
     scs->static_config.variance_md_bias = config_struct->variance_md_bias;
     scs->static_config.variance_md_bias_thr = config_struct->variance_md_bias_thr;

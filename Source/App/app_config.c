@@ -224,6 +224,7 @@
 #define NOISE_NORM_STRENGTH_TOKEN "--noise-norm-strength"
 
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
+#define NOISE_LEVEL_THR_TOKEN "--noise-level-thr"
 #define VARIANCE_MD_BIAS_TOKEN "--variance-md-bias"
 #define VARIANCE_MD_BIAS_THR_TOKEN "--variance-md-bias-thr"
 #define CHROMA_QMC_BIAS_TOKEN "--chroma-qmc-bias"
@@ -1350,6 +1351,10 @@ ConfigEntry config_entry_psy[] = {
      "Low q taper. If macroblocks are boosted below q11, taper the effect. Default is 0 (off).",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     NOISE_LEVEL_THR_TOKEN,
+     "[PSY] Noise level thr, default is -1 [-1: default encoder behaviour, -2: print, >0: set]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      VARIANCE_MD_BIAS_TOKEN,
      "[PSY] Variance md bias, default is 0 [0-1]",
      set_cfg_generic_token},
@@ -1648,6 +1653,9 @@ ConfigEntry config_entry[] = {
 	
 	// Low q taper
     {SINGLE_INPUT, LOW_Q_TAPER_TOKEN, "LowQTaper", set_cfg_generic_token},
+
+    // Noise level thr
+    {SINGLE_INPUT, NOISE_LEVEL_THR_TOKEN, "NoiseLevelThr", set_cfg_generic_token},
 
     // Variance MD Bias
     {SINGLE_INPUT, VARIANCE_MD_BIAS_TOKEN, "VarianceMDBias", set_cfg_generic_token},

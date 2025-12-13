@@ -955,6 +955,11 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     //     return_error = EB_ErrorBadParameter;
     // }
 
+    if (config->noise_level_thr < -2) {
+        SVT_ERROR("Instance %u: noise-level-thr must be bigger than or equal to -2\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
     if (config->variance_md_bias > 1) {
         SVT_ERROR("Instance %u: variance-md-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
@@ -1210,6 +1215,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->kf_tf_strength                    = 1;
     config_ptr->noise_norm_strength               = 1;
     config_ptr->low_q_taper                       = 0;
+    config_ptr->noise_level_thr                   = -1;
     config_ptr->variance_md_bias                  = 0;
     config_ptr->variance_md_bias_thr              = 89;
     config_ptr->chroma_qmc_bias                   = 0;
@@ -1411,32 +1417,14 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                     config->low_q_taper ? "on" : "off");
         }
 
-        if (config->filtering_noise_detection) {
-            if (config->cdef_level != 0 && config->cdef_bias)
-                SVT_INFO("SVT [config]: filtering noise detection / CDEF bias mode / CDEF max / min \t: %s / %s / %d,%d %d,%d / %d,%d %d,%d\n",
-                         config->filtering_noise_detection == 1 ? "on" :
-                         config->filtering_noise_detection == 2 ? "off" :
-                         config->filtering_noise_detection == 3 ? "on (CDEF only)" :
-                                                                  "on (restoration only)",
-                         config->cdef_bias_mode == 0 ? "MSE" :
-                         config->cdef_bias_mode == 1 ? "SAD + MSE" :
-                                                       "SAD + SATD",
-                         config->cdef_bias_max_cdef[0],
-                         config->cdef_bias_max_cdef[1],
-                         config->cdef_bias_max_cdef[2],
-                         config->cdef_bias_max_cdef[3],
-                         config->cdef_bias_min_cdef[0],
-                         config->cdef_bias_min_cdef[1],
-                         config->cdef_bias_min_cdef[2],
-                         config->cdef_bias_min_cdef[3]);
-            else
-                SVT_INFO("SVT [config]: filtering noise detection \t\t\t\t\t: %s\n",
-                         config->filtering_noise_detection == 1 ? "on" :
-                         config->filtering_noise_detection == 2 ? "off" :
-                         config->filtering_noise_detection == 3 ? "on (CDEF only)" :
-                                                                  "on (restoration only)");
-        }
-        else if (config->cdef_level != 0 && config->cdef_bias)
+        if (config->filtering_noise_detection)
+            SVT_INFO("SVT [config]: filtering noise detection \t\t\t\t\t: %s\n",
+                     config->filtering_noise_detection == 1 ? "on" :
+                     config->filtering_noise_detection == 2 ? "off" :
+                     config->filtering_noise_detection == 3 ? "on (CDEF only)" :
+                                                              "on (restoration only)");
+
+        if (config->cdef_level != 0 && config->cdef_bias)
             SVT_INFO("SVT [config]: CDEF bias mode / CDEF max / min strength \t\t\t: %s / %d,%d %d,%d / %d,%d %d,%d\n",
                      config->cdef_bias_mode == 0 ? "MSE" :
                      config->cdef_bias_mode == 1 ? "SAD + MSE" :
@@ -2537,6 +2525,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"tile-columns", &config_struct->tile_columns},
         {"ss", &config_struct->target_socket},
         {"sframe-dist", &config_struct->sframe_dist},
+        {"noise-level-thr", &config_struct->noise_level_thr},
     };
     const size_t int_opts_size = sizeof(int_opts) / sizeof(int_opts[0]);
 

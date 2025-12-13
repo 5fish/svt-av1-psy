@@ -86,11 +86,21 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **TemporalFilteringStrength**    |  --tf-strength              | [0-4]                          | 1           | Manually adjust temporal filtering strength. Higher values = stronger temporal filtering                      |
 | **KeyframeTemporalFilteringStrength** |  --kf-tf-strength      | [0-4]                          | 1           | Manually adjust temporal filtering strength for keyframes. Higher values = stronger temporal filtering        |
 | **NoiseNormStrength**            |  --noise-norm-strength      | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
+| **NoiseLevelThr**                |  --noise-level-thr          | [-2-`(2^31)-1`]                | -1          | Change encoder noise level threshold. Further explanations can be found below. [-1: default encoder behaviour, -2: print the noise level for each frame, >0: set the noise level threshold]             |
 | **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)      |
 | **VarianceMDBias**               |  --variance-md-bias         | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance            |
 | **VarianceMDBiasThr**            |  --variance-md-bias-thr     | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-qmc-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture             |
 | **ChromaQMCBias**                |  --chroma-qmc-bias          | [0-2]                          | 0           | Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision [0: disabled, 1: full, 2: light]            |
 | **TexturePreservingQMCBias**     |  --texture-preserving-qmc-bias | [0-1]                       | 0           | Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention. Slightly harmful to lineart             |
+
+## Noise level threshold
+
+SVT-AV1's noise level threshold is conservative, which is inherently a good thing. Tools like CDEF can produce very awkward results in noisy sources, and it's good for the encoder's default behaviour to be conservative.  
+In practice, sometimes this is overly conservative, and people have been talking about using `--filtering-noise-detection`, also known as `--noise-adaptive-filtering` in some forks. However, that parameter universally disabled this protection, which may cause issues when encoding a mixture of clean and noisy materials.  
+Instead, you can use this parameter to control this threshold so that certain feature are available when you need it and still disabled in noisy materials.  
+
+To adjust the noise level, use `--noise-level-thr -2` to run a short test encode. This will print the detected noise level for each frame. You can then set the threshold between the frames you want features to be enabled and frames you want features to be disabled.
+Try not to deviate too much from the default threshold, which is ` 15000` as of late 2025. This noise level detection is connected to various features in mode decision and other parts of the encoder in addition to CDEF and restoration.  
 
 ## Variance bias threshold calculation
 
