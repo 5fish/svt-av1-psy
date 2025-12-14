@@ -1725,6 +1725,10 @@ static void variance_md_bias_apply(PictureControlSet *pcs, ModeDecisionContext *
             switch (cand_bf->cand->pred_mode) {
                 case V_PRED: case H_PRED: case PAETH_PRED:
                     variance_md_bias_mult_dist(dist, ssim_dist, 1.10); break;
+                case NEAREST_NEARESTMV:
+                    if (!(pcs->scs->static_config.chroma_qmc_bias == 1))
+                        variance_md_bias_mult_dist(dist, ssim_dist, 1.10);
+                    break;
                 case D45_PRED: case D135_PRED: case D113_PRED: case D157_PRED: case D203_PRED: case D67_PRED:
                     variance_md_bias_mult_dist(dist, ssim_dist, 1.06); break;
                 default: break;
@@ -1735,6 +1739,10 @@ static void variance_md_bias_apply(PictureControlSet *pcs, ModeDecisionContext *
                 case V_PRED: case H_PRED: case PAETH_PRED:
                 case D45_PRED: case D135_PRED: case D113_PRED: case D157_PRED: case D203_PRED: case D67_PRED:
                     variance_md_bias_mult_dist(dist, ssim_dist, 1.16); break;
+                case NEAREST_NEARESTMV:
+                    if (!(pcs->scs->static_config.chroma_qmc_bias == 1))
+                        variance_md_bias_mult_dist(dist, ssim_dist, 1.04);
+                    break;
                 default: break;
             }
         }

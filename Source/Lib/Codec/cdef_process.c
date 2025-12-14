@@ -98,9 +98,9 @@ static uint64_t compute_cdef_dist(const EbByte dst, int32_t doffset, int32_t dst
     return curr_mse;
 }
 static INLINE uint64_t compute_cdef_dist_bias(uint8_t mode,
-                                                 EbByte dst, int32_t doffset, int32_t dstride, uint8_t *src,
-                                                 CdefList *dlist, int32_t cdef_count, BlockSize bsize, int32_t coeff_shift,
-                                                 int32_t pli, uint8_t subsampling_factor, Bool is_16bit) {
+                                              EbByte dst, int32_t doffset, int32_t dstride, uint8_t *src,
+                                              CdefList *dlist, int32_t cdef_count, BlockSize bsize, int32_t coeff_shift,
+                                              int32_t pli, uint8_t subsampling_factor, Bool is_16bit) {
     if (is_16bit) {
         return compute_cdef_dist_bias_16bit(mode,
                                             ((uint16_t *)dst) + doffset,
@@ -118,7 +118,7 @@ static INLINE uint64_t compute_cdef_dist_bias(uint8_t mode,
             mode, dst + doffset, dstride, src, dlist, cdef_count, bsize, coeff_shift, pli, subsampling_factor);
     }
 }
-static INLINE uint64_t compute_cdef_list_facade(PictureControlSet *pcs, SequenceControlSet *scs,
+static INLINE uint64_t compute_cdef_dist_facade(PictureControlSet *pcs, SequenceControlSet *scs,
                                                 EbByte dst, int32_t doffset, int32_t dstride, uint8_t *src,
                                                 CdefList *dlist, int32_t cdef_count, BlockSize bsize, int32_t coeff_shift,
                                                 int32_t pli, uint8_t subsampling_factor, Bool is_16bit) {
@@ -329,7 +329,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                                        sec_damping,
                                        coeff_shift,
                                        subsampling_factor);
-                    uint64_t curr_mse = compute_cdef_list_facade(
+                    uint64_t curr_mse = compute_cdef_dist_facade(
                         pcs,
                         scs,
                         ref[pli],
@@ -409,7 +409,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                                        sec_damping,
                                        coeff_shift,
                                        subsampling_factor);
-                    uint64_t curr_mse = compute_cdef_list_facade(
+                    uint64_t curr_mse = compute_cdef_dist_facade(
                         pcs,
                         scs,
                         ref[pli],
