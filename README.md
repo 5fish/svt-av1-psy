@@ -1,7 +1,11 @@
 Experimental additions currently available on `exp`:
 - `--chroma-grain`
 - `--alt-tf-decay`
-- `--chroma-distortion-taper`, `--skip-taper` ([@Akatmks](https://github.com/Akatmks))
+- `--variance-md-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--cdef-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--chroma-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--texture-preserving-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--noise-level-thr` ([@Akatmks](https://github.com/Akatmks))
 
 Thank you to [@Akatmks](https://github.com/Akatmks) for the contribution of various features.
 
