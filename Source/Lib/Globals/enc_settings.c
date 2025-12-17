@@ -1389,7 +1389,7 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->qp_scale_compress_strength,
                      config->frame_luma_bias >= config->luminance_qp_bias ? config->frame_luma_bias : config->luminance_qp_bias);
         else
-            SVT_INFO("SVT [config]: sharpness / balancing q bias / frame low-luma bias \t\t: %d / based / %d\n",
+            SVT_INFO("SVT [config]: sharpness / balancing Q bias / frame low-luma bias \t\t: %d / based / %d\n",
                      config->sharpness,
                      config->frame_luma_bias >= config->luminance_qp_bias ? config->frame_luma_bias : config->luminance_qp_bias);
 
@@ -1468,32 +1468,32 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
 
 		if (config->variance_md_bias) {
             if (config->max_32_tx_size)
-                SVT_INFO("SVT [config]: variance md bias threshold / maximum transform size \t\t: %d / 32x32\n",
+                SVT_INFO("SVT [config]: variance MD bias threshold / maximum transform size \t\t: %d / 32x32\n",
                          config->variance_md_bias_thr);
             else
-                SVT_INFO("SVT [config]: variance md bias threshold / maximum 32x32 tx size threshold \t: %d / %d\n",
+                SVT_INFO("SVT [config]: variance MD bias threshold / maximum 32x32 TX size threshold \t: %d / %d\n",
                          config->variance_md_bias_thr,
                          AOMMAX(4, (config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3)));
             
             if (config->chroma_qmc_bias)
-                SVT_INFO("SVT [config]: variance md skip taper threshold / chroma qmc bias \t\t: %d / %s\n",
+                SVT_INFO("SVT [config]: variance MD skip taper threshold / chroma QMC bias \t\t: %d / %s\n",
                          config->variance_md_bias_thr >> 1,
                          config->chroma_qmc_bias == 1 ? "full" : "light");
             else
-                SVT_INFO("SVT [config]: variance md skip taper threshold \t\t\t\t: %d\n",
+                SVT_INFO("SVT [config]: variance MD skip taper threshold \t\t\t\t: %d\n",
                          config->variance_md_bias_thr >> 1);
 
             if (config->texture_preserving_qmc_bias)
-                SVT_INFO("SVT [config]: texture preserving qmc bias threshold \t\t\t\t: %d\n",
+                SVT_INFO("SVT [config]: texture preserving QMC bias threshold \t\t\t\t: %d\n",
                          AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22));
         }
         else {
             if (config->texture_preserving_qmc_bias)
-                SVT_INFO("SVT [config]: texture preserving qmc bias threshold \t\t\t\t: %d\n",
+                SVT_INFO("SVT [config]: texture preserving QMC bias threshold \t\t\t\t: %d\n",
                          AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22));
 
             if (config->chroma_qmc_bias)
-                SVT_INFO("SVT [config]: chroma qmc bias \t\t\t\t\t\t: %s\n",
+                SVT_INFO("SVT [config]: chroma QMC bias \t\t\t\t\t\t: %s\n",
                          config->chroma_qmc_bias == 1 ? "full" : "light");
         }
         
