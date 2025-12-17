@@ -1161,6 +1161,15 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t cdef_bias_mode;
 
     /**
+     * @brief Enable balancing Q bias
+     * 0: disabled
+     * 1: enabled
+     * Default is 0
+     */
+
+    uint8_t balancing_q_bias;
+
+    /**
      * @brief Enable sharp-tx, a toggle that enables much sharper transforms decisions for higher fidelity output,
      * at the possible cost of increasing artifacting
      * 0: disabled
@@ -1233,7 +1242,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t)];
+                    - 2 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t)];
 
 } EbSvtAv1EncConfiguration;
 
