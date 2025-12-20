@@ -5,7 +5,9 @@ Experimental additions currently available on `exp`:
 - `--cdef-bias` ([@Akatmks](https://github.com/Akatmks))
 - `--chroma-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
 - `--texture-preserving-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--balancing-q-bias` ([@Akatmks](https://github.com/Akatmks))
 - `--noise-level-thr` ([@Akatmks](https://github.com/Akatmks))
+- `--noise-level-q-bias` ([@Akatmks](https://github.com/Akatmks))
 
 Thank you to [@Akatmks](https://github.com/Akatmks) for the contribution of various features.
 
