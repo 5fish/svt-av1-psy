@@ -80,6 +80,8 @@ For each enable-*, there is a disable-* option, and vice versa.
     enable-dovi
     --enable-hdr10plus,   Enable support for HDR10+ metadata (if hdr10plus lib is found)
     enable-hdr10plus
+    --ext-lib-static,   Force linking with static libraries for external dependencies (dovi and hdr10plus)
+    ext-lib-static
     --disable-native,   Disable the use of -march=native
     disable-native
     --enable-pgo,       Enable profile guided optimization
@@ -299,8 +301,6 @@ parse_options() {
                 none) PGO_COMPILE_STAGE=all ;;
                 esac
                 ;;
-            libdovi) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DLIBDOVI_FOUND=1" ;;
-            libhdr10plus) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DLIBHDR10PLUS_RS_FOUND=1" ;;
             dovi) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DLIBDOVI_FOUND=1" ;;
             hdr10plus) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DLIBHDR10PLUS_RS_FOUND=1" ;;
             *) print_message "Unknown option: $1" ;;
@@ -355,6 +355,7 @@ parse_options() {
         verbose) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DCMAKE_VERBOSE_MAKEFILE=1" && shift ;;
         minimal-build) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DMINIMAL_BUILD=ON" && shift ;;
         external-cpuinfo) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DUSE_EXTERNAL_CPUINFO=ON" && shift ;;
+        ext-lib-static) CMAKE_EXTRA_FLAGS="$CMAKE_EXTRA_FLAGS -DEXT_LIB_STATIC=ON" && shift ;;
         *) print_message "Unknown option: $1" && shift ;;
         esac
     done
@@ -398,6 +399,7 @@ else
             verbose) parse_options verbose && shift ;;
             minimal-build) parse_options minimal-build && shift ;;
             external-cpuinfo) parse_options external-cpuinfo && shift ;;
+            ext-lib-static) parse_options ext-lib-static && shift ;;
             asm | bindir | cc | cxx | gen | jobs | pgo-dir | pgo-videos | prefix | sanitizer | target_system | android-ndk)
                 parse_equal_option "$1" "$2"
                 case $1 in
@@ -521,6 +523,7 @@ else
             verbose) parse_options verbose && shift ;;
             minimal-build) parse_options minimal-build && shift ;;
             external-cpuinfo) parse_options external-cpuinfo && shift ;;
+            ext-lib-static) parse_options ext-lib-static && shift ;;
             end) ${IN_SCRIPT:-false} && exit ;;
             *) die "Error, unknown option: $1" ;;
             esac
