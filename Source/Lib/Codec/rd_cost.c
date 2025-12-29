@@ -1119,7 +1119,7 @@ static uint64_t av1_inter_fast_cost_light(struct ModeDecisionContext *ctx, BlkSt
     //    SVT_LOG("svt_aom_inter_fast_cost: Chroma error");
     rate = luma_rate + chroma_rate;
     // Assign fast cost
-    if (cand->skip_mode_allowed) {
+    if (cand->skip_mode_allowed && !cand_bf->variance_md_skip_taper_active) {
         skip_mode_rate = r->skip_mode_fac_bits[skip_mode_ctx][1];
         if (skip_mode_rate < rate)
             return (RDCOST(lambda, skip_mode_rate, total_distortion));
@@ -1366,7 +1366,7 @@ uint64_t svt_aom_inter_fast_cost(PictureControlSet *pcs, struct ModeDecisionCont
         SVT_ERROR("svt_aom_inter_fast_cost: Chroma error");
     rate = luma_rate + chroma_rate;
     // Assign fast cost
-    if (cand->skip_mode_allowed) {
+    if (cand->skip_mode_allowed && !cand_bf->variance_md_skip_taper_active) {
         skip_mode_rate = ctx->md_rate_est_ctx->skip_mode_fac_bits[skip_mode_ctx][1];
         if (skip_mode_rate < rate)
             return (RDCOST(lambda, skip_mode_rate, total_distortion));

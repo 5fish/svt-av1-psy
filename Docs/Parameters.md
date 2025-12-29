@@ -90,7 +90,7 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)       |
 | **VarianceMDBias**               | --variance-md-bias          | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance                                  |
 | **VarianceMDBiasThr**            | --variance-md-bias-thr      | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-qmc-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture |
-| **ChromaQMCBias**                | --chroma-qmc-bias           | [0-2]                          | 0           | Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision [0: disabled, 1: full, 2: light] |
+| **ChromaQMCBias**                | --chroma-qmc-bias           | [0-2]                          | 0           | Bias chroma Q, limit chroma distortion prediction from dropping too low in mode decision, and bias chroma distortion prediction in CDEF decision [0: disabled, 1: full, 2: light] |
 | **TexturePreservingQMCBias**     | --texture-preserving-qmc-bias | [0-1]                        | 0           | Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention. Slightly harmful to lineart |
 
 ### Noise level threshold
