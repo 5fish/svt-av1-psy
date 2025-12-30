@@ -1121,6 +1121,7 @@ static void fast_loop_core_light_pd1(ModeDecisionCandidateBuffer *cand_bf, Pictu
             ctx,
             cand_bf,
             fast_lambda,
+            fast_lambda,
             luma_fast_dist,
             0); //chroma_fast_distortion
     }
@@ -1220,7 +1221,7 @@ static void obmc_trans_face_off(ModeDecisionCandidateBuffer *cand_bf, PictureCon
                 }
             }
             if (ctx->blk_geom->has_uv && ctx->uv_ctrls.uv_mode <= CHROMA_MODE_1 && ctx->mds_skip_uv_pred == FALSE) {
-                if (ctx->mds0_ctrls.mds0_dist_type == SSD) {
+                if (ctx->mds0_ctrls.mds0_dist_type_uv == SSD) {
                     EbSpatialFullDistType spatial_full_dist_type_fun = ctx->hbd_md ? svt_full_distortion_kernel16_bits
                                                                                    : svt_spatial_full_distortion_kernel;
                     chroma_fast_distortion = (uint32_t)spatial_full_dist_type_fun(input_pic->buffer_cb,
@@ -1282,6 +1283,7 @@ static void obmc_trans_face_off(ModeDecisionCandidateBuffer *cand_bf, PictureCon
                 ctx,
                 cand_bf,
                 (ctx->mds0_ctrls.mds0_dist_type == SSD) ? full_lambda : fast_lambda,
+                (ctx->mds0_ctrls.mds0_dist_type_uv == SSD) ? full_lambda : fast_lambda,
                 luma_fast_dist,
                 chroma_fast_distortion);
             if (simple_translation_cost < *(cand_bf->fast_cost)) {
@@ -1421,7 +1423,7 @@ void fast_loop_core(ModeDecisionCandidateBuffer *cand_bf, PictureControlSet *pcs
         }
     }
     if (ctx->blk_geom->has_uv && ctx->uv_ctrls.uv_mode <= CHROMA_MODE_1 && ctx->mds_skip_uv_pred == FALSE) {
-        if (ctx->mds0_ctrls.mds0_dist_type == SSD) {
+        if (ctx->mds0_ctrls.mds0_dist_type_uv == SSD) {
             EbSpatialFullDistType spatial_full_dist_type_fun = ctx->hbd_md ? svt_full_distortion_kernel16_bits
                                                                            : svt_spatial_full_distortion_kernel;
             chroma_fast_distortion = (uint32_t)spatial_full_dist_type_fun(input_pic->buffer_cb,
@@ -1497,6 +1499,7 @@ void fast_loop_core(ModeDecisionCandidateBuffer *cand_bf, PictureControlSet *pcs
             ctx,
             cand_bf,
             (ctx->mds0_ctrls.mds0_dist_type == SSD) ? full_lambda : fast_lambda,
+            (ctx->mds0_ctrls.mds0_dist_type_uv == SSD) ? full_lambda : fast_lambda,
             luma_fast_dist,
             chroma_fast_distortion);
     }
@@ -7630,7 +7633,7 @@ static void search_best_independent_uv_mode(PictureControlSet *pcs, EbPictureBuf
         cand_bf->cand                        = &ctx->fast_cand_array[uv_mode_count + start_fast_buffer_index];
         svt_product_prediction_fun_table[is_inter_mode(cand_bf->cand->pred_mode)](ctx->hbd_md, ctx, pcs, cand_bf);
         uint32_t chroma_fast_distortion;
-        if (ctx->mds0_ctrls.mds0_dist_type == VAR) {
+        if (ctx->mds0_ctrls.mds0_dist_type_uv == VAR) {
             if (!ctx->hbd_md) {
                 const AomVarianceFnPtr *fn_ptr = &svt_aom_mefn_ptr[ctx->blk_geom->bsize_uv];
                 unsigned int            sse;
