@@ -1203,9 +1203,10 @@ typedef struct EbSvtAv1EncConfiguration {
      * HVS model at the cost of higher CPU time
      * 0: default preset behavior
      * 1: highest complexity HVS model (SSD-Psy)
+     * -1: disable highest complexity HVS model at `--preset -1`
      * Default is 0.
      */
-    uint8_t complex_hvs;
+    int8_t complex_hvs;
     
     /**
      * @brief Alternative SSIM tuning, enables VQ enhancements and different rdmult calculations
@@ -1250,7 +1251,7 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 8 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
+    uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
                     - 2 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
 
