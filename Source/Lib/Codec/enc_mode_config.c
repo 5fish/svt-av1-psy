@@ -7004,7 +7004,7 @@ static void set_tx_shortcut_ctrls(PictureControlSet *pcs, ModeDecisionContext *c
                "artifacts.");
 }
 
-static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level) {
+static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level, uint8_t chroma_qmc_bias) {
     Mds0Ctrls *ctrls = &ctx->mds0_ctrls;
 
     switch (mds0_level) {
@@ -7035,6 +7035,11 @@ static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level) {
         break;
     default: assert(0); break;
     }
+
+    if (!chroma_qmc_bias)
+        ctrls->mds0_dist_type_uv            = ctrls->mds0_dist_type;
+    else
+        ctrls->mds0_dist_type_uv            = SSD;
 }
 static void set_skip_sub_depth_ctrls(SkipSubDepthCtrls *skip_sub_depth_ctrls, uint8_t skip_sub_depth_lvl) {
     switch (skip_sub_depth_lvl) {
@@ -7366,7 +7371,7 @@ void svt_aom_sig_deriv_enc_dec_light_pd0(SequenceControlSet *scs, PictureControl
     }
 
     ctx->d2_parent_bias = 1000;
-    set_mds0_controls(ctx, 4);
+    set_mds0_controls(ctx, 4, 0);
     if (pd0_level == VERY_LIGHT_PD0)
         return;
     svt_aom_set_chroma_controls(ctx, 0 /*chroma off*/);
@@ -7541,7 +7546,7 @@ void svt_aom_sig_deriv_enc_dec_light_pd1(PictureControlSet *pcs, ModeDecisionCon
             mds0_level = 0;
     }
 
-    set_mds0_controls(ctx, mds0_level);
+    set_mds0_controls(ctx, mds0_level, 0);
 
     uint8_t lpd1_tx_level = 0;
     if (lpd1_level <= LPD1_LVL_2)
@@ -7868,7 +7873,7 @@ void svt_aom_sig_deriv_enc_dec(SequenceControlSet *scs, PictureControlSet *pcs, 
         intra_level = 6;
     set_intra_ctrls(pcs, ctx, intra_level);
 
-    set_mds0_controls(ctx, pd_pass == PD_PASS_0 ? 2 : pcs->mds0_level);
+    set_mds0_controls(ctx, pd_pass == PD_PASS_0 ? 2 : pcs->mds0_level, scs->static_config.chroma_qmc_bias);
 
     set_subres_controls(ctx, 0);
     ctx->inter_depth_bias = 0;
@@ -8817,7 +8822,9 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
         else
             pcs->mds0_level = is_islice ? 2 : 4;
     } else {
-        if (enc_mode <= ENC_MR)
+        if (pcs->scs->static_config.complex_hvs == -1 && enc_mode == ENC_MR)
+            pcs->mds0_level = 2;
+        else if (enc_mode <= ENC_MR)
             pcs->mds0_level = 1;
         else if (enc_mode <= ENC_M6)
              pcs->mds0_level = 2;
