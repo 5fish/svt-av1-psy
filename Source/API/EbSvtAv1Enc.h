@@ -1151,14 +1151,6 @@ typedef struct EbSvtAv1EncConfiguration {
      * Max value is 8.
      */
     int8_t cdef_bias_damping_offset;
-    /**
-     * @brief Change how each individual CDEF options are evaluated
-     * 0: MSE (Default without cdef-bias)
-     * 1: SAD + MSE
-     * 2: SAD + SATD
-     * Default is 1
-     */
-    uint8_t cdef_bias_mode;
 
     /**
      * @brief Enable balancing Q bias
@@ -1253,7 +1245,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    - 2 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 
