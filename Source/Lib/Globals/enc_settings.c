@@ -1012,7 +1012,8 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         }
     }
     
-    if (config->balancing_q_bias > 1) {
+    if ((config->balancing_q_bias < 0 || config->balancing_q_bias > 1) &&
+        config->balancing_q_bias != DEFAULT) {
         SVT_ERROR("Instance %u: balancing-q-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -1020,7 +1021,12 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_WARN("Instance %u: balancing-q-bias is intended to replace qp-scale-compress-strength and not intended to be used together\n", channel_number + 1);
     if (config->balancing_q_bias && config->low_q_taper)
         SVT_WARN("Instance %u: balancing-q-bias is not intended to be used together with low-q-taper\n", channel_number + 1);
-        
+
+    if (config->balancing_r0_based_layer_offset < -2 || config->balancing_r0_based_layer_offset > 3) {
+        SVT_ERROR("Instance %u: balancing-r0-based-layer-offset must be between -2 and 3\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
     if (config->noise_level_q_bias < -1/3 || config->noise_level_q_bias > 0.5) {
         SVT_ERROR("Instance %u: noise-level-thr must be between -0.33 and 0.5\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
@@ -1241,7 +1247,8 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->cdef_bias_min_cdef[3]             = 0;
     config_ptr->cdef_bias_max_sec_cdef_rel        = 0;
     config_ptr->cdef_bias_damping_offset          = 0;
-    config_ptr->balancing_q_bias                  = 0;
+    config_ptr->balancing_q_bias                  = DEFAULT;
+    config_ptr->balancing_r0_based_layer_offset   = 0;
     config_ptr->noise_level_q_bias                = 0.0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
@@ -1389,8 +1396,8 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->qp_scale_compress_strength,
                      config->frame_luma_bias >= config->luminance_qp_bias ? config->frame_luma_bias : config->luminance_qp_bias);
         else
-            SVT_INFO("SVT [config]: sharpness / balancing Q bias / frame low-luma bias \t\t: %d / based / %d\n",
-                     config->sharpness,
+            SVT_INFO("SVT [config]: balancing Q bias / r0-based layer offset / frame low-luma bias : based / %d / %d\n",
+                     config->balancing_r0_based_layer_offset,
                      config->frame_luma_bias >= config->luminance_qp_bias ? config->frame_luma_bias : config->luminance_qp_bias);
 
         switch (config->enable_tf) {
@@ -2459,7 +2466,6 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
         {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
-        {"balancing-q-bias", &config_struct->balancing_q_bias},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"hbd-mds", &config_struct->hbd_mds},
@@ -2555,6 +2561,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } int8_opts[] = {
         {"preset", &config_struct->enc_mode},
         {"sharpness", &config_struct->sharpness},
+        {"balancing-q-bias", &config_struct->balancing_q_bias},
+        {"balancing-r0-based-layer-offset", &config_struct->balancing_r0_based_layer_offset},
         {"complex-hvs", &config_struct->complex_hvs},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
