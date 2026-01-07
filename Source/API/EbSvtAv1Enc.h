@@ -1158,8 +1158,14 @@ typedef struct EbSvtAv1EncConfiguration {
      * 1: enabled
      * Default is 0
      */
+    int8_t balancing_q_bias;
 
-    uint8_t balancing_q_bias;
+    /**
+     * @brief Enable balancing r0 based layer offset. Positive numbers increase the number of frames using r0-based QPS QPM.
+     * Min value is -2.
+     * Max value is 3.
+     */
+    int8_t balancing_r0_based_layer_offset;
 
     /**
      * @brief noise level Q bias
@@ -1245,7 +1251,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    - 2 * sizeof(Bool) - 12 * sizeof(uint8_t) - 4 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 
