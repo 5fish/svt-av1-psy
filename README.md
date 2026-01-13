@@ -1,3 +1,7 @@
+This branch preserves an older version of 5fish/SVT-AV1-PSY with the final PSY-RD/SPY-RD implementations, which have been superceded by AC bias/TX bias on [main](https://github.com/5fish/svt-av1-psy/tree/main).
+
+Further updates on this branch are not planned.
+
 ## 5fish/SVT-AV1-PSY
 
 This fork is based on the unreleased [SVT-AV1-PSY 2.3.0-C](https://github.com/psy-ex/svt-av1-psy/tree/testing-2.3.0-C), and includes backports of changes and improvements made in 3.x versions of SVT-AV1-PSY and its continuations by the original developers, [SVT-AV1-PSYEX](https://github.com/BlueSwordM/svt-av1-psyex) and [SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr)* (currently excluding any HDR-specific changes.)
