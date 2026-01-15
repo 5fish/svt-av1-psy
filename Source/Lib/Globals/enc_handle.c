@@ -3976,6 +3976,9 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->static_config.cdef_bias_min_cdef[3] = 0;
     }
 
+    if (scs->static_config.dlf_sharpness == DEFAULT)
+        scs->static_config.dlf_sharpness = CLIP3(0, 7, scs->static_config.sharpness);
+
     if (scs->static_config.qp_scale_compress_strength == DEFAULT &&
         scs->static_config.balancing_q_bias == DEFAULT) {
         scs->static_config.qp_scale_compress_strength = 1.0;
@@ -4806,6 +4809,12 @@ static void copy_api_from_app(
     memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
     scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
     scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
+
+    // DLF Taper
+    scs->static_config.dlf_bias = config_struct->dlf_bias;
+    scs->static_config.dlf_sharpness = config_struct->dlf_sharpness;
+    memcpy(scs->static_config.dlf_bias_max_dlf, config_struct->dlf_bias_max_dlf, 2 * sizeof(uint8_t));
+    memcpy(scs->static_config.dlf_bias_min_dlf, config_struct->dlf_bias_min_dlf, 2 * sizeof(uint8_t));
 
     // Balancing Q bias
     scs->static_config.balancing_q_bias = config_struct->balancing_q_bias;
