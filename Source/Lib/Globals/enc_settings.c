@@ -1153,6 +1153,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->complex_hvs                       = 0;
     config_ptr->alt_ssim_tuning                   = FALSE;
     config_ptr->filtering_noise_detection         = 0;
+    config_ptr->auto_tiling                       = FALSE;
     return return_error;
 }
 
@@ -1218,6 +1219,11 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                  config->pred_structure == 1       ? "low delay"
                      : config->pred_structure == 2 ? "random access"
                                                    : "unknown");
+        if (config->auto_tiling > 0 || config->tile_columns > 0 || config->tile_rows > 0)
+            SVT_INFO("SVT [config]: auto tiling / columns / rows \t\t\t\t\t: %d / %d / %d\n",
+                     config->auto_tiling,
+                     config->tile_columns,
+                     config->tile_rows);
         if (config->scene_change_detection == 1)
             SVT_INFO("SVT [config]: max / min GOP size / mini-GOP size / refresh type \t\t: "
                      "%d / %d / %d / %s\n",
@@ -2381,6 +2387,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"low-q-taper", &config_struct->low_q_taper},
         {"sharp-tx", &config_struct->sharp_tx},
         {"alt-ssim-tuning", &config_struct->alt_ssim_tuning},
+        {"auto-tiling", &config_struct->auto_tiling},
     };
     const size_t bool_opts_size = sizeof(bool_opts) / sizeof(bool_opts[0]);
 
