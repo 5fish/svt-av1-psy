@@ -982,7 +982,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: cdef-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-
     if (config->cdef_level != 0 && config->cdef_bias) {
         if (config->cdef_bias_max_cdef[0] >> 2 << 2 < config->cdef_bias_min_cdef[0] ||
             config->cdef_bias_max_cdef[2] >> 2 << 2 < config->cdef_bias_min_cdef[2]) {
@@ -1008,6 +1007,24 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
 
         if (config->cdef_bias_damping_offset < -4 || config->cdef_bias_damping_offset > 8) {
             SVT_ERROR("Instance %u: cdef-bias-damping-offset must be between -4 and 8\n", channel_number + 1);
+            return_error = EB_ErrorBadParameter;
+        }
+    }
+
+    if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
+        config->dlf_sharpness != DEFAULT) {
+        SVT_ERROR("Instance %u: dlf-sharpness must be between 0 and 7\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias > 1) {
+        SVT_ERROR("Instance %u: dlf-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias) {
+        if (config->dlf_bias_max_dlf[0] < config->dlf_bias_min_dlf[0] ||
+            config->dlf_bias_max_dlf[1] < config->dlf_bias_min_dlf[1]) {
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf must be greater than or equal to dlf-bias-min-dlf\n", channel_number + 1);
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n", channel_number + 1);
             return_error = EB_ErrorBadParameter;
         }
     }
@@ -1249,6 +1266,12 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->cdef_bias_min_cdef[3]             = 0;
     config_ptr->cdef_bias_max_sec_cdef_rel        = 0;
     config_ptr->cdef_bias_damping_offset          = 0;
+    config_ptr->dlf_bias                          = 0;
+    config_ptr->dlf_sharpness                     = DEFAULT;
+    config_ptr->dlf_bias_max_dlf[0]               = 8;
+    config_ptr->dlf_bias_max_dlf[1]               = 2;
+    config_ptr->dlf_bias_min_dlf[0]               = 2;
+    config_ptr->dlf_bias_min_dlf[1]               = 0;
     config_ptr->balancing_q_bias                  = DEFAULT;
     config_ptr->balancing_r0_based_layer          = INT8_MAX; // DEFAULT
     config_ptr->balancing_r0_dampening_layer      = INT8_MAX; // DEFAULT
@@ -1497,6 +1520,14 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->filtering_noise_detection == 2 ? "off" :
                      config->filtering_noise_detection == 3 ? "on (CDEF only)" :
                                                               "on (restoration only)");
+
+        if (config->dlf_bias)
+            SVT_INFO("SVT [config]: DLF bias - DLF sharpness / max / min strength \t\t\t: %d / %d %d / %d %d\n",
+                     config->dlf_sharpness,
+                     config->dlf_bias_max_dlf[0],
+                     config->dlf_bias_max_dlf[1],
+                     config->dlf_bias_min_dlf[0],
+                     config->dlf_bias_min_dlf[1]);
 
         // QMC
         if (config->texture_preserving_qmc_bias && config->chroma_qmc_bias)
@@ -2257,6 +2288,30 @@ static EbErrorType str_to_cdef_bias_max_min_cdef(const char *nptr, uint8_t *targ
     return EB_ErrorNone;
 }
 
+static EbErrorType str_to_dlf_bias_max_min_dlf(const char *nptr, uint8_t *target) {
+    uint32_t    dlf_bias_max_min_dlf[2];
+    EbErrorType return_error;
+
+    return_error = parse_list_u32(nptr, dlf_bias_max_min_dlf, 2);
+
+    if (return_error == EB_ErrorBadParameter) {
+        SVT_ERROR("dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n");
+        return return_error;
+    }
+
+    if (dlf_bias_max_min_dlf[0] < 0 || dlf_bias_max_min_dlf[1] > MAX_LOOP_FILTER ||
+        dlf_bias_max_min_dlf[1] < 0 || dlf_bias_max_min_dlf[1] > MAX_LOOP_FILTER) {
+        SVT_ERROR("DLF strength must be between 0 and %u\n", MAX_LOOP_FILTER);
+        SVT_ERROR("dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n");
+        return EB_ErrorBadParameter;
+    }
+
+    target[0] = (uint8_t)dlf_bias_max_min_dlf[0];
+    target[1] = (uint8_t)dlf_bias_max_min_dlf[1];
+
+    return EB_ErrorNone;
+}
+
 static EbErrorType str_to_variance_md_bias_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
     double      variance_md_bias_thr;
     EbErrorType return_error;
@@ -2389,7 +2444,12 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_max_cdef);
     if (!strcmp(name, "cdef-bias-min-cdef"))
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_min_cdef);
-
+        
+    if (!strcmp(name, "dlf-bias-max-dlf"))
+        return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_max_dlf);
+    if (!strcmp(name, "dlf-bias-min-dlf"))
+        return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_min_dlf);
+    
     // custom value fields
     if (!strcmp(name, "variance-md-bias-thr"))
         return str_to_variance_md_bias_thr(value, config_struct);
@@ -2487,6 +2547,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
         {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
+        {"dlf-bias", &config_struct->dlf_bias},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"hbd-mds", &config_struct->hbd_mds},
@@ -2588,6 +2649,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"complex-hvs", &config_struct->complex_hvs},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
+        {"dlf-sharpness", &config_struct->dlf_sharpness},
     };
     const size_t int8_opts_size = sizeof(int8_opts) / sizeof(int8_opts[0]);
 

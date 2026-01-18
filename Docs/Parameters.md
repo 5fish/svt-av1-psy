@@ -124,26 +124,56 @@ If you want an even stronger dose using `--chroma-qmc-bias 1` (full), `--max-32-
 
 #### Features
 
-| `--chroma-qmc-bias` level | `1` (full) | `2` (light) |
-| :-- | :--: | :--: |
-| [rc] `--startup-mg-size` | ◯ | ✕ |
-| [rc] `chroma_qindex` bias | ◯ | ◯ |
-| [md] chroma complex hvs | ◯ | ◯ |
-| [md] `pred_mode` bias | ◯ | ✕ |
-| [md] `bsize` bias | ◯ | ✕ |
-| [cdef] `--cdef-bias 1` | ◯ | ◯ |
-| [cdef] distortion bias | ◯ | △ |
+| `--chroma-psy-bias` level | `1` | `2` & `3` | `4` & `5` | `6` & `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :-- |
+| [rc] `--startup-mg-size` | ✕ | ✕ | ✕ | ◯ | |
+| [rc] `chroma_qindex` bias | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--chroma-qm-min 10` | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] chroma complex hvs | ◯ | ◯ | ◯ | ◯ | |
+| [md] `pred_mode` bias | ✕ | ✕ | ✕ | ◯ | |
+| [md] `bsize` bias | ✕ | ✕ | ✕ | ◯ | |
+| [dlf] `--dlf-bias 1` | ✕ | ✕ | ◯ | ◯ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | |
+| [cdef] distortion bias | ✕ | △ | ◯ | ◯ | |
+
+### Lineart Global Bias
+
+#### Features
+
+| `--lineart-global-bias` level | `1` (aggressive) | `2` (typical) | Note |
+| :-- | :--: | :--: | :-- |
+| [global] `--chroma-qmc-bias 2` | ◯ | ◯ | Can be overwritten to `1` |
+| [pd] `--noise-level-thr 16000` | ◯ | ◯ | Can be overwritten |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | Can be overwritten |
+| [md] `--qm-min 8` | ◯ | ◯ | Can be overwritten |
+| [md] `--ac-bias 1.0` | ◯ | ◯ | Can be overwritten |
+| [md] `--complex-hvs -1` | ◯ | ◯ | Can be overwritten |
+| [md] `--variance-md-bias 1` | ◯ | ◯ | |
+| [md] `--variance-md-bias-thr` | `4.5` | Default | Can be overwritten |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | |
+| [dlf] `--dlf-sharpness 7` | ◯ | ✕ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | |
+| [md] SAD prediction |
+| [md] Full me candidate |
 
 ### Texture Preserving QMC Bias
 
-In addition to internal adjustments, `--texture-preserving-qmc-bias` also sets these parameters for you:  
-* `--balancing-q-bias 1`. Please note that `--balancing-q-bias 1` is not intended to be used with `--qp-scale-compress-strength`, so make sure you either don't set `--qp-scale-compress-strength`, or set `--qp-scale-compress-strength` to `0.0`. If you want to use `--qp-scale-compress-strength` instead, you can disable this by setting `--balancing-q-bias 0` explicitly.
-* `--balancing-r0-based-layer -3`. Can be overwritten.
-* `--balancing-r0-dampening-layer 1`. Can be overwritten.
+You can try out `--texture-preserving-qmc-bias` when texture preservation is your top priority. The effect of `--texture-preserving-qmc-bias 1` (full) is highly dependent on the source and could be a hit or miss, but `--texture-preserving-qmc-bias 2` (light) should be usable in a large range of sources.  
 
-You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but in case you want to still have it enabled to clean up some ringing, it also has a special protective CDEF mode. In additional to internal CDEF adjustments, these parameters are set for you:  
-* `--cdef-bias 1`.  
-* `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0`: The secondary CDEF filtering is disabled. You may still set primary CDEF filtering to any value you prefer.  
+You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but if you want to still have it enabled to clean up some ringing, `--texture-preserving-qmc-bias` has a protective CDEF mode biasing towards no CDEF.  
+
+#### Features
+
+| `--texture-preserving-qmc-bias` level | `1` (full) | `2` (light) | Note |
+| :-- | :--: | :--: | :-- |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | Can be overwritten |
+| [rc] `--balancing-r0-based-layer -3 --balancing-r0-dampening-layer 1` | ◯ | ✕ | Can be overwritten |
+| [md] `pred_mode` bias | ◯ | ✕ | |
+| [md] `bsize` bias | ◯ | ✕ | |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | |
+| [cdef] bias towards no CDEF | ◯ | ◯ | |
+| [cdef] `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0` | ◯ | ◯ | Only the secondary CDEF strength is disabled; You may still set primary CDEF strength to any value you prefer. |
 
 ## Rate Control Options
 
@@ -369,9 +399,13 @@ SvtAv1EncApp -i in.y4m -b out.ivf --roi-map-file roi_map.txt
 | **ResizeFrameDenoms**              | --frame-resz-denoms    | [8-16]           | 8             | Frame scale denominator in event, in a list separated by ',', only applicable for mode == 4                                                                             |
 | **CDEFBias**                       | --cdef-bias            | [0-1]            | 0             | Enable CDEF bias, which comes with a fix on CDEF signalling bits, SAD & MSE based distortion calculation, CDEF strength taper, and various other improvements.          |
 | **CDEFBiasMaxCDEF**                | --cdef-bias-max-cdef   | any string       | `4,1,2,0`     | Max CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`. |
-| **CDEFBiasMinCDEF**                | --cdef-bias-min-cdef   | any string       | `0,0,0,0`     | Min CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`. |
+| **CDEFBiasMinCDEF**                | --cdef-bias-min-cdef   | any string       | `0,0,0,0`     | Min CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`. CDEF strength of 0 will always be evaluated. |
 | **CDEFBiasMaxSecCDEFRel**          | --cdef-bias-max-sec-cdef-rel | [-12-4]    | 0             | Secondary CDEF strength of every filtering block should be smaller than or equal to primary CDEF strength plus this value.                                              |
 | **CDEFBiasDampingOffset**          | --cdef-bias-damping-offset | [-4-8]       | 0             | Use bigger or smaller CDEF damping. CDEF damping is a CDEF feature (not a `--cdef-bias` feature), normally derived from each frame's `base_q_idx`.                      |
+| **DLFBias**                        | --dlf-bias             | [0-1]            | 0             | Enable DLF bias, which comes with a new DLF search algorithm, DLF `--ac-bias`, and a limit on maxmimum and minimum DLF strength.                                        |
+| **DLFSharpness**                   | --dlf-sharpness        | [0-7]            | `--sharpness` | Use a different sharpness for DLF. This can be used without `--dlf-bias`. [default: same as `--sharpness`]                                                              |
+| **DLFBiasMaxDLF**                  | --dlf-bias-max-dlf     | any string       | `8,2`         | Max DLF strength for luma and chroma. DLF strength can be between 0 and 63.                                                                                             |
+| **DLFBiasMinDLF**                  | --dlf-bias-min-dlf     | any string       | `2,0`         | Min DLF strength for luma and chroma. DLF strength can be between 0 and 63. DLF strength 0 will not be considered if this is set higher than 0.                         |
 
 #### **Super-Resolution**
 
