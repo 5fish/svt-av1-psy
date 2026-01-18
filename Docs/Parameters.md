@@ -124,26 +124,56 @@ If you want an even stronger dose using `--chroma-qmc-bias 1` (full), `--max-32-
 
 #### Features
 
-| `--chroma-qmc-bias` level | `1` (full) | `2` (light) |
-| :-- | :--: | :--: |
-| [rc] `--startup-mg-size` | ◯ | ✕ |
-| [rc] `chroma_qindex` bias | ◯ | ◯ |
-| [md] chroma complex hvs | ◯ | ◯ |
-| [md] `pred_mode` bias | ◯ | ✕ |
-| [md] `bsize` bias | ◯ | ✕ |
-| [cdef] `--cdef-bias 1` | ◯ | ◯ |
-| [cdef] distortion bias | ◯ | △ |
+| `--chroma-psy-bias` level | `1` | `2` & `3` | `4` & `5` | `6` & `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :-- |
+| [rc] `--startup-mg-size` | ✕ | ✕ | ✕ | ◯ | |
+| [rc] `chroma_qindex` bias | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--chroma-qm-min 10` | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] chroma complex hvs | ◯ | ◯ | ◯ | ◯ | |
+| [md] `pred_mode` bias | ✕ | ✕ | ✕ | ◯ | |
+| [md] `bsize` bias | ✕ | ✕ | ✕ | ◯ | |
+| [dlf] `--dlf-bias 1` | ✕ | ✕ | ◯ | ◯ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | |
+| [cdef] distortion bias | ✕ | △ | ◯ | ◯ | |
+
+### Lineart Global Bias
+
+#### Features
+
+| `--lineart-global-bias` level | `1` (aggressive) | `2` (typical) | Note |
+| :-- | :--: | :--: | :-- |
+| [global] `--chroma-qmc-bias 2` | ◯ | ◯ | Can be overwritten to `1` |
+| [pd] `--noise-level-thr 16000` | ◯ | ◯ | Can be overwritten |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | Can be overwritten |
+| [md] `--qm-min 8` | ◯ | ◯ | Can be overwritten |
+| [md] `--ac-bias 1.0` | ◯ | ◯ | Can be overwritten |
+| [md] `--complex-hvs -1` | ◯ | ◯ | Can be overwritten |
+| [md] `--variance-md-bias 1` | ◯ | ◯ | |
+| [md] `--variance-md-bias-thr` | `4.5` | Default | Can be overwritten |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | |
+| [dlf] `--dlf-sharpness 7` | ◯ | ✕ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | |
+| [md] SAD prediction |
+| [md] Full me candidate |
 
 ### Texture Preserving QMC Bias
 
-In addition to internal adjustments, `--texture-preserving-qmc-bias` also sets these parameters for you:  
-* `--balancing-q-bias 1`. Please note that `--balancing-q-bias 1` is not intended to be used with `--qp-scale-compress-strength`, so make sure you either don't set `--qp-scale-compress-strength`, or set `--qp-scale-compress-strength` to `0.0`. If you want to use `--qp-scale-compress-strength` instead, you can disable this by setting `--balancing-q-bias 0` explicitly.
-* `--balancing-r0-based-layer -3`. Can be overwritten.
-* `--balancing-r0-dampening-layer 1`. Can be overwritten.
+You can try out `--texture-preserving-qmc-bias` when texture preservation is your top priority. The effect of `--texture-preserving-qmc-bias 1` (full) is highly dependent on the source and could be a hit or miss, but `--texture-preserving-qmc-bias 2` (light) should be usable in a large range of sources.  
 
-You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but in case you want to still have it enabled to clean up some ringing, it also has a special protective CDEF mode. In additional to internal CDEF adjustments, these parameters are set for you:  
-* `--cdef-bias 1`.  
-* `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0`: The secondary CDEF filtering is disabled. You may still set primary CDEF filtering to any value you prefer.  
+You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but if you want to still have it enabled to clean up some ringing, `--texture-preserving-qmc-bias` has a protective CDEF mode biasing towards no CDEF.  
+
+#### Features
+
+| `--texture-preserving-qmc-bias` level | `1` (full) | `2` (light) | Note |
+| :-- | :--: | :--: | :-- |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | Can be overwritten |
+| [rc] `--balancing-r0-based-layer -3 --balancing-r0-dampening-layer 1` | ◯ | ✕ | Can be overwritten |
+| [md] `pred_mode` bias | ◯ | ✕ | |
+| [md] `bsize` bias | ◯ | ✕ | |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | |
+| [cdef] bias towards no CDEF | ◯ | ◯ | |
+| [cdef] `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0` | ◯ | ◯ | Only the secondary CDEF strength is disabled; You may still set primary CDEF strength to any value you prefer. |
 
 ## Rate Control Options
 
