@@ -4443,7 +4443,8 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->static_config.resize_mode > RESIZE_NONE ||
         scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B ||
         (scs->input_resolution == INPUT_SIZE_240p_RANGE) ||
-        scs->static_config.enable_variance_boost)
+        scs->static_config.enable_variance_boost ||
+        scs->static_config.balancing_q_bias)
         scs->super_block_size = 64;
     else
         if (scs->static_config.enc_mode <= ENC_M1)
