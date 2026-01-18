@@ -776,12 +776,12 @@ static int noise_level_q_bias_core(PictureControlSet *pcs, SequenceControlSet *s
     const int lower_thr = pcs->ppcs->noise_level_thr + (pcs->ppcs->noise_level_thr >> 4); // 1.0625 (~15938)
     // upper_thr 2.0625 (~30938)
 
-    if (scs->static_config.noise_level_q_bias && pcs->ppcs->noise_level_thr) {
+    if (scs->static_config.noise_level_q_bias != 1.0 && pcs->ppcs->noise_level_thr) {
         double qstep_ratio = CLIP3(0.0, 1.0, (double)(pcs->ppcs->noise_level - lower_thr) / pcs->ppcs->noise_level_thr);
-        if (scs->static_config.noise_level_q_bias > 0)
-            qstep_ratio = (qstep_ratio - 1.0) * scs->static_config.noise_level_q_bias + 1.0;
+        if (scs->static_config.noise_level_q_bias > 1.0)
+            qstep_ratio = (qstep_ratio - 1.0) * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
         else // < 0
-            qstep_ratio = qstep_ratio * scs->static_config.noise_level_q_bias + 1.0;
+            qstep_ratio = qstep_ratio * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
 
         qindex = svt_av1_get_q_index_from_qstep_ratio(qindex, qstep_ratio, scs->static_config.encoder_bit_depth);
 
