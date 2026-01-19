@@ -2724,7 +2724,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[0].enable_8x8_pred = 1;
+        scs->tf_params_per_type[0].enable_8x8_pred = 0; // `--lineart-psy-bias` or `--texture-psy-bias`
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -2748,7 +2748,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[1].eight_pel_mode = 1;
         scs->tf_params_per_type[1].chroma_lvl = 1;
         scs->tf_params_per_type[1].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[1].enable_8x8_pred = 1;
+        scs->tf_params_per_type[1].enable_8x8_pred = 0; // `--lineart-psy-bias` or `--texture-psy-bias`
         scs->tf_params_per_type[1].sub_sampling_shift = 0;
         scs->tf_params_per_type[1].avoid_2d_qpel = 0;
         scs->tf_params_per_type[1].use_2tap = 0;
@@ -2772,7 +2772,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[2].eight_pel_mode = 1;
         scs->tf_params_per_type[2].chroma_lvl = 1;
         scs->tf_params_per_type[2].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[2].enable_8x8_pred = 1;
+        scs->tf_params_per_type[2].enable_8x8_pred = 0; // `--lineart-psy-bias` or `--texture-psy-bias`
         scs->tf_params_per_type[2].sub_sampling_shift = 0;
         scs->tf_params_per_type[2].avoid_2d_qpel = 0;
         scs->tf_params_per_type[2].use_2tap = 0;

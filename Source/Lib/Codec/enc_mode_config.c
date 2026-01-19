@@ -8588,7 +8588,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     } else if (enc_mode <= ENC_M0)
         pcs->cand_reduction_level = 0;
     else if (enc_mode <= ENC_M2)
-        pcs->cand_reduction_level = is_base ? 0 : 1;
+        pcs->cand_reduction_level = is_base || true ? 0 : 1; // XXX `--lineart-psy-bias`
     else if (enc_mode <= ENC_M4) {
         pcs->cand_reduction_level = 1;
     } else if (enc_mode <= ENC_M7) {
