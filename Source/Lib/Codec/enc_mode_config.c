@@ -8119,7 +8119,7 @@ uint8_t svt_aom_get_update_cdf_level(EncMode enc_mode, SliceType is_islice, uint
 
 uint8_t svt_aom_get_chroma_level(EncMode enc_mode) {
     uint8_t chroma_level = 0;
-    if (enc_mode <= ENC_MR)
+    if (enc_mode <= ENC_MR || true) // `--chroma-psy-bias`
         chroma_level = 1;
     else if (enc_mode <= ENC_M9)
         chroma_level = 4;

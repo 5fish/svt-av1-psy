@@ -1756,6 +1756,37 @@ static EbErrorType parse_list_u64(const char *nptr, uint64_t *list, size_t n) {
     return EB_ErrorNone;
 }
 
+// NAN on the remaining part of the list if the input is shorter than n
+static EbErrorType parse_list_double(const char *nptr, double *list, size_t n) {
+    const char *ptr = nptr;
+    char       *endptr;
+    size_t      i = 0;
+    for (size_t j = 0; j < n; ++j)
+        list[j] = NAN;
+
+    while (*ptr) {
+        if (*ptr == '[' || *ptr == ']') {
+            ptr++;
+            continue;
+        }
+
+        double      rawval;
+        EbErrorType err = str_to_int(ptr, &rawval, &endptr);
+        if (err != EB_ErrorNone)
+            return err;
+        if (i >= n) {
+            return EB_ErrorBadParameter;
+        } else if (*endptr == ',' || *endptr == ']') {
+            endptr++;
+        } else if (*endptr) {
+            return EB_ErrorBadParameter;
+        }
+        list[i++] = rawval;
+        ptr       = endptr;
+    }
+    return EB_ErrorNone;
+}
+
 static uint32_t count_params(const char *nptr) {
     const char *ptr = nptr;
     char       *endptr;
@@ -2333,20 +2364,41 @@ static EbErrorType str_to_dlf_bias_max_min_dlf(const char *nptr, uint8_t *target
     return EB_ErrorNone;
 }
 
-static EbErrorType str_to_variance_md_bias_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
-    double      variance_md_bias_thr;
+static EbErrorType str_to_main_variance_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    double parsed_thr[2];
     EbErrorType return_error;
 
-    return_error = str_to_double(nptr, &variance_md_bias_thr, NULL);
+    return_error = parse_list_double(nptr, &parsed_thr, 2);
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (variance_md_bias_thr < 0 || variance_md_bias_thr > 16)
+    if isnan(parsed_thr[1])
+        parsed_thr[1] = parsed_thr[0];
+    if (!(parsed_thr[0] >= 0 && parsed_thr[0] <= 16) ||
+        !(parsed_thr[1] >= 0 && parsed_thr[1] <= 16))
         return EB_ErrorBadParameter;
 
-    config_struct->variance_md_bias_thr = (uint16_t)(pow(2, variance_md_bias_thr)) - 1;
+    config_struct->lineart_variance_thr = (uint16_t)(pow(2, parsed_thr[0])) - 1;
+    config_struct->texture_variance_thr = (uint16_t)(pow(2, parsed_thr[1])) - 1;
 
     return EB_ErrorNone;
+}
+
+static EbErrorType str_to_lineart_psy_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    EbErrorType return_error;
+
+    return_error = str_to_double(nptr, &config_struct->lineart_psy_bias, NULL);
+
+    if (return_error == EB_ErrorBadParameter)
+        if (!strcmp(nptr, "Kumiko") ||
+            !strcmp(nptr, "kumiko")) {
+            config_struct->lineart_psy_bias = 6;
+            config_struct->lineart_psy_bias_easter_egg = 1;
+        }
+        else
+            return EB_ErrorBadParameter;
+
+    return return_error;
 }
 
 static EbErrorType str_to_balancing_luminance_q_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
@@ -2357,7 +2409,7 @@ static EbErrorType str_to_balancing_luminance_q_bias(const char *nptr, EbSvtAv1E
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (balancing_luminance_q_bias < 0 || balancing_luminance_q_bias > 25.001)
+    if (!(balancing_luminance_q_bias >= 0 && balancing_luminance_q_bias <= 25))
         return EB_ErrorBadParameter;
 
     config_struct->balancing_luminance_q_bias = rint(balancing_luminance_q_bias * 10);
@@ -2475,8 +2527,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_min_dlf);
     
     // custom value fields
-    if (!strcmp(name, "variance-md-bias-thr"))
+    if (!strcmp(name, "main-variance-thr"))
         return str_to_variance_md_bias_thr(value, config_struct);
+    if (!strcmp(name, "lineart-psy-bias"))
+        return str_to_lineart_psy_bias(value, config_struct);
 
     if (!strcmp(name, "balancing-luminance-q-bias"))
         return str_to_balancing_luminance_q_bias(value, config_struct);
@@ -2558,9 +2612,6 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"tx-bias", &config_struct->tx_bias},
-        {"variance-md-bias", &config_struct->variance_md_bias},
-        {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
-        {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
         {"dlf-bias", &config_struct->dlf_bias},
         {"fast-decode", &config_struct->fast_decode},
@@ -2608,7 +2659,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } double_opts[] = {
         {"qp-scale-compress-strength", &config_struct->qp_scale_compress_strength},
         {"ac-bias", &config_struct->ac_bias},
+        {"variance-ac-bias-bias", &config_struct->variance_ac_bias_bias},
         {"noise-level-q-bias", &config_struct->noise_level_q_bias},
+        {"chroma-psy-bias", &config_struct->chroma_psy_bias},
+        {"texture-psy-bias", &config_struct->texture_psy_bias}
     };
     const size_t double_opts_size = sizeof(double_opts) / sizeof(double_opts[0]);
 

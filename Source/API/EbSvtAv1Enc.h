@@ -1095,33 +1095,23 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief Bias prediction mode, skip, and block size based on variance
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
-     */
-    uint8_t variance_md_bias;
-    /**
-     * @brief Bias prediction mode, skip, and block size based on variance
      * Calculated from `--variance-md-bias-thr` commandline parameter via `pow(2, "variance-md-bias-thr") - 1`.
      */
-    uint16_t variance_md_bias_thr;
+    uint16_t lineart_variance_thr;
+    uint16_t texture_variance_thr;
 
     /**
-     * @brief Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision
-     * 0: disabled
-     * 1: full
-     * 2: light
-     * Default is 0.
+     * @brief The three main `-psy-bias`s. Enables a wide range of features.
+     * Min value is 0
+     * Max value is 7
      */
-    uint8_t chroma_qmc_bias;
-
+    double chroma_psy_bias;
+    double lineart_psy_bias;
+    double texture_psy_bias;
     /**
-     * @brief Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
+     * @brief Easter egg for `--lineart-psy-bias Kumiko`
      */
-    uint8_t texture_preserving_qmc_bias;
+    int8_t lineart_psy_bias_easter_egg;
 
     /**
      * @brief Enable CDEF bias
