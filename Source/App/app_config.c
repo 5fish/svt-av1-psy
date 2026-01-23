@@ -2143,7 +2143,7 @@ int get_version(int argc, char *argv[]) {
 #endif
     if (find_token(argc, argv, VERSION_TOKEN, NULL))
         return 0;
-    printf("SVT-AV1-PSY [5fish:main] %s (%s)\n", svt_av1_get_version(), debug_build ? "release" : "debug");
+    printf("SVT-AV1-PSY [5fish:exp] %s (%s)\n", svt_av1_get_version(), debug_build ? "release" : "debug");
 #if defined(_WIN64) || defined(_MSC_VER) || defined(_WIN32)
     printf("PSY Release: %s\n", svt_psy_get_version());
 #else
