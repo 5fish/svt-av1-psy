@@ -1,5 +1,5 @@
 Experimental additions currently available on `exp`:
-- *none*
+- `--chroma-grain`
 
 Please see [Parameters](Docs/Parameters.md), or their respective commits, for further details on functionality.
 

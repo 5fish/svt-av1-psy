@@ -230,6 +230,7 @@
 #define ALT_SSIM_TUNING_TOKEN "--alt-ssim-tuning"
 #define FILTERING_NOISE_DETECTION_TOKEN "--filtering-noise-detection"
 #define AUTO_TILING_TOKEN "--auto-tiling"
+#define CHROMA_GRAIN_TOKEN "--chroma-grain"
 
 static EbErrorType validate_error(EbErrorType err, const char *token, const char *value) {
     switch (err) {
@@ -1370,6 +1371,10 @@ ConfigEntry config_entry_psy[] = {
      FILTERING_NOISE_DETECTION_TOKEN,
      "[PSY] Control noise detection for CDEF/restoration filtering, default is 0 [0: default tune behavior, 1: on, 2: off, 3: on (CDEF only), 4: on (restoration only)]",
      set_cfg_generic_token},
+    {SINGLE_INPUT,
+     CHROMA_GRAIN_TOKEN,
+     "[EXP] Control whether chroma grain is applied when using film grain, default is 1 [0-1]",
+     set_cfg_generic_token},
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};
 
@@ -1613,6 +1618,9 @@ ConfigEntry config_entry[] = {
 
     // Auto Tiling
     {SINGLE_INPUT, AUTO_TILING_TOKEN, "AutoTiling", set_cfg_generic_token},
+
+    // Chroma grain
+    {SINGLE_INPUT, CHROMA_GRAIN_TOKEN, "ChromaGrain", set_cfg_generic_token},
 
     // Termination
     {SINGLE_INPUT, NULL, NULL, NULL}};

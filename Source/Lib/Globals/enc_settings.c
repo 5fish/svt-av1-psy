@@ -1141,6 +1141,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->alt_ssim_tuning                   = FALSE;
     config_ptr->filtering_noise_detection         = 0;
     config_ptr->auto_tiling                       = FALSE;
+    config_ptr->chroma_grain                      = TRUE;
     return return_error;
 }
 
@@ -1358,6 +1359,9 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
             default:
                 break;
         }
+        
+        if (config->chroma_grain == 0)
+            SVT_INFO("SVT [config]: chroma grain \t\t\t\t\t\t\t: disabled\n");
     }
 #ifdef DEBUG_BUFFERS
     SVT_INFO("SVT [config]: INPUT / OUTPUT \t\t\t\t\t\t\t: %d / %d\n",
@@ -2401,6 +2405,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"sharp-tx", &config_struct->sharp_tx},
         {"alt-ssim-tuning", &config_struct->alt_ssim_tuning},
         {"auto-tiling", &config_struct->auto_tiling},
+        {"chroma-grain", &config_struct->chroma_grain},
     };
     const size_t bool_opts_size = sizeof(bool_opts) / sizeof(bool_opts[0]);
 
