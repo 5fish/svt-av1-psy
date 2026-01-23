@@ -1240,6 +1240,7 @@ typedef struct PictureControlSetInitData {
     Bool    alt_ssim_tuning;
     Bool    auto_tiling;
     Bool    chroma_grain;
+    Bool    alt_tf_decay;
 } PictureControlSetInitData;
 
 typedef struct Av1Comp {

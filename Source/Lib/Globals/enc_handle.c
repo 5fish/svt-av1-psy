@@ -1554,6 +1554,7 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.alt_ssim_tuning = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.alt_ssim_tuning;
         input_data.auto_tiling = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.auto_tiling;
         input_data.chroma_grain = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.chroma_grain;
+        input_data.alt_tf_decay = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.alt_tf_decay;
         input_data.static_config = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config;
 
         EB_NEW(
@@ -4732,6 +4733,9 @@ static void copy_api_from_app(
 
     // Chroma grain
     scs->static_config.chroma_grain = config_struct->chroma_grain;
+
+    // Alt TF decay
+    scs->static_config.alt_tf_decay = config_struct->alt_tf_decay;
 
     // Override settings for Still Picture tune
     if (scs->static_config.tune == 4) {

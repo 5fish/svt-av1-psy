@@ -1,5 +1,6 @@
 Experimental additions currently available on `exp`:
 - `--chroma-grain`
+- `--alt-tf-decay`
 
 Please see [Parameters](Docs/Parameters.md), or their respective commits, for further details on functionality.
 
