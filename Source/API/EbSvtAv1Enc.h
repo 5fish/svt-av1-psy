@@ -1146,10 +1146,18 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     Bool chroma_grain;
 
+    /**
+     * @brief Apply Tune 0/3 alt-ref TF decay tweak to any tune
+     * 0: off
+     * 1: on
+     * Default is 0.
+     */
+    Bool alt_tf_decay;
+
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 14 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - sizeof(Bool)];
+                    - 2 * sizeof(Bool)];
 
 } EbSvtAv1EncConfiguration;
 
