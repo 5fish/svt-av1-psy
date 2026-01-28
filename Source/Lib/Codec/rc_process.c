@@ -3480,7 +3480,7 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                         chroma_qindex -= CLIP3(0, 16, (chroma_qindex_adjustment / 2) - 8);
                     }
 
-                    chroma_qindex += scs->static_config.extended_crf_qindex_offset;
+                    // chroma_qindex += scs->static_config.extended_crf_qindex_offset;
                     chroma_qindex = CLIP3(quantizer_to_qindex[scs->static_config.min_qp_allowed],
                                           quantizer_to_qindex[scs->static_config.max_qp_allowed],
                                           chroma_qindex);
