@@ -3995,7 +3995,7 @@ static void set_param_based_on_input(SequenceControlSet *scs)
 
     if (scs->static_config.balancing_luminance_q_bias == UINT8_MAX) {
         if (scs->static_config.balancing_q_bias)
-            scs->static_config.balancing_luminance_q_bias = 40;
+            scs->static_config.balancing_luminance_q_bias = 80;
         else
             scs->static_config.balancing_luminance_q_bias = 0;
     }
