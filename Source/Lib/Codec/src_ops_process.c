@@ -1651,7 +1651,7 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
     const uint32_t picture_sb_height = (uint32_t)((pcs->aligned_height + scs->sb_size - 1) / scs->sb_size);
     const int32_t  mi_high           = sb_mi_sz; // sb size in 4x4 units
     const int32_t  mi_wide           = sb_mi_sz;
-    const int32_t  balancing_luminance_q_bias_base = CLIP3(0x50, 0x80, pcs->avg_luma);
+    const int32_t  balancing_luminance_q_bias_base = CLIP3(0x50, 0x70, pcs->avg_luma);
     int64_t        balancing_luminance_q_bias;
     for (uint32_t sb_y = 0; sb_y < picture_sb_height; ++sb_y) {
         for (uint32_t sb_x = 0; sb_x < picture_sb_width; ++sb_x) {
