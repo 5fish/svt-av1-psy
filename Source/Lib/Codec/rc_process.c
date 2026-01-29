@@ -1702,18 +1702,29 @@ void normalize_sb_delta_q(PictureControlSet *pcs) {
     // delta q overhead becomes proportionally bigger the higher the qindex,
     // and qstep jumps between qindexes become bigger the lower the qindex
     // so dynamically increase delta_q_res granularity as qindex decreases
-    if (qindex >= 160) {
-        delta_q_res = 8;
-    } else if (qindex >= 120) {
-        delta_q_res = 4;
-    } else if (qindex >= 80) {
-        delta_q_res = 2;
-    } else {
-        // low qindex, nothing to normalize (leave delta_q_res = 1)
+    if (scs->static_config.enable_variance_boost) {
+        if (qindex >= 160) {
+            delta_q_res = 8;
+        } else if (qindex >= 120) {
+            delta_q_res = 4;
+        } else if (qindex >= 80) {
+            delta_q_res = 2;
+        } else {
+            // low qindex, nothing to normalize (leave delta_q_res = 1)
 #if DEBUG_VAR_BOOST_STATS
-        printf("Frame %llu, temp. level %i, keep delta_q_res = 1\n", pcs->picture_number, pcs->temporal_layer_index);
+            printf("Frame %llu, temp. level %i, keep delta_q_res = 1\n", pcs->picture_number, pcs->temporal_layer_index);
 #endif
-        return;
+            return;
+        }
+    }
+    else { // `--balancing-q-bias 1 --enable-variance-boost 0`
+        if (pcs->temporal_layer_index <= pcs->ppcs->hierarchical_levels - (int32_t)scs->static_config.hierarchical_levels)
+            if (qindex >= 60)
+                delta_q_res = 4;
+            else
+                delta_q_res = 2;
+        else
+            return;
     }
 
     assert(delta_q_res == 2 || delta_q_res == 4 || delta_q_res == 8);
@@ -3721,7 +3732,8 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                 lowq_taper(pcs);
             }
 
-            if (scs->static_config.enable_variance_boost && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
+            if ((scs->static_config.enable_variance_boost ||
+                 scs->static_config.balancing_q_bias) && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
             {
                 // adjust delta q res and normalize superblock delta q values to reduce signaling overhead
                 normalize_sb_delta_q(pcs);
