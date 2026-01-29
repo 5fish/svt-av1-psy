@@ -979,7 +979,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: cdef-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-
     if (config->cdef_level != 0 && config->cdef_bias) {
         if (config->cdef_bias_max_cdef[0] >> 2 << 2 < config->cdef_bias_min_cdef[0] ||
             config->cdef_bias_max_cdef[2] >> 2 << 2 < config->cdef_bias_min_cdef[2]) {
@@ -1008,6 +1007,24 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
             return_error = EB_ErrorBadParameter;
         }
     }
+
+    if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
+        config->dlf_sharpness != DEFAULT) {
+        SVT_ERROR("Instance %u: dlf-sharpness must be between 0 and 7\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias > 1) {
+        SVT_ERROR("Instance %u: dlf-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias) {
+        if (config->dlf_bias_max_dlf[0] < config->dlf_bias_min_dlf[0] ||
+            config->dlf_bias_max_dlf[1] < config->dlf_bias_min_dlf[1]) {
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf must be greater than or equal to dlf-bias-min-dlf\n", channel_number + 1);
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n", channel_number + 1);
+            return_error = EB_ErrorBadParameter;
+        }
+    }
     
     if ((config->balancing_q_bias < 0 || config->balancing_q_bias > 1) &&
         config->balancing_q_bias != DEFAULT) {
@@ -1026,8 +1043,8 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->noise_level_q_bias < -1/3 || config->noise_level_q_bias > 0.5) {
-        SVT_ERROR("Instance %u: noise-level-thr must be between -0.33 and 0.5\n", channel_number + 1);
+    if (config->noise_level_q_bias < (double)2/3 || config->noise_level_q_bias > 1.5) {
+        SVT_ERROR("Instance %u: noise-level-q-bias must be between 0.67 and 1.50\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1230,11 +1247,17 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->cdef_bias_min_cdef[3]             = 0;
     config_ptr->cdef_bias_max_sec_cdef_rel        = 0;
     config_ptr->cdef_bias_damping_offset          = 0;
+    config_ptr->dlf_bias                          = 0;
+    config_ptr->dlf_sharpness                     = DEFAULT;
+    config_ptr->dlf_bias_max_dlf[0]               = 8;
+    config_ptr->dlf_bias_max_dlf[1]               = 2;
+    config_ptr->dlf_bias_min_dlf[0]               = 2;
+    config_ptr->dlf_bias_min_dlf[1]               = 0;
     config_ptr->balancing_q_bias                  = DEFAULT;
     config_ptr->balancing_r0_based_layer          = INT8_MAX; // DEFAULT
     config_ptr->balancing_r0_dampening_layer      = INT8_MAX; // DEFAULT
     config_ptr->balancing_luminance_q_bias        = UINT8_MAX; // DEFAULT
-    config_ptr->noise_level_q_bias                = 0.0;
+    config_ptr->noise_level_q_bias                = 1.0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
     config_ptr->complex_hvs                       = 0;
@@ -1493,6 +1516,14 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->filtering_noise_detection == 3 ? "on (CDEF only)" :
                                                               "on (restoration only)");
 
+        if (config->dlf_bias)
+            SVT_INFO("SVT [config]: DLF bias - DLF sharpness / max / min strength \t\t\t: %d / %d %d / %d %d\n",
+                     config->dlf_sharpness,
+                     config->dlf_bias_max_dlf[0],
+                     config->dlf_bias_max_dlf[1],
+                     config->dlf_bias_min_dlf[0],
+                     config->dlf_bias_min_dlf[1]);
+
         // QMC
         if (config->texture_preserving_qmc_bias && config->chroma_qmc_bias)
             SVT_INFO("SVT [config]: texture preserving QMC bias - threshold / chroma QMC bias \t: %d / %s\n",
@@ -1710,6 +1741,37 @@ static EbErrorType parse_list_u64(const char *nptr, uint64_t *list, size_t n) {
 
         uint64_t    rawval;
         EbErrorType err = str_to_uint64(ptr, &rawval, &endptr);
+        if (err != EB_ErrorNone)
+            return err;
+        if (i >= n) {
+            return EB_ErrorBadParameter;
+        } else if (*endptr == ',' || *endptr == ']') {
+            endptr++;
+        } else if (*endptr) {
+            return EB_ErrorBadParameter;
+        }
+        list[i++] = rawval;
+        ptr       = endptr;
+    }
+    return EB_ErrorNone;
+}
+
+// NAN on the remaining part of the list if the input is shorter than n
+static EbErrorType parse_list_double(const char *nptr, double *list, size_t n) {
+    const char *ptr = nptr;
+    char       *endptr;
+    size_t      i = 0;
+    for (size_t j = 0; j < n; ++j)
+        list[j] = NAN;
+
+    while (*ptr) {
+        if (*ptr == '[' || *ptr == ']') {
+            ptr++;
+            continue;
+        }
+
+        double      rawval;
+        EbErrorType err = str_to_int(ptr, &rawval, &endptr);
         if (err != EB_ErrorNone)
             return err;
         if (i >= n) {
@@ -2278,20 +2340,65 @@ static EbErrorType str_to_cdef_bias_max_min_cdef(const char *nptr, uint8_t *targ
     return EB_ErrorNone;
 }
 
-static EbErrorType str_to_variance_md_bias_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
-    double      variance_md_bias_thr;
+static EbErrorType str_to_dlf_bias_max_min_dlf(const char *nptr, uint8_t *target) {
+    uint32_t    dlf_bias_max_min_dlf[2];
     EbErrorType return_error;
 
-    return_error = str_to_double(nptr, &variance_md_bias_thr, NULL);
+    return_error = parse_list_u32(nptr, dlf_bias_max_min_dlf, 2);
+
+    if (return_error == EB_ErrorBadParameter) {
+        SVT_ERROR("dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n");
+        return return_error;
+    }
+
+    if (dlf_bias_max_min_dlf[0] < 0 || dlf_bias_max_min_dlf[1] > MAX_LOOP_FILTER ||
+        dlf_bias_max_min_dlf[1] < 0 || dlf_bias_max_min_dlf[1] > MAX_LOOP_FILTER) {
+        SVT_ERROR("DLF strength must be between 0 and %u\n", MAX_LOOP_FILTER);
+        SVT_ERROR("dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n");
+        return EB_ErrorBadParameter;
+    }
+
+    target[0] = (uint8_t)dlf_bias_max_min_dlf[0];
+    target[1] = (uint8_t)dlf_bias_max_min_dlf[1];
+
+    return EB_ErrorNone;
+}
+
+static EbErrorType str_to_main_variance_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    double parsed_thr[2];
+    EbErrorType return_error;
+
+    return_error = parse_list_double(nptr, &parsed_thr, 2);
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (variance_md_bias_thr < 0 || variance_md_bias_thr > 16)
+    if isnan(parsed_thr[1])
+        parsed_thr[1] = parsed_thr[0];
+    if (!(parsed_thr[0] >= 0 && parsed_thr[0] <= 16) ||
+        !(parsed_thr[1] >= 0 && parsed_thr[1] <= 16))
         return EB_ErrorBadParameter;
 
-    config_struct->variance_md_bias_thr = (uint16_t)(pow(2, variance_md_bias_thr)) - 1;
+    config_struct->lineart_variance_thr = (uint16_t)(pow(2, parsed_thr[0])) - 1;
+    config_struct->texture_variance_thr = (uint16_t)(pow(2, parsed_thr[1])) - 1;
 
     return EB_ErrorNone;
+}
+
+static EbErrorType str_to_lineart_psy_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    EbErrorType return_error;
+
+    return_error = str_to_double(nptr, &config_struct->lineart_psy_bias, NULL);
+
+    if (return_error == EB_ErrorBadParameter)
+        if (!strcmp(nptr, "Kumiko") ||
+            !strcmp(nptr, "kumiko")) {
+            config_struct->lineart_psy_bias = 6;
+            config_struct->lineart_psy_bias_easter_egg = 1;
+        }
+        else
+            return EB_ErrorBadParameter;
+
+    return return_error;
 }
 
 static EbErrorType str_to_balancing_luminance_q_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
@@ -2302,7 +2409,7 @@ static EbErrorType str_to_balancing_luminance_q_bias(const char *nptr, EbSvtAv1E
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (balancing_luminance_q_bias < 0 || balancing_luminance_q_bias > 25.001)
+    if (!(balancing_luminance_q_bias >= 0 && balancing_luminance_q_bias <= 25))
         return EB_ErrorBadParameter;
 
     config_struct->balancing_luminance_q_bias = rint(balancing_luminance_q_bias * 10);
@@ -2413,10 +2520,17 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_max_cdef);
     if (!strcmp(name, "cdef-bias-min-cdef"))
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_min_cdef);
-
+        
+    if (!strcmp(name, "dlf-bias-max-dlf"))
+        return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_max_dlf);
+    if (!strcmp(name, "dlf-bias-min-dlf"))
+        return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_min_dlf);
+    
     // custom value fields
-    if (!strcmp(name, "variance-md-bias-thr"))
+    if (!strcmp(name, "main-variance-thr"))
         return str_to_variance_md_bias_thr(value, config_struct);
+    if (!strcmp(name, "lineart-psy-bias"))
+        return str_to_lineart_psy_bias(value, config_struct);
 
     if (!strcmp(name, "balancing-luminance-q-bias"))
         return str_to_balancing_luminance_q_bias(value, config_struct);
@@ -2498,10 +2612,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"tx-bias", &config_struct->tx_bias},
-        {"variance-md-bias", &config_struct->variance_md_bias},
-        {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
-        {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
+        {"dlf-bias", &config_struct->dlf_bias},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"hbd-mds", &config_struct->hbd_mds},
@@ -2547,7 +2659,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } double_opts[] = {
         {"qp-scale-compress-strength", &config_struct->qp_scale_compress_strength},
         {"ac-bias", &config_struct->ac_bias},
+        {"variance-ac-bias-bias", &config_struct->variance_ac_bias_bias},
         {"noise-level-q-bias", &config_struct->noise_level_q_bias},
+        {"chroma-psy-bias", &config_struct->chroma_psy_bias},
+        {"texture-psy-bias", &config_struct->texture_psy_bias}
     };
     const size_t double_opts_size = sizeof(double_opts) / sizeof(double_opts[0]);
 
@@ -2602,6 +2717,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"complex-hvs", &config_struct->complex_hvs},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
+        {"dlf-sharpness", &config_struct->dlf_sharpness},
     };
     const size_t int8_opts_size = sizeof(int8_opts) / sizeof(int8_opts[0]);
 

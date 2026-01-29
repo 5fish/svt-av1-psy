@@ -1095,33 +1095,23 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief Bias prediction mode, skip, and block size based on variance
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
-     */
-    uint8_t variance_md_bias;
-    /**
-     * @brief Bias prediction mode, skip, and block size based on variance
      * Calculated from `--variance-md-bias-thr` commandline parameter via `pow(2, "variance-md-bias-thr") - 1`.
      */
-    uint16_t variance_md_bias_thr;
+    uint16_t lineart_variance_thr;
+    uint16_t texture_variance_thr;
 
     /**
-     * @brief Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision
-     * 0: disabled
-     * 1: full
-     * 2: light
-     * Default is 0.
+     * @brief The three main `-psy-bias`s. Enables a wide range of features.
+     * Min value is 0
+     * Max value is 7
      */
-    uint8_t chroma_qmc_bias;
-
+    double chroma_psy_bias;
+    double lineart_psy_bias;
+    double texture_psy_bias;
     /**
-     * @brief Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
+     * @brief Easter egg for `--lineart-psy-bias Kumiko`
      */
-    uint8_t texture_preserving_qmc_bias;
+    int8_t lineart_psy_bias_easter_egg;
 
     /**
      * @brief Enable CDEF bias
@@ -1153,6 +1143,28 @@ typedef struct EbSvtAv1EncConfiguration {
     int8_t cdef_bias_damping_offset;
 
     /**
+     * @brief Enable DLF bias
+     * 0: disabled
+     * 1: enabled
+     * Default is 0
+     */
+    uint8_t dlf_bias;
+    /**
+     * @brief Sharpness for DLF
+     * Min value is 0
+     * Max value is 7
+     */
+    int8_t dlf_sharpness;
+    /**
+     * @brief Max DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_max_dlf[2];
+    /**
+     * @brief Min DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_min_dlf[2];
+
+    /**
      * @brief Enable balancing Q bias
      * 0: disabled
      * 1: enabled
@@ -1181,11 +1193,11 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief noise level Q bias
-     * Max value: 0.5
-     * Min value: -0.33
-     * Positive: boost frames with low noise
-     * Negative: dampen frames with low noise
-     * Default is 0.0
+     * Max value: 1.5
+     * Min value: 0.67
+     * >1: boost frames with low noise
+     * <1: dampen frames with low noise
+     * Default is 1.0
      */
     double noise_level_q_bias;
 
@@ -1263,7 +1275,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 13 * sizeof(uint8_t) - 5 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    - 2 * sizeof(Bool) - 16 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

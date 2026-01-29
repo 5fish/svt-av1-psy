@@ -34,6 +34,7 @@
 #include "mcomp.h"
 #include "ac_bias.h"
 #include "src_ops_process.h"
+#include "segmentation.h"
 #define INC_MD_CAND_CNT(cnt, max_can_count)                  \
     MULTI_LINE_MACRO_BEGIN                                   \
     if (cnt + 1 < max_can_count)                             \
@@ -183,6 +184,12 @@ MotionMode svt_aom_obmc_motion_mode_allowed(
     const PictureControlSet *pcs, struct ModeDecisionContext *ctx, const BlockSize bsize,
     uint8_t          situation, // 0: candidate(s) preparation, 1: data preparation, 2: simple translation face-off
     MvReferenceFrame rf0, MvReferenceFrame rf1, PredictionMode mode) {
+    const uint16_t variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
+    const uint16_t main_thr = pcs->scs->static_config.variance_md_bias_thr;
+    if (pcs->scs->static_config.variance_md_bias &&
+        variance < AOMMAX(main_thr >> 2, 8)) // `lineart-psy-bias` & `--texture-psy-bias` ; obmc in general is good for lineart but bad for texture especially noisy texture
+        return SIMPLE_TRANSLATION;
+
     if (ctx->obmc_ctrls.trans_face_off && !situation)
         return SIMPLE_TRANSLATION;
     // check if should cap the max block size for obmc

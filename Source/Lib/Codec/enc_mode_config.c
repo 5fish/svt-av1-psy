@@ -8119,7 +8119,7 @@ uint8_t svt_aom_get_update_cdf_level(EncMode enc_mode, SliceType is_islice, uint
 
 uint8_t svt_aom_get_chroma_level(EncMode enc_mode) {
     uint8_t chroma_level = 0;
-    if (enc_mode <= ENC_MR)
+    if (enc_mode <= ENC_MR || true) // `--chroma-psy-bias`
         chroma_level = 1;
     else if (enc_mode <= ENC_M9)
         chroma_level = 4;
@@ -8385,7 +8385,7 @@ uint8_t svt_aom_get_inter_intra_level(EncMode enc_mode, uint8_t is_base, uint8_t
 
 uint8_t svt_aom_get_obmc_level(EncMode enc_mode, uint32_t qp, uint8_t is_base, uint8_t seq_qp_mod) {
     uint8_t obmc_level = 0;
-    if (enc_mode <= ENC_M0)
+    if (enc_mode <= ENC_M2) // Originally ENC_M0 ; `--lineart-psy-bias`
         obmc_level = 1;
     else if (enc_mode <= ENC_M4)
         obmc_level = 3;
@@ -8546,7 +8546,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     frm_hdr->allow_warped_motion = enable_wm &&
         !(frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME) &&
         !frm_hdr->error_resilient_mode && !pcs->ppcs->frame_superres_enabled &&
-        scs->static_config.resize_mode == RESIZE_NONE;
+        scs->static_config.resize_mode == RESIZE_NONE &&
+        false; // `--lineart-psy-bias`
 
     frm_hdr->is_motion_mode_switchable = frm_hdr->allow_warped_motion;
     ppcs->pic_obmc_level               = svt_aom_get_obmc_level(enc_mode, sq_qp, is_base, scs->seq_qp_mod);
@@ -8588,7 +8589,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     } else if (enc_mode <= ENC_M0)
         pcs->cand_reduction_level = 0;
     else if (enc_mode <= ENC_M2)
-        pcs->cand_reduction_level = is_base ? 0 : 1;
+        pcs->cand_reduction_level = is_base || true ? 0 : 1; // XXX `--lineart-psy-bias`
     else if (enc_mode <= ENC_M4) {
         pcs->cand_reduction_level = 1;
     } else if (enc_mode <= ENC_M7) {
