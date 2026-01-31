@@ -564,12 +564,12 @@ static int get_gfu_boost_from_r0_lap(double min_factor, double max_factor, doubl
     const int boost  = (int)rint(factor / r0);
     return boost;
 }
-static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, bool balancing_no_beta_dampening) {
+static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, uint8_t balancing_q_bias) {
     assert(beta > 0.0);
     int q = svt_aom_dc_quant_qtx(qindex, 0, bit_depth);
     int newq;
     // use a less aggressive action when lowering the q for non I_slice
-    if (!is_intra && !balancing_no_beta_dampening && beta > 1)
+    if ((!is_intra || balancing_q_bias) && beta > 1)
         newq = (int)rint(q / sqrt(sqrt(beta)));
     else
         newq = (int)rint(q / sqrt(beta));
@@ -776,12 +776,12 @@ static int noise_level_q_bias_core(PictureControlSet *pcs, SequenceControlSet *s
     const int lower_thr = pcs->ppcs->noise_level_thr + (pcs->ppcs->noise_level_thr >> 4); // 1.0625 (~15938)
     // upper_thr 2.0625 (~30938)
 
-    if (scs->static_config.noise_level_q_bias && pcs->ppcs->noise_level_thr) {
+    if (scs->static_config.noise_level_q_bias != 1.0 && pcs->ppcs->noise_level_thr) {
         double qstep_ratio = CLIP3(0.0, 1.0, (double)(pcs->ppcs->noise_level - lower_thr) / pcs->ppcs->noise_level_thr);
-        if (scs->static_config.noise_level_q_bias > 0)
-            qstep_ratio = (qstep_ratio - 1.0) * scs->static_config.noise_level_q_bias + 1.0;
+        if (scs->static_config.noise_level_q_bias > 1.0)
+            qstep_ratio = (qstep_ratio - 1.0) * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
         else // < 0
-            qstep_ratio = qstep_ratio * scs->static_config.noise_level_q_bias + 1.0;
+            qstep_ratio = qstep_ratio * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
 
         qindex = svt_av1_get_q_index_from_qstep_ratio(qindex, qstep_ratio, scs->static_config.encoder_bit_depth);
 
@@ -1666,10 +1666,9 @@ void svt_aom_sb_qp_derivation_tpl_la(PictureControlSet *pcs) {
             SuperBlock *sb_ptr = pcs->sb_ptr_array[sb_addr];
             double      beta   = ppcs_ptr->pa_me_data->tpl_beta[sb_addr];
             int         offset = svt_av1_get_deltaq_offset(
-                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE,
-                pcs->temporal_layer_index >= AOMMAX(1, pcs->ppcs->hierarchical_levels + scs->static_config.balancing_r0_dampening_layer));
-            offset         = AOMMIN(offset, pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * (pcs->ppcs->scs->static_config.tune == 3 ? 8 : 4) - 1);
-            offset         = AOMMAX(offset, -pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * (pcs->ppcs->scs->static_config.tune == 3 ? 8 : 4) + 1);
+                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE, scs->static_config.balancing_q_bias);
+            offset = AOMMIN(offset, pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) - 1);
+            offset = AOMMAX(offset, -pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) + 1);
 
 #if DEBUG_VAR_BOOST_STATS
             printf("%4d ", -offset);
@@ -1703,18 +1702,29 @@ void normalize_sb_delta_q(PictureControlSet *pcs) {
     // delta q overhead becomes proportionally bigger the higher the qindex,
     // and qstep jumps between qindexes become bigger the lower the qindex
     // so dynamically increase delta_q_res granularity as qindex decreases
-    if (qindex >= 160) {
-        delta_q_res = 8;
-    } else if (qindex >= 120) {
-        delta_q_res = 4;
-    } else if (qindex >= 80) {
-        delta_q_res = 2;
-    } else {
-        // low qindex, nothing to normalize (leave delta_q_res = 1)
+    if (scs->static_config.enable_variance_boost) {
+        if (qindex >= 160) {
+            delta_q_res = 8;
+        } else if (qindex >= 120) {
+            delta_q_res = 4;
+        } else if (qindex >= 80) {
+            delta_q_res = 2;
+        } else {
+            // low qindex, nothing to normalize (leave delta_q_res = 1)
 #if DEBUG_VAR_BOOST_STATS
-        printf("Frame %llu, temp. level %i, keep delta_q_res = 1\n", pcs->picture_number, pcs->temporal_layer_index);
+            printf("Frame %llu, temp. level %i, keep delta_q_res = 1\n", pcs->picture_number, pcs->temporal_layer_index);
 #endif
-        return;
+            return;
+        }
+    }
+    else { // `--balancing-q-bias 1 --enable-variance-boost 0`
+        if (pcs->temporal_layer_index <= pcs->ppcs->hierarchical_levels - (int32_t)scs->static_config.hierarchical_levels)
+            if (qindex >= 60)
+                delta_q_res = 4;
+            else
+                delta_q_res = 2;
+        else
+            return;
     }
 
     assert(delta_q_res == 2 || delta_q_res == 4 || delta_q_res == 8);
@@ -3722,7 +3732,8 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                 lowq_taper(pcs);
             }
 
-            if (scs->static_config.enable_variance_boost && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
+            if ((scs->static_config.enable_variance_boost ||
+                 scs->static_config.balancing_q_bias) && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
             {
                 // adjust delta q res and normalize superblock delta q values to reduce signaling overhead
                 normalize_sb_delta_q(pcs);

@@ -1181,11 +1181,11 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief noise level Q bias
-     * Max value: 0.5
-     * Min value: -0.33
-     * Positive: boost frames with low noise
-     * Negative: dampen frames with low noise
-     * Default is 0.0
+     * Max value: 1.5
+     * Min value: 0.67
+     * >1: boost frames with low noise
+     * <1: dampen frames with low noise
+     * Default is 1.0
      */
     double noise_level_q_bias;
 

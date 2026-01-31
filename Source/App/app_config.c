@@ -1425,7 +1425,7 @@ ConfigEntry config_entry_psy[] = {
      set_cfg_generic_token},
     {SINGLE_INPUT,
      NOISE_LEVEL_Q_BIAS_TOKEN,
-     "[PSY] Noise level Q bias, default is 0.0 [-0.33-0.5]",
+     "[PSY] Noise level Q bias, default is 1.0 [0.67-1.50]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      SHARP_TX_TOKEN,

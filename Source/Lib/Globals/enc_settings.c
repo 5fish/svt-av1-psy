@@ -1026,8 +1026,8 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->noise_level_q_bias < -1/3 || config->noise_level_q_bias > 0.5) {
-        SVT_ERROR("Instance %u: noise-level-thr must be between -0.33 and 0.5\n", channel_number + 1);
+    if (config->noise_level_q_bias < (double)2/3 || config->noise_level_q_bias > 1.5) {
+        SVT_ERROR("Instance %u: noise-level-q-bias must be between 0.67 and 1.50\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1234,7 +1234,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->balancing_r0_based_layer          = INT8_MAX; // DEFAULT
     config_ptr->balancing_r0_dampening_layer      = INT8_MAX; // DEFAULT
     config_ptr->balancing_luminance_q_bias        = UINT8_MAX; // DEFAULT
-    config_ptr->noise_level_q_bias                = 0.0;
+    config_ptr->noise_level_q_bias                = 1.0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
     config_ptr->complex_hvs                       = 0;
