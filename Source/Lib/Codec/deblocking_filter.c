@@ -1064,8 +1064,8 @@ static int32_t search_filter_level_dlf_bias(//const Yv12BufferConfig *sd, Av1Com
     return best_filt;
 }
 static INLINE int search_filter_level_facade(EbPictureBufferDesc *sd, // source
-                                      EbPictureBufferDesc *temp_lf_recon_buffer, PictureControlSet *pcs, int32_t partial_frame,
-                                      const int32_t *last_frame_filter_level, double *best_cost_ret, int32_t plane, int32_t dir) {
+                                             EbPictureBufferDesc *temp_lf_recon_buffer, PictureControlSet *pcs, int32_t partial_frame,
+                                             const int32_t *last_frame_filter_level, double *best_cost_ret, int32_t plane, int32_t dir) {
     if (!pcs->scs->static_config.dlf_bias)
         return search_filter_level(sd, temp_lf_recon_buffer, pcs, partial_frame, last_frame_filter_level, best_cost_ret, plane, dir);
     else

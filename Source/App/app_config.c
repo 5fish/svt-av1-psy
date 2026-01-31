@@ -1714,14 +1714,14 @@ ConfigEntry config_entry[] = {
     // Texture Preserving QMC Bias
     {SINGLE_INPUT, TEXTURE_PRESERVING_QMC_BIAS_TOKEN, "TexturePreservingQMCBias", set_cfg_generic_token},
 
-    // CDEF Taper
+    // CDEF Bias
     {SINGLE_INPUT, CDEF_BIAS_TOKEN, "CDEFBias", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_MAX_CDEF_TOKEN, "CDEFBiasMaxCDEF", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_MIN_CDEF_TOKEN, "CDEFBiasMinCDEF", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_MAX_SEC_CDEF_REL_TOKEN, "CDEFBiasMaxSecCDEFRel", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_DAMPING_OFFSET_TOKEN, "CDEFBiasDampingOffset", set_cfg_generic_token},
 
-    // DLF Taper
+    // DLF Bias
     {SINGLE_INPUT, DLF_BIAS_TOKEN, "DLFBias", set_cfg_generic_token},
     {SINGLE_INPUT, DLF_SHARPNESS_TOKEN, "DLFSharpness", set_cfg_generic_token},
     {SINGLE_INPUT, DLF_BIAS_MAX_DLF_TOKEN, "DLFBiasMaxDLF", set_cfg_generic_token},

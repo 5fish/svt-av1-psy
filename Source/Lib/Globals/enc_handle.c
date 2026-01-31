@@ -4803,14 +4803,14 @@ static void copy_api_from_app(
     // Texturing preserving md bias
     scs->static_config.texture_preserving_qmc_bias = config_struct->texture_preserving_qmc_bias;
 
-    // CDEF taper
+    // CDEF bias
     scs->static_config.cdef_bias = config_struct->cdef_bias;
     memcpy(scs->static_config.cdef_bias_max_cdef, config_struct->cdef_bias_max_cdef, 4 * sizeof(uint8_t));
     memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
     scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
     scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
 
-    // DLF Taper
+    // DLF bias
     scs->static_config.dlf_bias = config_struct->dlf_bias;
     scs->static_config.dlf_sharpness = config_struct->dlf_sharpness;
     memcpy(scs->static_config.dlf_bias_max_dlf, config_struct->dlf_bias_max_dlf, 2 * sizeof(uint8_t));
