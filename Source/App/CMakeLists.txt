@@ -140,9 +140,10 @@ endif()
 target_link_libraries(SvtAv1EncApp PRIVATE SvtAv1Enc ${LIBDOVI_LIBRARY} ${LIBHDR10PLUS_RS_LIBRARY})
 target_link_directories(SvtAv1EncApp PRIVATE SvtAv1Enc ${LIBDOVI_LIBRARY_DIR} ${LIBHDR10PLUS_RS_LIBRARY_DIR})
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    target_link_libraries(SvtAv1EncApp ${PLATFORM_LIBS})
+    target_link_libraries(SvtAv1EncApp PRIVATE 
+    ${PLATFORM_LIBS})
 elseif(UNIX)
-    target_link_libraries(SvtAv1EncApp
+    target_link_libraries(SvtAv1EncApp PRIVATE
         pthread
         m)
 endif()
