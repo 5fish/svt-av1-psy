@@ -1153,6 +1153,28 @@ typedef struct EbSvtAv1EncConfiguration {
     int8_t cdef_bias_damping_offset;
 
     /**
+     * @brief Enable DLF bias
+     * 0: disabled
+     * 1: enabled
+     * Default is 0
+     */
+    uint8_t dlf_bias;
+    /**
+     * @brief Sharpness for DLF
+     * Min value is 0
+     * Max value is 7
+     */
+    int8_t dlf_sharpness;
+    /**
+     * @brief Max DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_max_dlf[2];
+    /**
+     * @brief Min DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_min_dlf[2];
+
+    /**
      * @brief Enable balancing Q bias
      * 0: disabled
      * 1: enabled
@@ -1263,7 +1285,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 13 * sizeof(uint8_t) - 5 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    - 2 * sizeof(Bool) - 18 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 
