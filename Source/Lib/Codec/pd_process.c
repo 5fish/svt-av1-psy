@@ -3020,7 +3020,7 @@ static EbErrorType derive_tf_window_params(
             (central_picture_ptr->org_x >> ss_x);
         EbByte buffer_v =
             central_picture_ptr->buffer_cr +
-            (central_picture_ptr->org_y >> ss_x) * central_picture_ptr->stride_cr +
+            (central_picture_ptr->org_y >> ss_y) * central_picture_ptr->stride_cr +
             (central_picture_ptr->org_x >> ss_x);
 
             if (do_noise_est)
