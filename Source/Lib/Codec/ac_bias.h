@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+#include "utility.h"
+
 uint64_t svt_psy_distortion(const uint8_t *input, const uint32_t input_stride, const uint8_t *recon,
                             const uint32_t recon_stride, const uint32_t width, const uint32_t height);
 uint64_t svt_psy_distortion_hbd(const uint16_t *input, const uint32_t input_stride, const uint16_t *recon,
@@ -25,6 +27,9 @@ uint64_t get_svt_psy_full_dist(const void *s, uint32_t so, uint32_t sp, const vo
 uint64_t svt_psy_adjust_rate_light(const int32_t *coeff, uint64_t coeff_bits, const uint32_t bwidth,
                                    const uint32_t bheight, const double ac_bias);
 double   get_effective_ac_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index);
+double   get_effective_ac_bias_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
+                                    const uint16_t variance_md_bias_thr, uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom,
+                                    const double variance_ac_bias_bias);
 
 #ifdef __cplusplus
 }

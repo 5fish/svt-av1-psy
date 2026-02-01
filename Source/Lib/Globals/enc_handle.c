@@ -4784,6 +4784,7 @@ static void copy_api_from_app(
 
     // AC bias
     scs->static_config.ac_bias = config_struct->ac_bias;
+    scs->static_config.variance_ac_bias_bias = config_struct->variance_ac_bias_bias;
 
     // TX bias
     scs->static_config.tx_bias = config_struct->tx_bias;

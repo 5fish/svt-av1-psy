@@ -222,6 +222,7 @@
 #define NOISE_NORM_STRENGTH_TOKEN "--noise-norm-strength"
 
 #define AC_BIAS_TOKEN "--ac-bias"
+#define VARIANCE_AC_BIAS_BIAS_TOKEN "--variance-ac-bias-bias"
 #define TX_BIAS_TOKEN "--tx-bias"
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
 #define NOISE_LEVEL_THR_TOKEN "--noise-level-thr"
@@ -1364,6 +1365,10 @@ ConfigEntry config_entry_psy[] = {
      "Strength of AC bias in rate distortion, default is 1.0 [0.0-8.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     VARIANCE_AC_BIAS_BIAS_TOKEN,
+     "`--ac-bias` strength is multiplied by this number in low variance area 1.0 [0.0-64.0]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      TX_BIAS_TOKEN,
      "Transform size/type bias type, default is 0 [0-3]; 1 = full, 2, transform size only, 3 = interpolation only",
      set_cfg_generic_token},
@@ -1694,6 +1699,7 @@ ConfigEntry config_entry[] = {
 
     // AC bias strength
     {SINGLE_INPUT, AC_BIAS_TOKEN, "AcBias", set_cfg_generic_token},
+    {SINGLE_INPUT, VARIANCE_AC_BIAS_BIAS_TOKEN, "VarianceAcBiasBiasToken", set_cfg_generic_token},
 
     // TX bias
     {SINGLE_INPUT, TX_BIAS_TOKEN, "TxBias", set_cfg_generic_token},

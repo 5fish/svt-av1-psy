@@ -1068,6 +1068,15 @@ typedef struct EbSvtAv1EncConfiguration {
     double ac_bias;
 
     /**
+     * @brief `--ac-bias` strength is multiplied by this number in low variance area
+     * 1.0: disabled
+     * Min value is 0.0
+     * Max value is 16.0
+     * Default is 1.0
+     */
+    double variance_ac_bias_bias;
+
+    /**
      * @brief Transform size/type bias type
      * 0: disabled
      * 1: full
@@ -1285,7 +1294,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 18 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    - 2 * sizeof(Bool) - 18 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

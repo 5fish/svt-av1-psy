@@ -997,8 +997,10 @@ static void fast_loop_core_light_pd0(ModeDecisionCandidateBuffer *cand_bf, Pictu
             uint8_t                *src_y  = input_pic->buffer_y + input_origin_index;
             *(cand_bf->fast_cost)          = fn_ptr->vf(pred_y, ref_pic->stride_y, src_y, input_pic->stride_y, &sse);
         } else {
-            const double effective_ac_bias = get_effective_ac_bias(
-                pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+            const double effective_ac_bias = get_effective_ac_bias_bias(
+                pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index,
+                pcs->scs->static_config.variance_md_bias_thr, pcs->ppcs->variance, ctx->sb_index, ctx->blk_geom,
+                pcs->scs->static_config.variance_ac_bias_bias);
             *(cand_bf->fast_cost) = svt_spatial_full_distortion_kernel_facade(
                                         input_pic->buffer_y,
                                         input_origin_index,
@@ -4388,8 +4390,10 @@ static void perform_tx_light_pd0(PictureControlSet *pcs, ModeDecisionContext *ct
     ctx->three_quad_energy = 0;
 
     TxSize       tx_size           = ctx->blk_geom->txsize[0];
-    const double effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double effective_ac_bias = get_effective_ac_bias_bias(
+        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index,
+        pcs->scs->static_config.variance_md_bias_thr, pcs->ppcs->variance, ctx->sb_index, ctx->blk_geom,
+        pcs->scs->static_config.variance_ac_bias_bias);
 
     if (ctx->mds_subres_step == 2) {
         if (tx_size == TX_64X64)
@@ -4561,8 +4565,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
     // Do not turn ON TXT search beyond this point
     const uint8_t only_dct_dct = search_dct_dct_only(pcs, ctx, cand_bf, ctx->tx_depth, is_inter) || tx_search_skip_flag;
     const TxSetType tx_set_type       = get_ext_tx_set_type(tx_size, is_inter, pcs->ppcs->frm_hdr.reduced_tx_set);
-    const double    effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double    effective_ac_bias = get_effective_ac_bias_bias(
+        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index,
+        pcs->scs->static_config.variance_md_bias_thr, pcs->ppcs->variance, ctx->sb_index, ctx->blk_geom,
+        pcs->scs->static_config.variance_ac_bias_bias);
 
     // resize after checks on allowable TX types
     if (ctx->mds_subres_step == 2) {
@@ -5449,8 +5455,10 @@ static void perform_dct_dct_tx_light_pd1(PictureControlSet *pcs, ModeDecisionCon
     uint32_t full_lambda           = ctx->hbd_md ? ctx->full_lambda_md[EB_10_BIT_MD] : ctx->full_lambda_md[EB_8_BIT_MD];
     EbPictureBufferDesc *input_pic = ctx->hbd_md ? pcs->input_frame16bit : pcs->ppcs->enhanced_pic;
     const Bool           is_inter  = is_inter_mode(cand_bf->cand->pred_mode) ? TRUE : FALSE;
-    const double         effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double         effective_ac_bias = get_effective_ac_bias_bias(
+        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index,
+        pcs->scs->static_config.variance_md_bias_thr, pcs->ppcs->variance, ctx->sb_index, ctx->blk_geom,
+        pcs->scs->static_config.variance_ac_bias_bias);
         
     ctx->three_quad_energy         = 0;
     svt_aom_residual_kernel(input_pic->buffer_y,
@@ -5616,8 +5624,10 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
     const uint32_t input_txb_origin_index = (ctx->sb_origin_x + tx_org_x + input_pic->org_x) +
         ((ctx->sb_origin_y + tx_org_y + input_pic->org_y) * input_pic->stride_y);
 
-    const double effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double effective_ac_bias = get_effective_ac_bias_bias(
+        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index,
+        pcs->scs->static_config.variance_md_bias_thr, pcs->ppcs->variance, ctx->sb_index, ctx->blk_geom,
+        pcs->scs->static_config.variance_ac_bias_bias);
 
     // Y Residual
     if (!is_inter) {
