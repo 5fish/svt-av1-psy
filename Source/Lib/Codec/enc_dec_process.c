@@ -130,7 +130,8 @@ EbErrorType svt_aom_enc_dec_context_ctor(EbThreadContext *thread_ctx, const EbEn
            0,
            enable_hbd_mode_decision == DEFAULT ? 2 : enable_hbd_mode_decision,
            static_config->screen_content_mode,
-           enc_handle_ptr->scs_instance_array[0]->scs->seq_qp_mod);
+           enc_handle_ptr->scs_instance_array[0]->scs->seq_qp_mod,
+           static_config->lineart_psy_bias);
 
     if (enable_hbd_mode_decision)
         ed_ctx->md_ctx->input_sample16bit_buffer = ed_ctx->input_sample16bit_buffer;
@@ -3243,13 +3244,6 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
         md_ctx->encoder_bit_depth                     = (uint8_t)scs->static_config.encoder_bit_depth;
         md_ctx->corrupted_mv_check                    = (pcs->ppcs->aligned_width >= (1 << (MV_IN_USE_BITS - 3))) ||
             (pcs->ppcs->aligned_height >= (1 << (MV_IN_USE_BITS - 3)));
-        // The use of qstep table here is completely arbitrary. It needs
-        // something in the range of a few hundred to a few thousand, and it
-        // needs something that corresponds with quality, and the qstep table
-        // just happenes to fit both of these two points.
-        md_ctx->variance_md_cost_const                = svt_aom_dc_quant_qtx(quantizer_to_qindex[(uint8_t)scs->static_config.qp] + scs->static_config.extended_crf_qindex_offset,
-                                                                             0,
-                                                                             md_ctx->encoder_bit_depth);
         ed_ctx->tile_group_index = enc_dec_tasks->tile_group_index;
         ed_ctx->coded_sb_count   = 0;
         segments_ptr             = pcs->enc_dec_segment_ctrl[ed_ctx->tile_group_index];
@@ -3313,7 +3307,9 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                  pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                                  pcs->ppcs->enable_restoration,
                                                  pcs->ppcs->frm_hdr.allow_intrabc,
-                                                 &pcs->md_frame_context);
+                                                 &pcs->md_frame_context,
+                                                 scs->static_config.lineart_psy_bias,
+                                                 scs->static_config.texture_psy_bias);
                 if (!pcs->cdf_ctrl.update_coef)
                     svt_aom_estimate_coefficients_rate(ed_ctx->md_ctx->rate_est_table, &pcs->md_frame_context);
             }
@@ -3369,14 +3365,6 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                         mdc_ptr                     = &(ed_ctx->md_ctx->mdc_sb_array);
                         ed_ctx->sb_index            = sb_index;
 
-                        if (scs->static_config.max_32_tx_size)
-                            ed_ctx->md_ctx->max_32_blk_size = true;
-                        else if (scs->static_config.variance_md_bias &&
-                                 pcs->ppcs->variance[ed_ctx->md_ctx->sb_index][ME_TIER_ZERO_PU_64x64] > AOMMAX(4, (scs->static_config.variance_md_bias_thr >> 2) + (scs->static_config.variance_md_bias_thr >> 3)))
-                            ed_ctx->md_ctx->max_32_blk_size = true;
-                        else
-                            ed_ctx->md_ctx->max_32_blk_size = false;
-
                         if (pcs->cdf_ctrl.enabled) {
                             if (scs->pic_based_rate_est &&
                                 scs->enc_dec_segment_row_count_array[pcs->temporal_layer_index] == 1 &&
@@ -3418,7 +3406,9 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                              pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                                              pcs->ppcs->enable_restoration,
                                                              pcs->ppcs->frm_hdr.allow_intrabc,
-                                                             &pcs->ec_ctx_array[sb_index]);
+                                                             &pcs->ec_ctx_array[sb_index],
+                                                             scs->static_config.lineart_psy_bias,
+                                                             scs->static_config.texture_psy_bias);
                             // Initial Rate Estimation of the Motion vectors
                             if (pcs->cdf_ctrl.update_mv)
                                 svt_aom_estimate_mv_rate(

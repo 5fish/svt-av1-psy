@@ -842,7 +842,7 @@ typedef struct TxShortcutCtrls {
 typedef struct Mds0Ctrls {
     // Distortion metric to use MDS0: SSD, VAR, SAD
     uint8_t mds0_dist_type;
-    uint8_t mds0_dist_type_uv; // will only be different if chroma_qmc_bias and obviously only effective in non-light paths
+    uint8_t mds0_dist_type_uv; // Only effective in non-light paths, obviously
     // Skip cost computation if distortion is mds0_distortion_th % higher than best candidate cost
     // (applies to reg. PD1 only)
     uint8_t enable_cost_based_early_exit;
@@ -1157,8 +1157,6 @@ typedef struct ModeDecisionContext {
     NicCtrls        nic_ctrls;
     MV              ref_mv;
     uint16_t        sb_index;
-    // `--max-32-tx-size` and `--variance-md-bias`
-    Bool            max_32_blk_size;
     uint64_t        mds0_best_cost;
     uint8_t         mds0_best_class;
     uint32_t        mds0_best_idx;
@@ -1240,7 +1238,7 @@ typedef struct ModeDecisionContext {
     uint8_t        pred_mode_depth_refine;
     // when MD is done on 8bit, scale palette colors to 10bit (valid when bypass is 1)
     uint8_t  scale_palette;
-    uint8_t  high_freq_present;
+    uint8_t  high_freq_present; // CHECK THIS!
     uint32_t high_freq_satd_to_me;
     uint32_t b32_satd[4];
     uint64_t rec_dist_per_quadrant[4];
@@ -1254,8 +1252,14 @@ typedef struct ModeDecisionContext {
     // SSIM_LVL_2: addition to level 1, also use ssim cost to find best tx type in tx_type_search()
     SsimLevel tune_ssim_level;
 
-    // used in `--variance-md-bias` as well as `--chroma-qmc-bias`
-    uint64_t   variance_md_cost_const;
+    uint64_t bias_const;
+    // 1: normal active; 2: forced active with `--lineart-psy-bias -2`
+    uint8_t blk_skip_taper_active;
+    // 0: off; pos: lineart; neg: texture
+    int8_t bsize_bias_mode;    
+    uint8_t above_32_blk_size_bias_mode;
+    // `--max-32-tx-size` and `--lineart-psy-bias`
+    bool max_32_blk_size;
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet *pcs, uint32_t *fast_lambda, uint32_t *full_lambda,
@@ -1267,7 +1271,7 @@ typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet *pcs, uint32_t *fast_lam
 extern EbErrorType svt_aom_mode_decision_context_ctor(
     ModeDecisionContext *ctx, EbColorFormat color_format, uint8_t sb_size, EncMode enc_mode, uint16_t max_block_cnt,
     uint32_t encoder_bit_depth, EbFifo *mode_decision_configuration_input_fifo_ptr,
-    EbFifo *mode_decision_output_fifo_ptr, uint8_t enable_hbd_mode_decision, uint8_t cfg_palette, uint8_t seq_qp_mod);
+    EbFifo *mode_decision_output_fifo_ptr, uint8_t enable_hbd_mode_decision, uint8_t cfg_palette, uint8_t seq_qp_mod, double lineart_psy_bias);
 
 extern const EbAv1LambdaAssignFunc svt_aom_av1_lambda_assignment_function_table[4];
 

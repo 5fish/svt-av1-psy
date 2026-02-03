@@ -222,14 +222,14 @@
 #define NOISE_NORM_STRENGTH_TOKEN "--noise-norm-strength"
 
 #define AC_BIAS_TOKEN "--ac-bias"
-#define VARIANCE_AC_BIAS_BIAS_TOKEN "--variance-ac-bias-bias"
+#define TEXTURE_AC_BIAS_TOKEN "--texture-ac-bias"
 #define TX_BIAS_TOKEN "--tx-bias"
 #define LOW_Q_TAPER_TOKEN "--low-q-taper"
 #define NOISE_LEVEL_THR_TOKEN "--noise-level-thr"
-#define VARIANCE_MD_BIAS_TOKEN "--variance-md-bias"
-#define VARIANCE_MD_BIAS_THR_TOKEN "--variance-md-bias-thr"
-#define CHROMA_QMC_BIAS_TOKEN "--chroma-qmc-bias"
-#define TEXTURE_PRESERVING_QMC_BIAS_TOKEN "--texture-preserving-qmc-bias"
+#define LINEART_PSY_BIAS_TOKEN "--lineart-psy-bias"
+#define TEXTURE_PSY_BIAS_TOKEN "--texture-psy-bias"
+#define LINEART_VARIANCE_THR_TOKEN "--lineart-variance-thr"
+#define TEXTURE_VARIANCE_THR_TOKEN "--texture-variance-thr"
 #define CDEF_BIAS_TOKEN "--cdef-bias"
 #define CDEF_BIAS_MAX_CDEF_TOKEN "--cdef-bias-max-cdef"
 #define CDEF_BIAS_MIN_CDEF_TOKEN "--cdef-bias-min-cdef"
@@ -246,7 +246,6 @@
 #define NOISE_LEVEL_Q_BIAS_TOKEN "--noise-level-q-bias"
 #define SHARP_TX_TOKEN "--sharp-tx"
 #define HBD_MDS_TOKEN "--hbd-mds"
-#define COMPLEX_HVS_TOKEN "--complex-hvs"
 #define ALT_SSIM_TUNING_TOKEN "--alt-ssim-tuning"
 #define FILTERING_NOISE_DETECTION_TOKEN "--filtering-noise-detection"
 #define AUTO_TILING_TOKEN "--auto-tiling"
@@ -1365,8 +1364,8 @@ ConfigEntry config_entry_psy[] = {
      "Strength of AC bias in rate distortion, default is 1.0 [0.0-8.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     VARIANCE_AC_BIAS_BIAS_TOKEN,
-     "`--ac-bias` strength is multiplied by this number in low variance area 1.0 [0.0-64.0]",
+     TEXTURE_AC_BIAS_TOKEN,
+     "`--ac-bias` strength if variance is lower than thresholds derived from `--texture-variance-thr` [0.0-64.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      TX_BIAS_TOKEN,
@@ -1381,20 +1380,20 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Noise level thr, default is -1 [-1: default encoder behaviour, -2: print, >0: set]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     VARIANCE_MD_BIAS_TOKEN,
-     "[PSY] Variance md bias, default is 0 [0-1]",
+     LINEART_PSY_BIAS_TOKEN,
+     "[PSY] Improve lineart retention. [0-7,-2]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     VARIANCE_MD_BIAS_THR_TOKEN,
-     "[PSY] Variance md bias threshold, default is 6.5 [0.0-16.0]",
+     TEXTURE_PSY_BIAS_TOKEN,
+     "[PSY] Improve texture retention. [0-7]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     CHROMA_QMC_BIAS_TOKEN,
-     "[PSY] Chroma q, md and CDEF bias, default is 0 [0: disable, 1: full, 2: light]",
+     LINEART_VARIANCE_THR_TOKEN,
+     "[PSY] Threshold for `--lineart-psy-bias`. [0.0-16.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     TEXTURE_PRESERVING_QMC_BIAS_TOKEN,
-     "[PSY] Texture preserving q, md, and CDEF bias, default is 0 [0-1]",
+     TEXTURE_VARIANCE_THR_TOKEN,
+     "[PSY] Threshold for `--texture-psy-bias`. [0.0-16.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      CDEF_BIAS_TOKEN,
@@ -1459,10 +1458,6 @@ ConfigEntry config_entry_psy[] = {
     {SINGLE_INPUT,
      HBD_MDS_TOKEN,
      "[PSY] High Bit-Depth Mode Decision, default is 0 [0: default preset behavior, 1 = 10-bit, 2 = hybrid 8/10-bit, 3 = 8-bit]",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     COMPLEX_HVS_TOKEN,
-     "[PSY] Enable highest complexity HVS model, default is 0 [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      ALT_SSIM_TUNING_TOKEN, 
@@ -1699,7 +1694,7 @@ ConfigEntry config_entry[] = {
 
     // AC bias strength
     {SINGLE_INPUT, AC_BIAS_TOKEN, "AcBias", set_cfg_generic_token},
-    {SINGLE_INPUT, VARIANCE_AC_BIAS_BIAS_TOKEN, "VarianceAcBiasBiasToken", set_cfg_generic_token},
+    {SINGLE_INPUT, TEXTURE_AC_BIAS_TOKEN, "TextureAcBias", set_cfg_generic_token},
 
     // TX bias
     {SINGLE_INPUT, TX_BIAS_TOKEN, "TxBias", set_cfg_generic_token},
@@ -1710,15 +1705,10 @@ ConfigEntry config_entry[] = {
     // Noise level thr
     {SINGLE_INPUT, NOISE_LEVEL_THR_TOKEN, "NoiseLevelThr", set_cfg_generic_token},
 
-    // Variance MD Bias
-    {SINGLE_INPUT, VARIANCE_MD_BIAS_TOKEN, "VarianceMDBias", set_cfg_generic_token},
-    {SINGLE_INPUT, VARIANCE_MD_BIAS_THR_TOKEN, "VarianceMDBiasThr", set_cfg_generic_token},
-
-    // Chroma QMC Bias
-    {SINGLE_INPUT, CHROMA_QMC_BIAS_TOKEN, "ChromaQMCBias", set_cfg_generic_token},
-
-    // Texture Preserving QMC Bias
-    {SINGLE_INPUT, TEXTURE_PRESERVING_QMC_BIAS_TOKEN, "TexturePreservingQMCBias", set_cfg_generic_token},
+    {SINGLE_INPUT, LINEART_PSY_BIAS_TOKEN, "LineartPsyBias", set_cfg_generic_token},
+    {SINGLE_INPUT, TEXTURE_PSY_BIAS_TOKEN, "TexturePsyBias", set_cfg_generic_token},
+    {SINGLE_INPUT, LINEART_VARIANCE_THR_TOKEN, "LineartVarianceThr", set_cfg_generic_token},
+    {SINGLE_INPUT, TEXTURE_VARIANCE_THR_TOKEN, "TextureVarianceThr", set_cfg_generic_token},
 
     // CDEF Bias
     {SINGLE_INPUT, CDEF_BIAS_TOKEN, "CDEFBias", set_cfg_generic_token},
@@ -1751,9 +1741,6 @@ ConfigEntry config_entry[] = {
 
     // HBD-MDS
     {SINGLE_INPUT, HBD_MDS_TOKEN, "HBDMDS", set_cfg_generic_token},
-
-    // Complex HVS
-    {SINGLE_INPUT, COMPLEX_HVS_TOKEN, "ComplexHVS", set_cfg_generic_token},
 
     // Alternative SSIM tuning
     {SINGLE_INPUT, ALT_SSIM_TUNING_TOKEN, "AltSSIMTuning", set_cfg_generic_token},

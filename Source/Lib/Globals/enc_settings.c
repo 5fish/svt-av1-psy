@@ -943,12 +943,14 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->ac_bias > 8.0 || config->ac_bias < 0.0) {
+    if ((config->ac_bias > 8.0 || config->ac_bias < 0.0) &&
+        config->ac_bias != DEFAULT) {
         SVT_ERROR("Instance %u: AC bias strength must be between 0.0 and 8.0\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->variance_ac_bias_bias > 64.0 || config->variance_ac_bias_bias < 0.0) {
-        SVT_ERROR("Instance %u: variance ac bias bias must be between 0.0 and 64.0\n", channel_number + 1);
+    if ((config->texture_ac_bias > 64.0 || config->texture_ac_bias < 0.0) &&
+        config->texture_ac_bias != DEFAULT) {
+        SVT_ERROR("Instance %u: texture ac bias must be between 0.0 and 64.0\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -962,22 +964,17 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->variance_md_bias > 1) {
-        SVT_ERROR("Instance %u: variance-md-bias must be between 0 and 1\n", channel_number + 1);
+    if ((config->lineart_psy_bias > 7.0 || config->lineart_psy_bias < 0.0) &&
+        config->lineart_psy_bias != -2.0) {
+        SVT_ERROR("Instance %u: lineart-psy-bias must be between 0 and 7\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->variance_md_bias && config->tx_bias)
-        SVT_WARN("Instance %u: variance-md-bias is intended to replace tx-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
-
-    if (config->chroma_qmc_bias > 2) {
-        SVT_ERROR("Instance %u: chroma-qmc-bias must be between 0 and 2\n", channel_number + 1);
+    if (config->texture_psy_bias > 7.0 || config->texture_psy_bias < 0.0) {
+        SVT_ERROR("Instance %u: texture-psy-bias must be between 0 and 7\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-
-    if (config->texture_preserving_qmc_bias > 1) {
-        SVT_ERROR("Instance %u: texture-preserving-qmc-bias must be between 0 and 1\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
+    if ((config->lineart_psy_bias || config->texture_psy_bias) && config->tx_bias)
+        SVT_WARN("Instance %u: tx-bias is replaced by lineart-psy-bias and texture-psy-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
 
     if (config->cdef_bias > 1) {
         SVT_ERROR("Instance %u: cdef-bias must be between 0 and 1\n", channel_number + 1);
@@ -996,7 +993,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
             SVT_ERROR("Instance %u: cdef-bias-max-cdef and cdef-bias-min-cdef are specified in the format of pri_strength_y,sec_strength_y,pri_strength_uv,sec_strength_uv\n", channel_number + 1);
             return_error = EB_ErrorBadParameter;
         }
-        
+
         if (AOMMAX((config->cdef_bias_max_cdef[0] >> 2 << 2) + config->cdef_bias_max_sec_cdef_rel, 0) < (config->cdef_bias_min_cdef[1] == 3 ? 4 : config->cdef_bias_min_cdef[1])) {
             SVT_ERROR("Instance %u: there is no secondary CDEF strength in Y within the limit of cdef-bias-max-sec-cdef-rel that is greater than or equal to cdef-bias-min-cdef, where there must be a primary CDEF strength divisible by 4 within the limit of cdef-bias-max-cdef that, after the offset of cdef-bias-max-sec-cdef-rel, results in a secondary CDEF strength that's greater than or equal to the minimum secondary CDEF strength specified in cdef-bias-min-cdef\n", channel_number + 1);
             return_error = EB_ErrorBadParameter;
@@ -1013,7 +1010,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     }
 
     if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
-        config->dlf_sharpness != DEFAULT) {
+        config->dlf_sharpness != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: dlf-sharpness must be between 0 and 7\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -1029,9 +1026,9 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
             return_error = EB_ErrorBadParameter;
         }
     }
-    
+
     if ((config->balancing_q_bias < 0 || config->balancing_q_bias > 1) &&
-        config->balancing_q_bias != DEFAULT) {
+        config->balancing_q_bias != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: balancing-q-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -1059,11 +1056,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
 
     if (config->hbd_mds > 3) {
         SVT_ERROR("Instance %u: hbd-mds must be between 0 and 3\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
-
-    if (config->complex_hvs < -1 || config->complex_hvs > 1) {
-        SVT_ERROR("Instance %u: complex-hvs must be between -1 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1175,7 +1167,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     // Alt-Ref default values
     config_ptr->enable_tf       = 1;
     config_ptr->enable_overlays = FALSE;
-    config_ptr->tune            = 2;
+    config_ptr->tune            = 0;
     // Super-resolution default values
     config_ptr->superres_mode      = SUPERRES_NONE;
     config_ptr->superres_denom     = SCALE_NUMERATOR;
@@ -1205,10 +1197,10 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->force_key_frames = 0;
 
     // Quant Matrices (QM)
-    config_ptr->enable_qm    = 1;
-    config_ptr->min_qm_level = 2;
-    config_ptr->max_qm_level = 15;
-    config_ptr->min_chroma_qm_level = 8;
+    config_ptr->enable_qm           = 1;
+    config_ptr->min_qm_level        = UINT8_DEFAULT;
+    config_ptr->max_qm_level        = 15;
+    config_ptr->min_chroma_qm_level = UINT8_DEFAULT;
     config_ptr->max_chroma_qm_level = 15;
 
     config_ptr->startup_mg_size                   = 0;
@@ -1218,7 +1210,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->frame_scale_evts.start_frame_nums = NULL;
     config_ptr->enable_roi_map                    = false;
     config_ptr->fgs_table                         = NULL;
-    config_ptr->enable_variance_boost             = TRUE;
+    config_ptr->enable_variance_boost             = UINT8_DEFAULT;
     config_ptr->variance_boost_strength           = 2;
     config_ptr->variance_octile                   = 5;
     config_ptr->enable_alt_curve                  = FALSE;
@@ -1232,15 +1224,16 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->tf_strength                       = 1;
     config_ptr->kf_tf_strength                    = 1;
     config_ptr->noise_norm_strength               = 1;
-    config_ptr->ac_bias                           = 1.0;
-    config_ptr->variance_ac_bias_bias             = 1.0;
+    config_ptr->ac_bias                           = DEFAULT;
+    config_ptr->texture_ac_bias                   = DEFAULT;
     config_ptr->tx_bias                           = 0;
     config_ptr->low_q_taper                       = 0;
     config_ptr->noise_level_thr                   = -1;
-    config_ptr->variance_md_bias                  = 0;
-    config_ptr->variance_md_bias_thr              = 89;
-    config_ptr->chroma_qmc_bias                   = 0;
-    config_ptr->texture_preserving_qmc_bias       = 0;
+    config_ptr->lineart_psy_bias                  = 0.0;
+    config_ptr->texture_psy_bias                  = 0.0;
+    config_ptr->lineart_psy_bias_easter_egg       = 0;
+    config_ptr->lineart_variance_thr              = 44;
+    config_ptr->texture_variance_thr              = 44;
     config_ptr->cdef_bias                         = 0;
     config_ptr->cdef_bias_max_cdef[0]             = 4;
     config_ptr->cdef_bias_max_cdef[1]             = 1;
@@ -1253,19 +1246,18 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->cdef_bias_max_sec_cdef_rel        = 0;
     config_ptr->cdef_bias_damping_offset          = 0;
     config_ptr->dlf_bias                          = 0;
-    config_ptr->dlf_sharpness                     = DEFAULT;
+    config_ptr->dlf_sharpness                     = UINT8_DEFAULT;
     config_ptr->dlf_bias_max_dlf[0]               = 8;
     config_ptr->dlf_bias_max_dlf[1]               = 2;
     config_ptr->dlf_bias_min_dlf[0]               = 2;
     config_ptr->dlf_bias_min_dlf[1]               = 0;
-    config_ptr->balancing_q_bias                  = DEFAULT;
-    config_ptr->balancing_r0_based_layer          = INT8_MAX; // DEFAULT
-    config_ptr->balancing_r0_dampening_layer      = INT8_MAX; // DEFAULT
-    config_ptr->balancing_luminance_q_bias        = UINT8_MAX; // DEFAULT
+    config_ptr->balancing_q_bias                  = UINT8_DEFAULT;
+    config_ptr->balancing_r0_based_layer          = INT8_DEFAULT;
+    config_ptr->balancing_r0_dampening_layer      = INT8_DEFAULT;
+    config_ptr->balancing_luminance_q_bias        = UINT8_DEFAULT;
     config_ptr->noise_level_q_bias                = 1.0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
-    config_ptr->complex_hvs                       = 0;
     config_ptr->alt_ssim_tuning                   = FALSE;
     config_ptr->filtering_noise_detection         = 0;
     config_ptr->auto_tiling                       = FALSE;
@@ -1276,14 +1268,14 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
 
 static const char *tier_to_str(unsigned in) {
     if (!in)
-        return "(auto)";
+        return "auto";
     static char ret[11];
     snprintf(ret, 11, "%u", in);
     return ret;
 }
 static const char *level_to_str(unsigned in) {
     if (!in)
-        return "(auto)";
+        return "auto";
     static char ret[313];
     snprintf(ret, 313, "%.1f", in / 10.0);
     return ret;
@@ -1301,11 +1293,11 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
     if (config->pass == ENC_FIRST_PASS)
         SVT_INFO("SVT [config]: preset \t\t\t\t\t\t\t: pass 1\n");
     else {
-        SVT_INFO("SVT [config]: %s\ttier %s\tlevel %s\n",
-                 config->profile == MAIN_PROFILE               ? "main profile"
-                     : config->profile == HIGH_PROFILE         ? "high profile"
-                     : config->profile == PROFESSIONAL_PROFILE ? "professional profile"
-                                                               : "unknown profile",
+        SVT_INFO("SVT [config]: profile / tier / level \t\t\t\t\t: %s / %s / %s\n",
+                 config->profile == MAIN_PROFILE               ? "main"
+                     : config->profile == HIGH_PROFILE         ? "high"
+                     : config->profile == PROFESSIONAL_PROFILE ? "professional"
+                                                               : "unknown",
                  tier_to_str(config->tier),
                  level_to_str(config->level));
         SVT_INFO(
@@ -1352,6 +1344,13 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->intra_refresh_type == SVT_AV1_FWDKF_REFRESH   ? "open GOP"
                         : config->intra_refresh_type == SVT_AV1_KF_REFRESH ? "closed GOP"
                                                                            : "unknown");
+        else if (config->intra_period_length == -1)
+            SVT_INFO("SVT [config]: GOP size / mini-GOP size / refresh type \t\t\t: "
+                     "inf / %d / %s\n",
+                     (1 << config->hierarchical_levels),
+                     config->intra_refresh_type == SVT_AV1_FWDKF_REFRESH   ? "open GOP"
+                        : config->intra_refresh_type == SVT_AV1_KF_REFRESH ? "closed GOP"
+                                                                           : "unknown");
         else
             SVT_INFO("SVT [config]: GOP size / mini-GOP size / refresh type \t\t\t: "
                      "%d / %d / %s\n",
@@ -1372,11 +1371,19 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                     scs->tpl || scs->static_config.enable_variance_boost ? "capped CRF" : "CQP",
                     get_extended_crf(config),
                     (int)config->max_bit_rate / 1000);
-            else
-                SVT_INFO("SVT [config]: BRC mode / %s \t\t\t\t\t: %s / %.2f \n",
-                         scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
-                         scs->tpl || scs->static_config.enable_variance_boost ? "CRF" : "CQP",
-                         get_extended_crf(config));
+            else {
+                if (!config->enable_variance_boost)
+                    SVT_INFO("SVT [config]: BRC mode / AQ mode / %s \t\t\t\t: %s / %d / %.2f \n",
+                             scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
+                             scs->tpl || scs->static_config.enable_variance_boost ? "CRF" : "CQP",
+                             config->enable_adaptive_quantization,
+                             get_extended_crf(config));
+                else
+                    SVT_INFO("SVT [config]: BRC mode / %s \t\t\t\t\t: %s / %.2f \n",
+                             scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
+                             scs->tpl || scs->static_config.enable_variance_boost ? "CRF" : "CQP",
+                             get_extended_crf(config));
+            }
             break;
         case SVT_AV1_RC_MODE_VBR:
             SVT_INFO("SVT [config]: BRC mode / target bitrate (kbps)\t\t\t\t: VBR / %d \n",
@@ -1389,11 +1396,13 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                 (int)config->target_bit_rate / 1000);
             break;
         }
-
         if (config->rate_control_mode != SVT_AV1_RC_MODE_CBR) {
             if (!config->enable_variance_boost) {
-                SVT_INFO("SVT [config]: AQ mode / variance boost \t\t\t\t\t: %d / disabled\n",
-                         config->enable_adaptive_quantization);
+                if (config->rate_control_mode == SVT_AV1_RC_MODE_CQP_OR_CRF && !config->max_bit_rate)
+                    ;
+                else
+                    SVT_INFO("SVT [config]: AQ mode / variance boost \t\t\t\t\t: %d / disabled\n",
+                             config->enable_adaptive_quantization);
             } else {
                 SVT_INFO("SVT [config]: AQ mode / variance boost - strength / octile / curve \t\t: %d / %d / %d / %s\n",
                          config->enable_adaptive_quantization,
@@ -1454,29 +1463,85 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
         if (!config->chroma_grain)
             SVT_INFO("SVT [config]: film grain synth - chroma grain \t\t\t\t: disabled\n");
 
+        // Global
+        if (config->lineart_psy_bias_easter_egg == 1) {
+            SVT_INFO("SVT [config]: lineart bias ~ Kumiko version ~ / variance base / common thr \t: %.0f / %d / %d\n",
+                     floor(config->lineart_psy_bias),
+                     config->lineart_variance_thr,
+                     config->lineart_variance_thr >> 1);
+            SVT_INFO("\n");
+            srand((unsigned int)(uintptr_t)scs);
+            const uint8_t lineart_psy_bias_easter_message = rand() % 4;
+            SVT_INFO("    \x1b[1m\x1b[3mKumiko\x1b[0m    \x1b[3m%s\x1b[0m\n",
+                     lineart_psy_bias_easter_message == 0 ? "Kitauji Fight!" :
+                     lineart_psy_bias_easter_message == 1 ? "Umaku naritai!" :
+                     lineart_psy_bias_easter_message == 2 ? "Datte Watashi, Eupho Suki damon!" :
+                                                            "Datte Kore wa, Ai no Kokuhaku dakara.");
+            if (lineart_psy_bias_easter_message >= 1)
+                SVT_INFO("              \x1b[3m%s\x1b[0m\n",
+                         lineart_psy_bias_easter_message == 1 ? "I want to improve!" :
+                         lineart_psy_bias_easter_message == 2 ? "Because I like playing the euphonium!" :
+                                                                "This is a confession of love, after all.");
+            SVT_INFO("\n");
+        }
+        else if (config->lineart_psy_bias == -2.0)
+            SVT_INFO("SVT [config]: lineart PSY bias thr testing mode / skip taper variance thr \t: testing / %d\n",
+                     config->lineart_variance_thr >> 1);
+        else if (config->lineart_psy_bias >= 1.0)
+            SVT_INFO("SVT [config]: lineart PSY bias / variance base / common thr \t\t\t: %.0f / %d / %d\n",
+                     floor(config->lineart_psy_bias),
+                     config->lineart_variance_thr,
+                     config->lineart_variance_thr >> 1);
+
+        if (config->texture_psy_bias >= 1.0)
+            SVT_INFO("SVT [config]: texture PSY bias / variance base / common thr \t\t\t: %.0f / %d / %d\n",
+                     floor(config->texture_psy_bias),
+                     config->texture_variance_thr,
+                     config->texture_variance_thr >> 2);
+
         // Motion Estimation
         if (config->enable_tf) {
-            if (config->enable_tf == 2)
-                SVT_INFO("SVT [config]: temporal filtering strength \t\t\t\t\t: auto\n");
-            else // (config->enable_tf == 1)
-                SVT_INFO("SVT [config]: temporal filtering strength - keyframe / non-keyframe \t\t: %d / %d\n",
-                         config->tf_strength,
-                         config->kf_tf_strength);
-
-            if (config->alt_tf_decay && !(config->tune == 0 || config->tune == 3))
-                SVT_INFO("SVT [config]: alt temporal filtering decay \t\t\t\t\t: enabled\n");
+            if (config->enable_tf == 2) {
+                if (config->alt_tf_decay && !(config->tune == 0 || config->tune == 3))
+                    SVT_INFO("SVT [config]: temporal filtering - strength / alt decay \t\t\t: auto / enabled\n");
+                else
+                    SVT_INFO("SVT [config]: temporal filtering strength \t\t\t\t\t: auto\n");
+            }
+            else { // (config->enable_tf == 1)
+                if (config->alt_tf_decay && !(config->tune == 0 || config->tune == 3))
+                    SVT_INFO("SVT [config]: TF - keyframe / non-keyframe strength / alt decay \t\t: %d / %d / enabled\n",
+                             config->kf_tf_strength,
+                             config->tf_strength);
+                else
+                    SVT_INFO("SVT [config]: temporal filtering - keyframe / non-keyframe strength \t\t: %d / %d\n",
+                             config->kf_tf_strength,
+                             config->tf_strength);
+            }
         }
 
         // Mode Decision
+        if (config->enable_qm) {
+            if (config->max_qm_level == 15 && config->max_chroma_qm_level == 15)
+                SVT_INFO("SVT [config]: quantizer matrix - min luma / chroma level \t\t\t: %d / %d\n",
+                         config->min_qm_level,
+                         config->min_chroma_qm_level);
+            else
+                SVT_INFO("SVT [config]: QM - luma min / max level / chroma min / max level \t\t: %d / %d / %d / %d\n",
+                         config->min_qm_level,
+                         config->max_qm_level,
+                         config->min_chroma_qm_level,
+                         config->max_chroma_qm_level);
+        }
+
         SVT_INFO("SVT [config]: sharpness / noise normalization strength \t\t\t: %d / %d\n",
                  config->sharpness,
                  config->noise_norm_strength);
 
         if (config->tx_bias) {
-            if (config->variance_ac_bias_bias != 1.0)
-                SVT_INFO("SVT [config]: AC bias strength / variance AC bias bias / TX bias \t\t: %.2f / * %.2f / %s\n",
+            if (config->texture_ac_bias != config->ac_bias)
+                SVT_INFO("SVT [config]: AC bias / texture AC bias strength / TX bias \t\t\t: %.2f / %.2f / %s\n",
                          config->ac_bias,
-                         config->variance_ac_bias_bias,
+                         config->texture_ac_bias,
                          config->tx_bias == 1
                              ? "full"
                              : (config->tx_bias == 2 ? "size only" : (config->tx_bias == 3 ? "interp. only" : "off")));
@@ -1488,71 +1553,74 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                              : (config->tx_bias == 2 ? "size only" : (config->tx_bias == 3 ? "interp. only" : "off")));
         }
         else if (config->ac_bias) {
-            if (config->variance_ac_bias_bias != 1.0)
-                SVT_INFO("SVT [config]: AC bias strength / variance AC bias bias \t\t\t: %.2f / * %.2f\n",
+            if (config->texture_ac_bias != config->ac_bias)
+                SVT_INFO("SVT [config]: AC bias / texture AC bias strength \t\t\t\t: %.2f / %.2f\n",
                          config->ac_bias,
-                         config->variance_ac_bias_bias);
+                         config->texture_ac_bias);
             else
                 SVT_INFO("SVT [config]: AC bias strength \t\t\t\t\t\t: %.2f\n",
                          config->ac_bias);
         }
 
-		if (config->variance_md_bias) {
-            if (config->max_32_tx_size)
-                SVT_INFO("SVT [config]: variance MD bias - main threshold / maximum transform size \t: %d / 32x32\n",
-                         config->variance_md_bias_thr);
-            else
-                SVT_INFO("SVT [config]: variance MD bias - main threshold / 32x32 TX size threshold \t: %d / %d\n",
-                         config->variance_md_bias_thr,
-                         AOMMAX(4, (config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3)));
-
-        // CDEF
-            if (config->cdef_level != 0 && config->cdef_bias)
-                SVT_INFO("SVT [config]: variance MD bias - skip threshold / CDEF bias - max strength \t: %d / %d,%d %d,%d\n",
-                         config->variance_md_bias_thr >> 1,
-                         config->cdef_bias_max_cdef[0],
-                         config->cdef_bias_max_cdef[1],
-                         config->cdef_bias_max_cdef[2],
-                         config->cdef_bias_max_cdef[3]);
-            else
-                SVT_INFO("SVT [config]: variance MD bias - skip taper threshold \t\t\t: %d\n",
-                         config->variance_md_bias_thr >> 1);
-        }
-        else {
-            if (config->cdef_level != 0 && config->cdef_bias)
-                SVT_INFO("SVT [config]: CDEF bias - max CDEF strength \t\t\t\t\t: %d,%d %d,%d\n",
-                         config->cdef_bias_max_cdef[0],
-                         config->cdef_bias_max_cdef[1],
-                         config->cdef_bias_max_cdef[2],
-                         config->cdef_bias_max_cdef[3]);
-        }
-
-        if (config->filtering_noise_detection)
-            SVT_INFO("SVT [config]: filtering noise detection \t\t\t\t\t: %s\n",
-                     config->filtering_noise_detection == 1 ? "on" :
-                     config->filtering_noise_detection == 2 ? "off" :
-                     config->filtering_noise_detection == 3 ? "on (CDEF only)" :
-                                                              "on (restoration only)");
-
-        if (config->dlf_bias)
-            SVT_INFO("SVT [config]: DLF bias - DLF sharpness / max / min strength \t\t\t: %d / %d %d / %d %d\n",
+        // DLF
+        if (config->enable_dlf_flag && config->dlf_bias)
+            SVT_INFO("SVT [config]: DLF bias - DLF sharpness / max / min DLF strength \t\t: %d / %d %d / %d %d\n",
                      config->dlf_sharpness,
                      config->dlf_bias_max_dlf[0],
                      config->dlf_bias_max_dlf[1],
                      config->dlf_bias_min_dlf[0],
                      config->dlf_bias_min_dlf[1]);
 
-        // QMC
-        if (config->texture_preserving_qmc_bias && config->chroma_qmc_bias)
-            SVT_INFO("SVT [config]: texture preserving QMC bias - threshold / chroma QMC bias \t: %d / %s\n",
-                     AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22),
-                     config->chroma_qmc_bias == 1 ? "full" : "light");
-        else if (config->texture_preserving_qmc_bias)
-            SVT_INFO("SVT [config]: texture preserving QMC bias - threshold \t\t\t: %d\n",
-                     AOMMAX((config->variance_md_bias_thr >> 2) + (config->variance_md_bias_thr >> 3), 22));
-        else if (config->chroma_qmc_bias)
-            SVT_INFO("SVT [config]: chroma QMC bias \t\t\t\t\t\t: %s\n",
-                     config->chroma_qmc_bias == 1 ? "full" : "light");
+        // CDEF
+        if (config->cdef_level && config->cdef_bias) {
+            if (config->cdef_bias_min_cdef[0] == 0 &&
+                config->cdef_bias_min_cdef[1] == 0 &&
+                config->cdef_bias_min_cdef[2] == 0 &&
+                config->cdef_bias_min_cdef[3] == 0) {
+                if (!config->filtering_noise_detection)
+                    SVT_INFO("SVT [config]: CDEF bias - max CDEF strength \t\t\t\t\t: %d,%d %d,%d\n",
+                             config->cdef_bias_max_cdef[0],
+                             config->cdef_bias_max_cdef[1],
+                             config->cdef_bias_max_cdef[2],
+                             config->cdef_bias_max_cdef[3]);
+                else
+                    SVT_INFO("SVT [config]: filtering noise detection / CDEF bias - max CDEF strength \t: %s / %d,%d %d,%d\n",
+                             config->filtering_noise_detection == 1 ? "on" :
+                             config->filtering_noise_detection == 2 ? "off" :
+                             config->filtering_noise_detection == 3 ? "on (CDEF only)" :
+                                                                      "on (restoration only)",
+                             config->cdef_bias_max_cdef[0],
+                             config->cdef_bias_max_cdef[1],
+                             config->cdef_bias_max_cdef[2],
+                             config->cdef_bias_max_cdef[3]);
+            }
+            else {
+                if (config->filtering_noise_detection)
+                    SVT_INFO("SVT [config]: filtering noise detection \t\t\t\t\t: %s\n",
+                             config->filtering_noise_detection == 1 ? "on" :
+                             config->filtering_noise_detection == 2 ? "off" :
+                             config->filtering_noise_detection == 3 ? "on (CDEF only)" :
+                                                                      "on (restoration only)");
+                SVT_INFO("SVT [config]: CDEF bias - max / min CDEF strength \t\t\t\t: %d,%d %d,%d / %d,%d %d,%d\n",
+                         config->cdef_bias_max_cdef[0],
+                         config->cdef_bias_max_cdef[1],
+                         config->cdef_bias_max_cdef[2],
+                         config->cdef_bias_max_cdef[3],
+                         config->cdef_bias_min_cdef[0],
+                         config->cdef_bias_min_cdef[1],
+                         config->cdef_bias_min_cdef[2],
+                         config->cdef_bias_min_cdef[3]);
+            }
+        }
+        else {
+            if ((config->cdef_level || config->enable_restoration_filtering) &&
+                config->filtering_noise_detection)
+                SVT_INFO("SVT [config]: filtering noise detection \t\t\t\t\t: %s\n",
+                         config->filtering_noise_detection == 1 ? "on" :
+                         config->filtering_noise_detection == 2 ? "off" :
+                         config->filtering_noise_detection == 3 ? "on (CDEF only)" :
+                                                                  "on (restoration only)");
+        }
     }
 #ifdef DEBUG_BUFFERS
     SVT_INFO("SVT [config]: INPUT / OUTPUT \t\t\t\t\t\t\t: %d / %d\n",
@@ -1773,6 +1841,37 @@ static EbErrorType parse_list_u64(const char *nptr, uint64_t *list, size_t n) {
     }
     return EB_ErrorNone;
 }
+
+// // NAN on the remaining part of the list if the input is shorter than n
+// static EbErrorType parse_list_double(const char *nptr, double *list, size_t n) {
+//     const char *ptr = nptr;
+//     char       *endptr;
+//     size_t      i = 0;
+//     for (size_t j = 0; j < n; ++j)
+//         list[j] = NAN;
+
+//     while (*ptr) {
+//         if (*ptr == '[' || *ptr == ']') {
+//             ptr++;
+//             continue;
+//         }
+
+//         double      rawval;
+//         EbErrorType err = str_to_double(ptr, &rawval, &endptr);
+//         if (err != EB_ErrorNone)
+//             return err;
+//         if (i >= n) {
+//             return EB_ErrorBadParameter;
+//         } else if (*endptr == ',' || *endptr == ']') {
+//             endptr++;
+//         } else if (*endptr) {
+//             return EB_ErrorBadParameter;
+//         }
+//         list[i++] = rawval;
+//         ptr       = endptr;
+//     }
+//     return EB_ErrorNone;
+// }
 
 static uint32_t count_params(const char *nptr) {
     const char *ptr = nptr;
@@ -2351,18 +2450,37 @@ static EbErrorType str_to_dlf_bias_max_min_dlf(const char *nptr, uint8_t *target
     return EB_ErrorNone;
 }
 
-static EbErrorType str_to_variance_md_bias_thr(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
-    double      variance_md_bias_thr;
+static EbErrorType str_to_lineart_psy_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
     EbErrorType return_error;
 
-    return_error = str_to_double(nptr, &variance_md_bias_thr, NULL);
+    return_error = str_to_double(nptr, &config_struct->lineart_psy_bias, NULL);
+
+    if (return_error == EB_ErrorBadParameter) {
+        if (!strcmp(nptr, "Kumiko") ||
+            !strcmp(nptr, "kumiko")) {
+            config_struct->lineart_psy_bias = 6.0;
+            config_struct->lineart_psy_bias_easter_egg = 1;
+            return_error = EB_ErrorNone;
+        }
+        else
+            return EB_ErrorBadParameter;
+    }
+
+    return return_error;
+}
+
+static EbErrorType str_to_variance_thr(const char *nptr, uint16_t *target) {
+    double      variance_thr;
+    EbErrorType return_error;
+
+    return_error = str_to_double(nptr, &variance_thr, NULL);
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (variance_md_bias_thr < 0 || variance_md_bias_thr > 16)
+    if (!(variance_thr >= 0 && variance_thr <= 16))
         return EB_ErrorBadParameter;
 
-    config_struct->variance_md_bias_thr = (uint16_t)(pow(2, variance_md_bias_thr)) - 1;
+    *target = (uint16_t)(pow(2, variance_thr)) - 1;
 
     return EB_ErrorNone;
 }
@@ -2375,7 +2493,7 @@ static EbErrorType str_to_balancing_luminance_q_bias(const char *nptr, EbSvtAv1E
 
     if (return_error == EB_ErrorBadParameter)
         return return_error;
-    if (balancing_luminance_q_bias < 0 || balancing_luminance_q_bias > 25.001)
+    if (!(balancing_luminance_q_bias >= 0 && balancing_luminance_q_bias <= 25))
         return EB_ErrorBadParameter;
 
     config_struct->balancing_luminance_q_bias = rint(balancing_luminance_q_bias * 10);
@@ -2481,20 +2599,25 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
 
     if (!strcmp(name, "frame-resz-denoms"))
         return str_to_resz_denoms(value, &config_struct->frame_scale_evts);
-        
+
     if (!strcmp(name, "cdef-bias-max-cdef"))
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_max_cdef);
     if (!strcmp(name, "cdef-bias-min-cdef"))
         return str_to_cdef_bias_max_min_cdef(value, config_struct->cdef_bias_min_cdef);
-        
+
     if (!strcmp(name, "dlf-bias-max-dlf"))
         return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_max_dlf);
     if (!strcmp(name, "dlf-bias-min-dlf"))
         return str_to_dlf_bias_max_min_dlf(value, config_struct->dlf_bias_min_dlf);
-    
+
     // custom value fields
-    if (!strcmp(name, "variance-md-bias-thr"))
-        return str_to_variance_md_bias_thr(value, config_struct);
+    if (!strcmp(name, "lineart-psy-bias"))
+        return str_to_lineart_psy_bias(value, config_struct);
+
+    if (!strcmp(name, "lineart-variance-thr"))
+        return str_to_variance_thr(value, &config_struct->lineart_variance_thr);
+    if (!strcmp(name, "texture-variance-thr"))
+        return str_to_variance_thr(value, &config_struct->texture_variance_thr);
 
     if (!strcmp(name, "balancing-luminance-q-bias"))
         return str_to_balancing_luminance_q_bias(value, config_struct);
@@ -2568,6 +2691,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"chroma-qm-max", &config_struct->max_chroma_qm_level},
         {"use-fixed-qindex-offsets", &config_struct->use_fixed_qindex_offsets},
         {"startup-mg-size", &config_struct->startup_mg_size},
+        {"balancing-q-bias", &config_struct->balancing_q_bias},
         {"variance-boost-strength", &config_struct->variance_boost_strength},
         {"variance-octile", &config_struct->variance_octile},
         {"frame-luma-bias", &config_struct->frame_luma_bias},
@@ -2576,11 +2700,9 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"tx-bias", &config_struct->tx_bias},
-        {"variance-md-bias", &config_struct->variance_md_bias},
-        {"chroma-qmc-bias", &config_struct->chroma_qmc_bias},
-        {"texture-preserving-qmc-bias", &config_struct->texture_preserving_qmc_bias},
         {"cdef-bias", &config_struct->cdef_bias},
         {"dlf-bias", &config_struct->dlf_bias},
+        {"dlf-sharpness", &config_struct->dlf_sharpness},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"hbd-mds", &config_struct->hbd_mds},
@@ -2626,8 +2748,9 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } double_opts[] = {
         {"qp-scale-compress-strength", &config_struct->qp_scale_compress_strength},
         {"ac-bias", &config_struct->ac_bias},
-        {"variance-ac-bias-bias", &config_struct->variance_ac_bias_bias},
+        {"texture-ac-bias", &config_struct->texture_ac_bias},
         {"noise-level-q-bias", &config_struct->noise_level_q_bias},
+        {"texture-psy-bias", &config_struct->texture_psy_bias}
     };
     const size_t double_opts_size = sizeof(double_opts) / sizeof(double_opts[0]);
 
@@ -2676,13 +2799,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } int8_opts[] = {
         {"preset", &config_struct->enc_mode},
         {"sharpness", &config_struct->sharpness},
-        {"balancing-q-bias", &config_struct->balancing_q_bias},
         {"balancing-r0-based-layer", &config_struct->balancing_r0_based_layer},
         {"balancing-r0-dampening-layer", &config_struct->balancing_r0_dampening_layer},
-        {"complex-hvs", &config_struct->complex_hvs},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
-        {"dlf-sharpness", &config_struct->dlf_sharpness},
     };
     const size_t int8_opts_size = sizeof(int8_opts) / sizeof(int8_opts[0]);
 

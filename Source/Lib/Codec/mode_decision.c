@@ -184,10 +184,10 @@ MotionMode svt_aom_obmc_motion_mode_allowed(
     const PictureControlSet *pcs, struct ModeDecisionContext *ctx, const BlockSize bsize,
     uint8_t          situation, // 0: candidate(s) preparation, 1: data preparation, 2: simple translation face-off
     MvReferenceFrame rf0, MvReferenceFrame rf1, PredictionMode mode) {
-    const uint16_t variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
-    const uint16_t main_thr = pcs->scs->static_config.variance_md_bias_thr;
-    if (pcs->scs->static_config.variance_md_bias &&
-        variance < AOMMAX(main_thr >> 2, 8)) // `lineart-psy-bias` & `--texture-psy-bias` ; obmc in general is good for lineart but bad for texture especially noisy texture
+    // obmc in general is good for lineart but bad for texture especially noisy texture
+    const uint16_t blk_variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
+    if (pcs->scs->static_config.texture_psy_bias >= 2.0 &&
+        blk_variance < pcs->scs->static_config.texture_variance_thr >> 2)
         return SIMPLE_TRANSLATION;
 
     if (ctx->obmc_ctrls.trans_face_off && !situation)
@@ -1029,12 +1029,13 @@ void unipred_3x3_candidates_injection(const SequenceControlSet *scs, PictureCont
                         const uint8_t is_obmc_allowed = 0;
                         const uint8_t is_warp_allowed = 0;
 
-                        cand_array[cand_total_cnt].use_intrabc        = 0;
-                        cand_array[cand_total_cnt].skip_mode_allowed  = FALSE;
-                        cand_array[cand_total_cnt].pred_mode          = NEWMV;
-                        cand_array[cand_total_cnt].motion_mode        = SIMPLE_TRANSLATION;
-                        cand_array[cand_total_cnt].is_interintra_used = 0;
-                        cand_array[cand_total_cnt].drl_index          = drl_index;
+                        cand_array[cand_total_cnt].use_intrabc            = 0;
+                        cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                        cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_total_cnt].pred_mode              = NEWMV;
+                        cand_array[cand_total_cnt].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_total_cnt].is_interintra_used     = 0;
+                        cand_array[cand_total_cnt].drl_index              = drl_index;
                         // Set the MV to ME result
                         cand_array[cand_total_cnt].mv[list_idx].as_int = to_inj_mv.as_int;
 
@@ -1196,9 +1197,10 @@ static void bipred_3x3_candidates_injection(const SequenceControlSet *scs, Pictu
                                                           me_block_results_ptr->ref1_list,
                                                           list1_ref_index))
                                         continue;
-                                    cand_array[cand_total_cnt].use_intrabc       = 0;
-                                    cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                                    cand_array[cand_total_cnt].drl_index         = drl_index;
+                                    cand_array[cand_total_cnt].use_intrabc            = 0;
+                                    cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                                    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                                    cand_array[cand_total_cnt].drl_index              = drl_index;
 
                                     // Set the MV to ME result
                                     cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
@@ -1312,9 +1314,10 @@ static void bipred_3x3_candidates_injection(const SequenceControlSet *scs, Pictu
                                                           me_block_results_ptr->ref1_list,
                                                           list1_ref_index))
                                         continue;
-                                    cand_array[cand_total_cnt].use_intrabc       = 0;
-                                    cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                                    cand_array[cand_total_cnt].drl_index         = drl_index;
+                                    cand_array[cand_total_cnt].use_intrabc            = 0;
+                                    cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                                    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                                    cand_array[cand_total_cnt].drl_index              = drl_index;
 
                                     // Set the MV to ME result
                                     cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
@@ -1404,11 +1407,16 @@ static void inject_mvp_candidates_ii_light_pd1(PictureControlSet *pcs, ModeDecis
             int16_t to_inject_mv_x = ctx->ref_mv_stack[frame_type][0].this_mv.as_mv.col;
             int16_t to_inject_mv_y = ctx->ref_mv_stack[frame_type][0].this_mv.as_mv.row;
 
-            cand_array[cand_idx].pred_mode         = NEARESTMV;
-            cand_array[cand_idx].motion_mode       = SIMPLE_TRANSLATION;
-            cand_array[cand_idx].skip_mode_allowed = FALSE;
-            cand_array[cand_idx].drl_index         = 0;
-            cand_array[cand_idx].ref_frame_type    = frame_type;
+            cand_array[cand_idx].pred_mode                  = NEARESTMV;
+            cand_array[cand_idx].motion_mode                = SIMPLE_TRANSLATION;
+            cand_array[cand_idx].skip_mode_allowed          = FALSE;
+            if (to_inject_mv_x == 0 && to_inject_mv_y == 0 &&
+                ctx->blk_skip_taper_active == 1) // normal active
+                cand_array[cand_idx].cand_skip_taper_active = 0;
+            else
+                cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+            cand_array[cand_idx].drl_index                  = 0;
+            cand_array[cand_idx].ref_frame_type             = frame_type;
             assert(list_idx == 0 || list_idx == 1);
             cand_array[cand_idx].mv[list_idx] = (Mv){{to_inject_mv_x, to_inject_mv_y}};
             INC_MD_CAND_CNT(cand_idx, pcs->ppcs->max_can_count);
@@ -1429,11 +1437,12 @@ static void inject_mvp_candidates_ii_light_pd1(PictureControlSet *pcs, ModeDecis
                 inj_mv       = (ctx->injected_mv_count == 0 ||
                           mv_is_already_injected(ctx, to_inj_mv, to_inj_mv, frame_type) == FALSE);
                 if (inj_mv) {
-                    cand_array[cand_idx].pred_mode         = NEARMV;
-                    cand_array[cand_idx].motion_mode       = SIMPLE_TRANSLATION;
-                    cand_array[cand_idx].skip_mode_allowed = FALSE;
-                    cand_array[cand_idx].drl_index         = drli;
-                    cand_array[cand_idx].ref_frame_type    = frame_type;
+                    cand_array[cand_idx].pred_mode              = NEARMV;
+                    cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                    cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                    cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_idx].drl_index              = drli;
+                    cand_array[cand_idx].ref_frame_type         = frame_type;
                     assert(list_idx == 0 || list_idx == 1);
                     cand_array[cand_idx].mv[list_idx].as_int = to_inj_mv.as_int;
                     INC_MD_CAND_CNT(cand_idx, pcs->ppcs->max_can_count);
@@ -1455,13 +1464,14 @@ static void inject_mvp_candidates_ii_light_pd1(PictureControlSet *pcs, ModeDecis
                 (rf[0] == frm_hdr->skip_mode_params.ref_frame_idx_0) &&
                 (rf[1] == frm_hdr->skip_mode_params.ref_frame_idx_1);
 
-            cand_array[cand_idx].pred_mode         = NEAREST_NEARESTMV;
-            cand_array[cand_idx].motion_mode       = SIMPLE_TRANSLATION;
-            cand_array[cand_idx].skip_mode_allowed = is_skip_mode;
-            cand_array[cand_idx].mv[REF_LIST_0]    = (Mv){{to_inject_mv_x_l0, to_inject_mv_y_l0}};
-            cand_array[cand_idx].mv[REF_LIST_1]    = (Mv){{to_inject_mv_x_l1, to_inject_mv_y_l1}};
-            cand_array[cand_idx].drl_index         = 0;
-            cand_array[cand_idx].ref_frame_type    = ref_pair;
+            cand_array[cand_idx].pred_mode              = NEAREST_NEARESTMV;
+            cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+            cand_array[cand_idx].skip_mode_allowed      = is_skip_mode && !ctx->blk_skip_taper_active;
+            cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+            cand_array[cand_idx].mv[REF_LIST_0]         = (Mv){{to_inject_mv_x_l0, to_inject_mv_y_l0}};
+            cand_array[cand_idx].mv[REF_LIST_1]         = (Mv){{to_inject_mv_x_l1, to_inject_mv_y_l1}};
+            cand_array[cand_idx].drl_index              = 0;
+            cand_array[cand_idx].ref_frame_type         = ref_pair;
 
             cand_array[cand_idx].comp_group_idx       = 0;
             cand_array[cand_idx].compound_idx         = 1;
@@ -1490,16 +1500,17 @@ static void inject_mvp_candidates_ii_light_pd1(PictureControlSet *pcs, ModeDecis
                 inj_mv        = (ctx->injected_mv_count == 0 ||
                           mv_is_already_injected(ctx, to_inj_mv0, to_inj_mv1, ref_pair) == FALSE);
                 if (inj_mv) {
-                    cand_array[cand_idx].pred_mode             = NEAR_NEARMV;
-                    cand_array[cand_idx].motion_mode           = SIMPLE_TRANSLATION;
-                    cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                    cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                    cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                    cand_array[cand_idx].drl_index             = drli;
-                    cand_array[cand_idx].ref_frame_type        = ref_pair;
+                    cand_array[cand_idx].pred_mode              = NEAR_NEARMV;
+                    cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                    cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                    cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                    cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                    cand_array[cand_idx].drl_index              = drli;
+                    cand_array[cand_idx].ref_frame_type         = ref_pair;
 
-                    cand_array[cand_idx].comp_group_idx       = 0;
-                    cand_array[cand_idx].compound_idx         = 1;
+                    cand_array[cand_idx].comp_group_idx         = 0;
+                    cand_array[cand_idx].compound_idx           = 1;
                     cand_array[cand_idx].interinter_comp.type = COMPOUND_AVERAGE;
 
                     INC_MD_CAND_CNT(cand_idx, pcs->ppcs->max_can_count);
@@ -1630,14 +1641,19 @@ static void inject_mvp_candidates_ii(const SequenceControlSet *scs, PictureContr
                                                                              : 0;
 
                 assert(list_idx == 0 || list_idx == 1);
-                cand_array[cand_idx].pred_mode           = NEARESTMV;
-                cand_array[cand_idx].motion_mode         = SIMPLE_TRANSLATION;
-                cand_array[cand_idx].use_intrabc         = 0;
-                cand_array[cand_idx].skip_mode_allowed   = FALSE;
-                cand_array[cand_idx].drl_index           = 0;
-                cand_array[cand_idx].ref_frame_type      = frame_type;
-                cand_array[cand_idx].mv[list_idx].as_int = to_inj_mv.as_int;
-                cand_array[cand_idx].is_interintra_used  = 0;
+                cand_array[cand_idx].pred_mode                  = NEARESTMV;
+                cand_array[cand_idx].motion_mode                = SIMPLE_TRANSLATION;
+                cand_array[cand_idx].use_intrabc                = 0;
+                cand_array[cand_idx].skip_mode_allowed          = FALSE;
+                if (to_inject_mv_x == 0 && to_inject_mv_y == 0 &&
+                    ctx->blk_skip_taper_active == 1) // normal active
+                    cand_array[cand_idx].cand_skip_taper_active = 0;
+                else
+                    cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                cand_array[cand_idx].drl_index                  = 0;
+                cand_array[cand_idx].ref_frame_type             = frame_type;
+                cand_array[cand_idx].mv[list_idx].as_int        = to_inj_mv.as_int;
+                cand_array[cand_idx].is_interintra_used         = 0;
                 INC_MD_CAND_CNT(cand_idx, pcs->ppcs->max_can_count);
 
                 inj_non_simple_modes(
@@ -1682,14 +1698,15 @@ static void inject_mvp_candidates_ii(const SequenceControlSet *scs, PictureContr
                         : 0;
 
                     assert(list_idx == 0 || list_idx == 1);
-                    cand_array[cand_idx].pred_mode           = NEARMV;
-                    cand_array[cand_idx].motion_mode         = SIMPLE_TRANSLATION;
-                    cand_array[cand_idx].use_intrabc         = 0;
-                    cand_array[cand_idx].skip_mode_allowed   = FALSE;
-                    cand_array[cand_idx].drl_index           = drli;
-                    cand_array[cand_idx].ref_frame_type      = frame_type;
-                    cand_array[cand_idx].mv[list_idx].as_int = to_inj_mv.as_int;
-                    cand_array[cand_idx].is_interintra_used  = 0;
+                    cand_array[cand_idx].pred_mode              = NEARMV;
+                    cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                    cand_array[cand_idx].use_intrabc            = 0;
+                    cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                    cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_idx].drl_index              = drli;
+                    cand_array[cand_idx].ref_frame_type         = frame_type;
+                    cand_array[cand_idx].mv[list_idx].as_int    = to_inj_mv.as_int;
+                    cand_array[cand_idx].is_interintra_used     = 0;
                     INC_MD_CAND_CNT(cand_idx, pcs->ppcs->max_can_count);
 
                     inj_non_simple_modes(
@@ -1756,26 +1773,18 @@ static void inject_mvp_candidates_ii(const SequenceControlSet *scs, PictureContr
                             continue;
 
                         if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
-
                             continue;
 
-                        cand_array[cand_idx].pred_mode = NEAREST_NEARESTMV;
-
-                        cand_array[cand_idx].motion_mode = SIMPLE_TRANSLATION;
-
-                        cand_array[cand_idx].is_interintra_used = 0;
-
-                        cand_array[cand_idx].use_intrabc = 0;
-
-                        cand_array[cand_idx].skip_mode_allowed = cur_type == MD_COMP_AVG && is_skip_mode ? TRUE : FALSE;
-
-                        cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-
-                        cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-
-                        cand_array[cand_idx].drl_index = 0;
-
-                        cand_array[cand_idx].ref_frame_type = ref_pair;
+                        cand_array[cand_idx].pred_mode              = NEAREST_NEARESTMV;
+                        cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_idx].is_interintra_used     = 0;
+                        cand_array[cand_idx].use_intrabc            = 0;
+                        cand_array[cand_idx].skip_mode_allowed      = cur_type == MD_COMP_AVG && is_skip_mode && !ctx->blk_skip_taper_active;
+                        cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                        cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                        cand_array[cand_idx].drl_index              = 0;
+                        cand_array[cand_idx].ref_frame_type         = ref_pair;
 
                         //NRST-NRST
 
@@ -1850,15 +1859,16 @@ static void inject_mvp_candidates_ii(const SequenceControlSet *scs, PictureContr
                                 continue;
                             if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
                                 continue;
-                            cand_array[cand_idx].pred_mode             = NEAR_NEARMV;
-                            cand_array[cand_idx].motion_mode           = SIMPLE_TRANSLATION;
-                            cand_array[cand_idx].is_interintra_used    = 0;
-                            cand_array[cand_idx].use_intrabc           = 0;
-                            cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                            cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                            cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                            cand_array[cand_idx].drl_index             = drli;
-                            cand_array[cand_idx].ref_frame_type        = ref_pair;
+                            cand_array[cand_idx].pred_mode              = NEAR_NEARMV;
+                            cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                            cand_array[cand_idx].is_interintra_used     = 0;
+                            cand_array[cand_idx].use_intrabc            = 0;
+                            cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                            cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                            cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                            cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                            cand_array[cand_idx].drl_index              = drli;
+                            cand_array[cand_idx].ref_frame_type         = ref_pair;
                             if (cur_type > MD_COMP_AVG) {
                                 if (mask_done != 1) {
                                     if (svt_aom_calc_pred_masked_compound(pcs, ctx, &cand_array[cand_idx]))
@@ -1955,11 +1965,12 @@ static void inject_new_nearest_new_comb_candidates(const SequenceControlSet *scs
                         cand_array[cand_idx].is_interintra_used = 0;
                         cand_array[cand_idx].use_intrabc        = 0;
 
-                        cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                        cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                        cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                        cand_array[cand_idx].drl_index             = 0;
-                        cand_array[cand_idx].ref_frame_type        = ref_pair;
+                        cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                        cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                        cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                        cand_array[cand_idx].drl_index              = 0;
+                        cand_array[cand_idx].ref_frame_type         = ref_pair;
                         svt_aom_get_av1_mv_pred_drl(ctx,
                                                     ctx->blk_ptr,
                                                     cand_array[cand_idx].ref_frame_type,
@@ -2023,15 +2034,16 @@ static void inject_new_nearest_new_comb_candidates(const SequenceControlSet *scs
                             continue;
                         if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
                             continue;
-                        cand_array[cand_idx].pred_mode             = NEW_NEARESTMV;
-                        cand_array[cand_idx].motion_mode           = SIMPLE_TRANSLATION;
-                        cand_array[cand_idx].is_interintra_used    = 0;
-                        cand_array[cand_idx].use_intrabc           = 0;
-                        cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                        cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                        cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                        cand_array[cand_idx].drl_index             = 0;
-                        cand_array[cand_idx].ref_frame_type        = ref_pair;
+                        cand_array[cand_idx].pred_mode              = NEW_NEARESTMV;
+                        cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_idx].is_interintra_used     = 0;
+                        cand_array[cand_idx].use_intrabc            = 0;
+                        cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                        cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                        cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                        cand_array[cand_idx].drl_index              = 0;
+                        cand_array[cand_idx].ref_frame_type         = ref_pair;
                         svt_aom_get_av1_mv_pred_drl(ctx,
                                                     ctx->blk_ptr,
                                                     cand_array[cand_idx].ref_frame_type,
@@ -2093,16 +2105,17 @@ static void inject_new_nearest_new_comb_candidates(const SequenceControlSet *scs
                                 continue;
                             if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
                                 continue;
-                            cand_array[cand_idx].pred_mode             = NEW_NEARMV;
-                            cand_array[cand_idx].motion_mode           = SIMPLE_TRANSLATION;
-                            cand_array[cand_idx].is_interintra_used    = 0;
-                            cand_array[cand_idx].use_intrabc           = 0;
-                            cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                            cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                            cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                            cand_array[cand_idx].drl_index             = drli;
-                            cand_array[cand_idx].ref_frame_type        = ref_pair;
-                            cand_array[cand_idx].pred_mv[REF_LIST_0]   = (Mv){
+                            cand_array[cand_idx].pred_mode              = NEW_NEARMV;
+                            cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                            cand_array[cand_idx].is_interintra_used     = 0;
+                            cand_array[cand_idx].use_intrabc            = 0;
+                            cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                            cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                            cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                            cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                            cand_array[cand_idx].drl_index              = drli;
+                            cand_array[cand_idx].ref_frame_type         = ref_pair;
+                            cand_array[cand_idx].pred_mv[REF_LIST_0]    = (Mv){
                                 {ref_mv[0].as_mv.col, ref_mv[0].as_mv.row}};
                             if (cur_type > MD_COMP_AVG) {
                                 if (mask_done != 1) {
@@ -2157,16 +2170,17 @@ static void inject_new_nearest_new_comb_candidates(const SequenceControlSet *scs
                                 continue;
                             if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
                                 continue;
-                            cand_array[cand_idx].pred_mode             = NEAR_NEWMV;
-                            cand_array[cand_idx].motion_mode           = SIMPLE_TRANSLATION;
-                            cand_array[cand_idx].is_interintra_used    = 0;
-                            cand_array[cand_idx].use_intrabc           = 0;
-                            cand_array[cand_idx].skip_mode_allowed     = FALSE;
-                            cand_array[cand_idx].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                            cand_array[cand_idx].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                            cand_array[cand_idx].drl_index             = drli;
-                            cand_array[cand_idx].ref_frame_type        = ref_pair;
-                            cand_array[cand_idx].pred_mv[REF_LIST_1]   = (Mv){
+                            cand_array[cand_idx].pred_mode              = NEAR_NEWMV;
+                            cand_array[cand_idx].motion_mode            = SIMPLE_TRANSLATION;
+                            cand_array[cand_idx].is_interintra_used     = 0;
+                            cand_array[cand_idx].use_intrabc            = 0;
+                            cand_array[cand_idx].skip_mode_allowed      = FALSE;
+                            cand_array[cand_idx].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                            cand_array[cand_idx].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                            cand_array[cand_idx].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                            cand_array[cand_idx].drl_index              = drli;
+                            cand_array[cand_idx].ref_frame_type         = ref_pair;
+                            cand_array[cand_idx].pred_mv[REF_LIST_1]    = (Mv){
                                 {ref_mv[1].as_mv.col, ref_mv[1].as_mv.row}};
                             if (cur_type > MD_COMP_AVG) {
                                 if (mask_done != 1) {
@@ -2781,13 +2795,14 @@ static void inject_new_candidates_light_pd1(PictureControlSet *pcs, struct ModeD
                 if (!ctx->corrupted_mv_check ||
                     is_valid_mv_diff(
                         best_pred_mv, to_inj_mv, to_inj_mv, 0, pcs->ppcs->frm_hdr.allow_high_precision_mv)) {
-                    cand_array[cand_total_cnt].skip_mode_allowed     = FALSE;
-                    cand_array[cand_total_cnt].pred_mode             = NEWMV;
-                    cand_array[cand_total_cnt].motion_mode           = SIMPLE_TRANSLATION;
-                    cand_array[cand_total_cnt].drl_index             = drl_index;
-                    cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv.as_int;
-                    cand_array[cand_total_cnt].ref_frame_type        = to_inject_ref_type;
-                    cand_array[cand_total_cnt].pred_mv[REF_LIST_0]   = (Mv){
+                    cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_total_cnt].pred_mode              = NEWMV;
+                    cand_array[cand_total_cnt].motion_mode            = SIMPLE_TRANSLATION;
+                    cand_array[cand_total_cnt].drl_index              = drl_index;
+                    cand_array[cand_total_cnt].mv[REF_LIST_0].as_int  = to_inj_mv.as_int;
+                    cand_array[cand_total_cnt].ref_frame_type         = to_inject_ref_type;
+                    cand_array[cand_total_cnt].pred_mv[REF_LIST_0]    = (Mv){
                         {best_pred_mv[0].as_mv.col, best_pred_mv[0].as_mv.row}};
                     INC_MD_CAND_CNT(cand_total_cnt, pcs->ppcs->max_can_count);
                     // Add the injected MV to the list of injected MVs
@@ -2826,10 +2841,11 @@ static void inject_new_candidates_light_pd1(PictureControlSet *pcs, struct ModeD
                     if (!ctx->corrupted_mv_check ||
                         is_valid_mv_diff(
                             best_pred_mv, to_inj_mv, to_inj_mv, 0, pcs->ppcs->frm_hdr.allow_high_precision_mv)) {
-                        cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                        cand_array[cand_total_cnt].pred_mode         = NEWMV;
-                        cand_array[cand_total_cnt].motion_mode       = SIMPLE_TRANSLATION;
-                        cand_array[cand_total_cnt].drl_index         = drl_index;
+                        cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                        cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_total_cnt].pred_mode              = NEWMV;
+                        cand_array[cand_total_cnt].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_total_cnt].drl_index              = drl_index;
 
                         cand_array[cand_total_cnt].mv[REF_LIST_1].as_int = to_inj_mv.as_int;
                         cand_array[cand_total_cnt].ref_frame_type        = to_inject_ref_type;
@@ -2878,14 +2894,15 @@ static void inject_new_candidates_light_pd1(PictureControlSet *pcs, struct ModeD
                     if (!ctx->corrupted_mv_check ||
                         is_valid_mv_diff(
                             best_pred_mv, to_inj_mv0, to_inj_mv1, 1, pcs->ppcs->frm_hdr.allow_high_precision_mv)) {
-                        cand_array[cand_total_cnt].skip_mode_allowed     = FALSE;
-                        cand_array[cand_total_cnt].drl_index             = drl_index;
-                        cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
-                        cand_array[cand_total_cnt].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
-                        cand_array[cand_total_cnt].pred_mode             = NEW_NEWMV;
-                        cand_array[cand_total_cnt].motion_mode           = SIMPLE_TRANSLATION;
-                        cand_array[cand_total_cnt].ref_frame_type        = to_inject_ref_type;
-                        cand_array[cand_total_cnt].pred_mv[REF_LIST_0]   = (Mv){
+                        cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                        cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_total_cnt].drl_index              = drl_index;
+                        cand_array[cand_total_cnt].mv[REF_LIST_0].as_int  = to_inj_mv0.as_int;
+                        cand_array[cand_total_cnt].mv[REF_LIST_1].as_int  = to_inj_mv1.as_int;
+                        cand_array[cand_total_cnt].pred_mode              = NEW_NEWMV;
+                        cand_array[cand_total_cnt].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_total_cnt].ref_frame_type         = to_inject_ref_type;
+                        cand_array[cand_total_cnt].pred_mv[REF_LIST_0]    = (Mv){
                             {best_pred_mv[0].as_mv.col, best_pred_mv[0].as_mv.row}};
                         cand_array[cand_total_cnt].pred_mv[REF_LIST_1] = (Mv){
                             {best_pred_mv[1].as_mv.col, best_pred_mv[1].as_mv.row}};
@@ -2987,10 +3004,11 @@ static void inject_new_candidates(const SequenceControlSet *scs, struct ModeDeci
                     const uint8_t is_warp_allowed = warped_motion_mode_allowed(pcs, ctx) &&
                         svt_aom_is_valid_unipred_ref(ctx, WARP_GROUP, list_idx, ref_idx);
 
-                    cand_array[cand_total_cnt].use_intrabc       = 0;
-                    cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                    cand_array[cand_total_cnt].pred_mode         = NEWMV;
-                    cand_array[cand_total_cnt].drl_index         = drl_index;
+                    cand_array[cand_total_cnt].use_intrabc            = 0;
+                    cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_total_cnt].pred_mode              = NEWMV;
+                    cand_array[cand_total_cnt].drl_index              = drl_index;
 
                     // Set the MV to ME result
                     cand_array[cand_total_cnt].mv[list_idx].as_int = to_inj_mv.as_int;
@@ -3089,8 +3107,9 @@ static void inject_new_candidates(const SequenceControlSet *scs, struct ModeDeci
                                     continue;
                                 cand_array[cand_total_cnt].use_intrabc = 0;
 
-                                cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                                cand_array[cand_total_cnt].drl_index         = drl_index;
+                                cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                                cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                                cand_array[cand_total_cnt].drl_index              = drl_index;
 
                                 // Set the MV to ME result
                                 cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
@@ -3198,11 +3217,12 @@ static void inject_global_candidates(const SequenceControlSet *scs, struct ModeD
                 cand_array[cand_total_cnt].wm_params_l0 = *gm_params;
                 cand_array[cand_total_cnt].wm_params_l1 = *gm_params;
 
-                cand_array[cand_total_cnt].use_intrabc       = 0;
-                cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                cand_array[cand_total_cnt].mv[list_idx]      = (Mv){{to_inject_mv_x, to_inject_mv_y}};
-                cand_array[cand_total_cnt].drl_index         = 0;
-                cand_array[cand_total_cnt].ref_frame_type    = frame_type;
+                cand_array[cand_total_cnt].use_intrabc            = 0;
+                cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                cand_array[cand_total_cnt].mv[list_idx]           = (Mv){{to_inject_mv_x, to_inject_mv_y}};
+                cand_array[cand_total_cnt].drl_index              = 0;
+                cand_array[cand_total_cnt].ref_frame_type         = frame_type;
 
                 INC_MD_CAND_CNT(cand_total_cnt, pcs->ppcs->max_can_count);
 
@@ -3272,14 +3292,15 @@ static void inject_global_candidates(const SequenceControlSet *scs, struct ModeD
                         continue;
                     cand_array[cand_total_cnt].use_intrabc = 0;
 
-                    cand_array[cand_total_cnt].skip_mode_allowed  = FALSE;
-                    cand_array[cand_total_cnt].pred_mode          = GLOBAL_GLOBALMV;
-                    cand_array[cand_total_cnt].motion_mode        = gm_params_0->wmtype > TRANSLATION ? WARPED_CAUSAL
-                                                                                                      : SIMPLE_TRANSLATION;
-                    cand_array[cand_total_cnt].wm_params_l0       = *gm_params_0;
-                    cand_array[cand_total_cnt].wm_params_l1       = *gm_params_1;
-                    cand_array[cand_total_cnt].is_interintra_used = 0;
-                    cand_array[cand_total_cnt].drl_index          = 0;
+                    cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                    cand_array[cand_total_cnt].pred_mode              = GLOBAL_GLOBALMV;
+                    cand_array[cand_total_cnt].motion_mode            = gm_params_0->wmtype > TRANSLATION ? WARPED_CAUSAL
+                                                                                                          : SIMPLE_TRANSLATION;
+                    cand_array[cand_total_cnt].wm_params_l0           = *gm_params_0;
+                    cand_array[cand_total_cnt].wm_params_l1           = *gm_params_1;
+                    cand_array[cand_total_cnt].is_interintra_used     = 0;
+                    cand_array[cand_total_cnt].drl_index              = 0;
                     // will be needed later by the rate estimation
                     cand_array[cand_total_cnt].ref_frame_type = to_inject_ref_type;
                     // Set the MV to frame MV
@@ -3367,12 +3388,13 @@ static void inject_pme_candidates(
                         const uint8_t is_warp_allowed = warped_motion_mode_allowed(pcs, ctx) &&
                             svt_aom_is_valid_unipred_ref(ctx, WARP_GROUP, list_idx, ref_idx);
 
-                        cand_array[cand_total_cnt].use_intrabc        = 0;
-                        cand_array[cand_total_cnt].skip_mode_allowed  = FALSE;
-                        cand_array[cand_total_cnt].pred_mode          = NEWMV;
-                        cand_array[cand_total_cnt].motion_mode        = SIMPLE_TRANSLATION;
-                        cand_array[cand_total_cnt].is_interintra_used = 0;
-                        cand_array[cand_total_cnt].drl_index          = drl_index;
+                        cand_array[cand_total_cnt].use_intrabc            = 0;
+                        cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                        cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                        cand_array[cand_total_cnt].pred_mode              = NEWMV;
+                        cand_array[cand_total_cnt].motion_mode            = SIMPLE_TRANSLATION;
+                        cand_array[cand_total_cnt].is_interintra_used     = 0;
+                        cand_array[cand_total_cnt].drl_index              = drl_index;
                         assert(list_idx == 0 || list_idx == 1);
                         cand_array[cand_total_cnt].mv[list_idx].as_int = to_inj_mv.as_int;
                         cand_array[cand_total_cnt].ref_frame_type      = frame_type;
@@ -3451,9 +3473,10 @@ static void inject_pme_candidates(
 
                                 if (!is_valid_bi_type(ctx, cur_type, list_idx_0, ref_idx_0, list_idx_1, ref_idx_1))
                                     continue;
-                                cand_array[cand_total_cnt].use_intrabc       = 0;
-                                cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
-                                cand_array[cand_total_cnt].drl_index         = drl_index;
+                                cand_array[cand_total_cnt].use_intrabc            = 0;
+                                cand_array[cand_total_cnt].skip_mode_allowed      = FALSE;
+                                cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+                                cand_array[cand_total_cnt].drl_index              = drl_index;
                                 // Set the MV to ME result
                                 cand_array[cand_total_cnt].mv[REF_LIST_0].as_int = to_inj_mv0.as_int;
                                 cand_array[cand_total_cnt].mv[REF_LIST_1].as_int = to_inj_mv1.as_int;
@@ -3791,10 +3814,11 @@ static void inject_intra_bc_candidates(PictureControlSet *pcs, ModeDecisionConte
         cand_array[*cand_cnt].pred_mode                  = DC_PRED;
         cand_array[*cand_cnt].motion_mode                = SIMPLE_TRANSLATION;
         //inter ralated
-        cand_array[*cand_cnt].is_interintra_used  = 0;
-        cand_array[*cand_cnt].skip_mode_allowed   = FALSE;
-        cand_array[*cand_cnt].mv[REF_LIST_0]      = (Mv){{dv_cand[dv_i].col, dv_cand[dv_i].row}};
-        cand_array[*cand_cnt].pred_mv[REF_LIST_0] = (Mv){
+        cand_array[*cand_cnt].is_interintra_used     = 0;
+        cand_array[*cand_cnt].skip_mode_allowed      = FALSE;
+        cand_array[*cand_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
+        cand_array[*cand_cnt].mv[REF_LIST_0]         = (Mv){{dv_cand[dv_i].col, dv_cand[dv_i].row}};
+        cand_array[*cand_cnt].pred_mv[REF_LIST_0]    = (Mv){
             {ctx->ref_mv_stack[INTRA_FRAME][0].this_mv.as_mv.col, ctx->ref_mv_stack[INTRA_FRAME][0].this_mv.as_mv.row}};
         cand_array[*cand_cnt].drl_index         = 0;
         cand_array[*cand_cnt].interp_filters    = av1_broadcast_interp_filter(BILINEAR);
@@ -3859,6 +3883,7 @@ void svt_av1_get_gradient_hist_c(const uint8_t *src, int src_stride, int rows,
 
      ModeDecisionCandidate* cand_array = ctx->fast_cand_array;
      cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
+     cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
      cand_array[cand_total_cnt].palette_info = NULL;
      cand_array[cand_total_cnt].use_intrabc = 0;
      cand_array[cand_total_cnt].filter_intra_mode = FILTER_INTRA_MODES;
@@ -3911,6 +3936,7 @@ static void inject_intra_candidates(
                 (ctx->intra_ctrls.angular_pred_level >= 3 && angle_delta != 0))
                 continue;
             cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
+            cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
             cand_array[cand_total_cnt].palette_info = NULL;
             cand_array[cand_total_cnt].pred_mode = intra_mode;
             cand_array[cand_total_cnt].use_intrabc = 0;
@@ -3961,6 +3987,7 @@ static void inject_filter_intra_candidates(
 
     for (filter_intra_mode = intra_mode_start; filter_intra_mode <= intra_mode_end; ++filter_intra_mode) {
             cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
+            cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
             cand_array[cand_total_cnt].pred_mode = DC_PRED;
             cand_array[cand_total_cnt].use_intrabc = 0;
             cand_array[cand_total_cnt].filter_intra_mode = filter_intra_mode;
@@ -4014,6 +4041,7 @@ static void inject_zz_backup_candidate(
     if (!ctx->corrupted_mv_check || is_valid_mv_diff(best_pred_mv, (Mv) { {0, 0} }, (Mv) { {0, 0} }, 0, pcs->ppcs->frm_hdr.allow_high_precision_mv)) {
     cand_array[cand_total_cnt].use_intrabc = 0;
     cand_array[cand_total_cnt].skip_mode_allowed = FALSE;
+    cand_array[cand_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
     cand_array[cand_total_cnt].pred_mode = NEWMV;
     cand_array[cand_total_cnt].motion_mode = SIMPLE_TRANSLATION;
     // zz
@@ -4074,6 +4102,7 @@ void  inject_palette_candidates(
         assert(palette_size_array_0[cand_i] < 9);
         //to re check these fields
         cand_array[can_total_cnt].skip_mode_allowed = FALSE;
+        cand_array[can_total_cnt].cand_skip_taper_active = ctx->blk_skip_taper_active;
         cand_array[can_total_cnt].pred_mode = DC_PRED;
         cand_array[can_total_cnt].use_intrabc = 0;
 
@@ -4409,11 +4438,11 @@ void svt_aom_product_full_mode_decision_light_pd1(
     blk_ptr->tx_depth = 0;
     blk_ptr->skip_mode = cand->skip_mode; // note, the skip mode flag is re-checked in the ENCDEC process
     blk_ptr->block_has_coeff = ((cand_bf->block_has_coeff) > 0) ? TRUE : FALSE;
-    blk_ptr->variance_md_skip_taper_active = cand_bf->variance_md_skip_taper_active;
+    blk_ptr->forced_skip_taper_active = cand_bf->cand->cand_skip_taper_active == 2;
     ctx->blk_ptr->cnt_nz_coeff = cand_bf->cnt_nz_coeff;
 
     // If skip_mode is allowed, and block has no coeffs, use skip_mode
-    if (cand->skip_mode_allowed == TRUE && !cand_bf->variance_md_skip_taper_active) {
+    if (cand->skip_mode_allowed == TRUE) {
         blk_ptr->skip_mode |= !blk_ptr->block_has_coeff;
     }
     assert(IMPLIES(pcs->ppcs->frm_hdr.interpolation_filter == SWITCHABLE && blk_ptr->skip_mode, cand->interp_filters == 0));
@@ -4713,11 +4742,11 @@ uint32_t svt_aom_product_full_mode_decision(
     blk_ptr->tx_depth = cand->tx_depth;
     blk_ptr->skip_mode = cand->skip_mode; // note, the skip mode flag is re-checked in the ENCDEC process
     blk_ptr->block_has_coeff = ((cand_bf->block_has_coeff) > 0) ? TRUE : FALSE;
-    blk_ptr->variance_md_skip_taper_active = cand_bf->variance_md_skip_taper_active;
+    blk_ptr->forced_skip_taper_active = cand_bf->cand->cand_skip_taper_active == 2;
     ctx->blk_ptr->cnt_nz_coeff = cand_bf->cnt_nz_coeff;
 
     // If skip_mode is allowed, and block has no coeffs, use skip_mode
-    if (cand->skip_mode_allowed == TRUE && !cand_bf->variance_md_skip_taper_active) {
+    if (cand->skip_mode_allowed == TRUE) {
         blk_ptr->skip_mode |= !blk_ptr->block_has_coeff;
     }
 

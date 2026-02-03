@@ -15,6 +15,7 @@
 #include "ac_bias.h"
 #include "aom_dsp_rtcd.h"
 #include "me_context.h"
+#include "segmentation.h"
 
 /* Regular version of "AC Bias"
  *
@@ -190,21 +191,18 @@ double get_effective_ac_bias(const double ac_bias, const bool is_islice, const u
     }
 }
 
-double get_effective_ac_bias_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
-                                  const uint16_t variance_md_bias_thr, uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom,
-                                  const double variance_ac_bias_bias) {
+double get_effective_ac_bias_texture_psy_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
+                                              const double texture_ac_bias, const uint16_t texture_variance_thr,
+                                              uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom) {
     const double effective_ac_bias = get_effective_ac_bias(ac_bias, is_islice, temporal_layer_index);
+    const double effective_texture_ac_bias = get_effective_ac_bias(texture_ac_bias, is_islice, temporal_layer_index);
 
-    uint16_t blk_variance;
-    if (blk_geom->bsize == BLOCK_64X64)
-        blk_variance = variance[sb_index][ME_TIER_ZERO_PU_64x64];
-    else
-        blk_variance = variance[sb_index][ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + ((blk_geom->org_y >> 5) << 1))];
+    const uint16_t blk_variance = get_variance_for_cu_16x16_min(blk_geom, variance[sb_index]);
 
-    if (blk_variance >= variance_md_bias_thr >> 1)
+    if (blk_variance >= texture_variance_thr >> 1)
         return effective_ac_bias;
-    else if (blk_variance >= variance_md_bias_thr >> 2)
-        return effective_ac_bias * ((variance_ac_bias_bias + 1.0) * 0.5);
+    else if (blk_variance >= texture_variance_thr >> 2)
+        return effective_ac_bias * ((double)2/3) + effective_texture_ac_bias * ((double)1/3);
     else
-        return effective_ac_bias * variance_ac_bias_bias;
+        return effective_texture_ac_bias;
 }

@@ -27,9 +27,9 @@ uint64_t get_svt_psy_full_dist(const void *s, uint32_t so, uint32_t sp, const vo
 uint64_t svt_psy_adjust_rate_light(const int32_t *coeff, uint64_t coeff_bits, const uint32_t bwidth,
                                    const uint32_t bheight, const double ac_bias);
 double   get_effective_ac_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index);
-double   get_effective_ac_bias_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
-                                    const uint16_t variance_md_bias_thr, uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom,
-                                    const double variance_ac_bias_bias);
+double   get_effective_ac_bias_texture_psy_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
+                                                const double texture_ac_bias, const uint16_t texture_variance_thr,
+                                                uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom);
 
 #ifdef __cplusplus
 }

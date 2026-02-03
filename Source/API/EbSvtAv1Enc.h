@@ -64,6 +64,8 @@ typedef enum ATTRIBUTE_PACKED {
 } EncMode;
 
 #define DEFAULT -1
+#define UINT8_DEFAULT UINT8_MAX
+#define INT8_DEFAULT INT8_MAX
 
 #define EB_BUFFERFLAG_EOS 0x00000001 // signals the last packet of the stream
 #define EB_BUFFERFLAG_SHOW_EXT 0x00000002 // signals that the packet contains a show existing frame at the end
@@ -710,9 +712,10 @@ typedef struct EbSvtAv1EncConfiguration {
 
     Bool enable_overlays;
     /**
-     * @brief Tune for a particular metric; 0: VQ, 1: PSNR, 2: SSIM.
+     * @brief Tune for a particular metric; 0: VQ, 1: PSNR, 2: SSIM, 3: Subjective SSIM, 4: Still Picture.
      *
-     * Default is 2 (Tune SSIM) for SVT-AV1-PSY. Mainline SVT-AV1 uses 1 (Tune PSNR) as default.
+     * Default is 0 for 5fish/SVT-AV1-PSY.
+     * In original SVT-AV1-PSY v2.3.0-B it was 2. In mainline SVT-AV1 it is 1.
      */
     uint8_t tune;
 
@@ -849,7 +852,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * @brief Min quant matrix flatness. Applicable when enable_qm is true.
      * Min value is 0.
      * Max value is 15.
-     * Default is 2 in SVT-AV1-PSY, mainline default is 8.
+     * Default is 8.
      */
     uint8_t min_qm_level;
     /**
@@ -859,6 +862,21 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 15.
      */
     uint8_t max_qm_level;
+    /**
+     * @brief Min quant matrix flatness. Applicable when enable_qm is true.
+     * Min value is 0.
+     * Max value is 15.
+     * Default is 10.
+     */
+    uint8_t min_chroma_qm_level;
+
+    /**
+     * @brief Max quant matrix flatness. Applicable when enable_qm is true.
+     * Min value is 0.
+     * Max value is 15.
+     * Default is 15.
+     */
+    uint8_t max_chroma_qm_level;
 
     /**
      * @brief gop_constraint_rc
@@ -928,7 +946,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * true = enable variance boost
      * Default is true in SVT-AV1-PSY.
      */
-    Bool enable_variance_boost;
+    uint8_t enable_variance_boost;
 
     /**
      * @brief Selects the curve strength to boost low variance regions according to a fast-growing formula
@@ -1034,22 +1052,6 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t kf_tf_strength;
 
     /**
-     * @brief Min quant matrix flatness. Applicable when enable_qm is true.
-     * Min value is 0.
-     * Max value is 15.
-     * Default is 8.
-     */
-    uint8_t min_chroma_qm_level;
-
-    /**
-     * @brief Max quant matrix flatness. Applicable when enable_qm is true.
-     * Min value is 0.
-     * Max value is 15.
-     * Default is 15.
-     */
-    uint8_t max_chroma_qm_level;
-
-    /**
      * @brief Noise normalization strength; modifies the encoder's willingness
      * to boost AC coefficients in low-noise blocks.
      * Min value is 0.
@@ -1068,13 +1070,10 @@ typedef struct EbSvtAv1EncConfiguration {
     double ac_bias;
 
     /**
-     * @brief `--ac-bias` strength is multiplied by this number in low variance area
-     * 1.0: disabled
-     * Min value is 0.0
-     * Max value is 16.0
-     * Default is 1.0
+     * @brief  `--ac-bias` strength if variance is lower than thresholds derived from `--texture-variance-thr`
+     * Default is the same as `--ac-bias`.
      */
-    double variance_ac_bias_bias;
+    double texture_ac_bias;
 
     /**
      * @brief Transform size/type bias type
@@ -1103,34 +1102,32 @@ typedef struct EbSvtAv1EncConfiguration {
     int32_t noise_level_thr;
 
     /**
-     * @brief Bias prediction mode, skip, and block size based on variance
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
+     * @brief Improve lineart retention
+     * Min value is 0
+     * Max value is 7
      */
-    uint8_t variance_md_bias;
+    double lineart_psy_bias;
     /**
-     * @brief Bias prediction mode, skip, and block size based on variance
-     * Calculated from `--variance-md-bias-thr` commandline parameter via `pow(2, "variance-md-bias-thr") - 1`.
+     * @brief Improve texture retention.
+     * Min value is 0
+     * Max value is 7
      */
-    uint16_t variance_md_bias_thr;
+    double texture_psy_bias;
+    /**
+     * @brief Easter egg for `--lineart-psy-bias Kumiko`
+     */
+    int8_t lineart_psy_bias_easter_egg;
 
     /**
-     * @brief Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision
-     * 0: disabled
-     * 1: full
-     * 2: light
-     * Default is 0.
+     * @brief Threshold for `--lineart-psy-bias`.
+     * Calculated from `--lineart-variance-thr` commandline parameter via `pow(2, "lineart-variance-thr") - 1`.
      */
-    uint8_t chroma_qmc_bias;
-
+    uint16_t lineart_variance_thr;
     /**
-     * @brief Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
+     * @brief Threshold for `--texture-psy-bias`.
+     * Calculated from `--texture-variance-thr` commandline parameter via `pow(2, "texture-variance-thr") - 1`.
      */
-    uint8_t texture_preserving_qmc_bias;
+    uint16_t texture_variance_thr;
 
     /**
      * @brief Enable CDEF bias
@@ -1173,7 +1170,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * Min value is 0
      * Max value is 7
      */
-    int8_t dlf_sharpness;
+    uint8_t dlf_sharpness;
     /**
      * @brief Max DLF strength for luma and chroma.
      */
@@ -1189,7 +1186,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * 1: enabled
      * Default is 0
      */
-    int8_t balancing_q_bias;
+    uint8_t balancing_q_bias;
     /**
      * @brief Enable balancing luminance Q bias
      * 0: disabled
@@ -1238,16 +1235,6 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 0.
      */
     uint8_t hbd_mds;
-
-    /**
-     * @brief Enable complex-hvs, a feature that enables the highest complexity and highest fidelity
-     * HVS model at the cost of higher CPU time
-     * 0: default preset behavior
-     * 1: highest complexity HVS model (SSD-Psy)
-     * -1: disable highest complexity HVS model at `--preset -1`
-     * Default is 0.
-     */
-    int8_t complex_hvs;
     
     /**
      * @brief Alternative SSIM tuning, enables VQ enhancements and different rdmult calculations
@@ -1292,9 +1279,9 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
+    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 18 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - 2 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 17 * sizeof(uint8_t) - 4 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

@@ -21,62 +21,183 @@
 #include "deblocking_filter.h"
 
 uint16_t get_variance_for_cu(const BlockGeom *blk_geom, uint16_t *variance_ptr) {
-    int index0, index1;
+    int start_index;
     //Assumes max CU size is 64
     switch (blk_geom->bsize) {
     case BLOCK_4X4:
     case BLOCK_4X8:
     case BLOCK_8X4:
-    case BLOCK_8X8: index0 = index1 = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + blk_geom->org_y); break;
-
-    case BLOCK_8X16:
-        index0 = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + blk_geom->org_y);
-        index1 = index0 + 1;
-        break;
+    case BLOCK_8X8:
+        start_index = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + (blk_geom->org_y >> 3 << 3));
+        return variance_ptr[start_index];
 
     case BLOCK_16X8:
-        index0 = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + blk_geom->org_y);
-        index1 = index0 + blk_geom->org_y;
-        break;
-
-    case BLOCK_4X16:
     case BLOCK_16X4:
-    case BLOCK_16X16:
-        index0 = index1 = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 2));
-        break;
+        start_index = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + (blk_geom->org_y >> 3 << 3));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1]) >> 1;
 
-    case BLOCK_16X32:
-        index0 = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 2));
-        index1 = index0 + 1;
-        break;
+    case BLOCK_32X8:
+        start_index = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + (blk_geom->org_y >> 3 << 3));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1] +
+                variance_ptr[start_index + 2] + variance_ptr[start_index + 3]) >> 2;
 
-    case BLOCK_32X16:
-        index0 = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 2));
-        index1 = index0 + (blk_geom->org_y >> 2);
-        break;
+    case BLOCK_8X16:
+    case BLOCK_4X16:
+        start_index = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + (blk_geom->org_y >> 3 << 3));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 8]) >> 1;
 
     case BLOCK_8X32:
-    case BLOCK_32X8:
-    case BLOCK_32X32:
-        index0 = index1 = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 4));
-        break;
+        start_index = ME_TIER_ZERO_PU_8x8_0 + ((blk_geom->org_x >> 3) + (blk_geom->org_y >> 3 << 3));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 8] +
+                variance_ptr[start_index + 16] + variance_ptr[start_index + 24]) >> 2;
 
-    case BLOCK_32X64:
-        index0 = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 4));
-        index1 = index0 + 1;
-        break;
+
+    case BLOCK_16X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return variance_ptr[start_index];
+
+    case BLOCK_32X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1]) >> 1;
+
+    case BLOCK_64X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1] +
+                variance_ptr[start_index + 2] + variance_ptr[start_index + 3]) >> 2;
+
+    case BLOCK_16X32:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 4]) >> 1;
+
+    case BLOCK_16X64:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 4] +
+                variance_ptr[start_index + 8] + variance_ptr[start_index + 12]) >> 2;
+
+
+    case BLOCK_32X32:
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return variance_ptr[start_index];
 
     case BLOCK_64X32:
-        index0 = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 4));
-        index1 = index0 + (blk_geom->org_y >> 4);
-        break;
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1]) >> 1;
+
+    case BLOCK_32X64:
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 2]) >> 1;
+
 
     case BLOCK_64X64:
-    case BLOCK_16X64:
-    case BLOCK_64X16:
-    default: index0 = index1 = 0; break;
+    default:
+        start_index = ME_TIER_ZERO_PU_64x64;
+        return variance_ptr[start_index];
     }
-    return (variance_ptr[index0] + variance_ptr[index1]) >> 1;
+}
+
+uint16_t get_variance_for_cu_16x16_min(const BlockGeom *blk_geom, uint16_t *variance_ptr) {
+    int start_index;
+    //Assumes max CU size is 64
+    switch (blk_geom->bsize) {
+    case BLOCK_4X4:
+    case BLOCK_4X8:
+    case BLOCK_8X4:
+    case BLOCK_8X8:
+    case BLOCK_16X8:
+    case BLOCK_16X4:
+    case BLOCK_8X16:
+    case BLOCK_4X16:
+    case BLOCK_16X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return variance_ptr[start_index];
+
+    case BLOCK_32X8:
+    case BLOCK_32X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1]) >> 1;
+
+    case BLOCK_64X16:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1] +
+                variance_ptr[start_index + 2] + variance_ptr[start_index + 3]) >> 2;
+
+    case BLOCK_8X32:
+    case BLOCK_16X32:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 4]) >> 1;
+
+    case BLOCK_16X64:
+        start_index = ME_TIER_ZERO_PU_16x16_0 + ((blk_geom->org_x >> 4) + (blk_geom->org_y >> 4 << 2));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 4] +
+                variance_ptr[start_index + 8] + variance_ptr[start_index + 12]) >> 2;
+
+
+    case BLOCK_32X32:
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return variance_ptr[start_index];
+
+    case BLOCK_64X32:
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 1]) >> 1;
+
+    case BLOCK_32X64:
+        start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+        return (variance_ptr[start_index] + variance_ptr[start_index + 2]) >> 1;
+
+
+    case BLOCK_64X64:
+    default:
+        start_index = ME_TIER_ZERO_PU_64x64;
+        return variance_ptr[start_index];
+    }
+}
+
+// blk_geom can be NULL for entire 64x64 SB
+uint16_t get_variance_for_cu_max_32x32_min(const BlockGeom *blk_geom, uint16_t *variance_ptr) {
+    int start_index;
+
+    if (blk_geom != NULL)
+        //Assumes max CU size is 64
+        switch (blk_geom->bsize) {
+        case BLOCK_4X4:
+        case BLOCK_4X8:
+        case BLOCK_8X4:
+        case BLOCK_8X8:
+        case BLOCK_16X8:
+        case BLOCK_16X4:
+        case BLOCK_32X8:
+        case BLOCK_8X16:
+        case BLOCK_4X16:
+        case BLOCK_8X32:
+        case BLOCK_16X16:
+        case BLOCK_32X16:
+        case BLOCK_16X32:
+        case BLOCK_32X32:
+            start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+            return variance_ptr[start_index];
+    
+        case BLOCK_64X16:
+        case BLOCK_64X32:
+            start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+            return AOMMAX(variance_ptr[start_index], variance_ptr[start_index + 1]);
+    
+        case BLOCK_16X64:
+        case BLOCK_32X64:
+            start_index = ME_TIER_ZERO_PU_32x32_0 + ((blk_geom->org_x >> 5) + (blk_geom->org_y >> 5 << 1));
+            return AOMMAX(variance_ptr[start_index], variance_ptr[start_index + 2]);
+    
+    
+        case BLOCK_64X64:
+        default:
+            start_index = ME_TIER_ZERO_PU_32x32_0;
+            return AOMMAX(AOMMAX(variance_ptr[start_index], variance_ptr[start_index + 1]),
+                          AOMMAX(variance_ptr[start_index + 2], variance_ptr[start_index + 3]));
+        }
+    else {
+        start_index = ME_TIER_ZERO_PU_32x32_0;
+        return AOMMAX(AOMMAX(variance_ptr[start_index], variance_ptr[start_index + 1]),
+                      AOMMAX(variance_ptr[start_index + 2], variance_ptr[start_index + 3]));
+    }
 }
 
 static void roi_map_apply_segmentation_based_quantization(const BlockGeom *blk_geom, PictureControlSet *pcs,

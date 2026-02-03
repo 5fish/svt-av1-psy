@@ -1230,7 +1230,6 @@ typedef struct PictureControlSetInitData {
     double  qp_scale_compress_strength;
     uint8_t frame_luma_bias;
     uint8_t luminance_qp_bias; // alias for frame luma bias
-    Bool    max_32_tx_size;
     Bool    adaptive_film_grain;
     uint8_t tf_strength;
     uint8_t kf_tf_strength;
@@ -1239,7 +1238,6 @@ typedef struct PictureControlSetInitData {
     uint8_t tx_bias;
     Bool    sharp_tx;
     uint8_t hbd_mds;
-    int8_t  complex_hvs;
     Bool    alt_ssim_tuning;
     Bool    auto_tiling;
     Bool    chroma_grain;
