@@ -112,48 +112,49 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 
 ### Lineart Psy Bias
 
-| `--lineart-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` & `7` | Note |
-| :-- | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
-| [me] disable tf 8x8 prediction | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
-| [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] variance `bsize` bias | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
-| [md] variance 32x32 blk size taper | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
-| [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [dlf] `--dlf-sharpness 7` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | Can be overwritten |
-| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | | |
-| [cdef] chroma cdef distortion bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
-| [md] disallow 4x4 |
-| [md] disallow H4/V4 blk geom |
-| [md] allow HA/HB/VA/VB blk geom |
+| `--lineart-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
+| [me] disable tf 8x8 pred | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 above p-1 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
+| [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance `bsize` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance 32x32 blk size taper | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [dlf] `--dlf-sharpness 7` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | | |
+| [cdef] chroma cdef distortion bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 
 ### Texture Psy Bias
 
 | `--texture-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `12.0` | `16.0` | `16.0` | Only apply when `--balancing-q-bias 1`; Can be overwritten |
-| [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Only apply when `--balancing-q-bias 1`; Can be overwritten |
+| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `16.0` | `16.0` | `16.0` | Applied when `--balancing-q-bias 1`; Can be overwritten |
+| [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overwritten |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [rc] `chroma_qindex` bias | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 above p-1 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] allow HVA/HVB below p2 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] SAD distortion | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
-| [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `2.0` | `2.0` | `2.0` | `?` | Can be overwritten |
-| [md] `--texture-ac-bias` | － | `4.0` | `4.0` | `8.0` | `8.0` | `16.0` | `?` | Can be overwritten |
-| [md] reducing candidate reduction | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `2.0` | `2.0` | `2.0` | `2.0` | Can be overwritten |
+| [md] `--texture-ac-bias` | － | `2.0` | `2.0` | `4.0` | `8.0` | `8.0` | `8.0` | Can be overwritten |
+| [md] reducing candidate reduction | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance obmc decision | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `GLOBALMV` bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [cdef] `--enable-cdef 0` | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
+| [cdef] `--enable-cdef 0` | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | Can be overwritten |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | － | |
 | [cdef] bias towards disabling CDEF | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | － | |
 | [cdef] `--cdef-bias-max-cdef -,0,-,0` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | － | Only the secondary CDEF strength is disabled; You may still set primary CDEF strength to any value you prefer. |

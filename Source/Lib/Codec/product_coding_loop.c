@@ -10161,7 +10161,7 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
         ctx->blk_skip_taper_active = 2;
 
     ctx->bsize_bias_mode = 0;
-    if (pcs->scs->static_config.lineart_psy_bias >= 3.0) {
+    if (pcs->scs->static_config.lineart_psy_bias >= 4.0) {
         if (blk_variance >= pcs->scs->static_config.lineart_variance_thr)
             ctx->bsize_bias_mode = 2;
         else if (blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)

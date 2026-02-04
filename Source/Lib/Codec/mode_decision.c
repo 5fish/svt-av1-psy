@@ -184,6 +184,7 @@ MotionMode svt_aom_obmc_motion_mode_allowed(
     const PictureControlSet *pcs, struct ModeDecisionContext *ctx, const BlockSize bsize,
     uint8_t          situation, // 0: candidate(s) preparation, 1: data preparation, 2: simple translation face-off
     MvReferenceFrame rf0, MvReferenceFrame rf1, PredictionMode mode) {
+    // variance obmc
     // obmc in general is good for lineart but bad for texture especially noisy texture
     const uint16_t blk_variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
     if (pcs->scs->static_config.texture_psy_bias >= 2.0 &&

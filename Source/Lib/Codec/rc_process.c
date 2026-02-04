@@ -3497,7 +3497,7 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                         chroma_qindex += scs->static_config.chroma_qindex_offsets[pcs->temporal_layer_index];
                     }
 
-                    if (scs->static_config.lineart_psy_bias >= 2.0 || scs->static_config.texture_psy_bias >= 3.0)
+                    if (scs->static_config.lineart_psy_bias >= 2.0 || scs->static_config.texture_psy_bias >= 4.0)
                         chroma_qindex -= chroma_qindex >> 2;
 
                     uint8_t chroma_qindex_adjustment = chroma_qindex;

@@ -5121,10 +5121,20 @@ uint8_t svt_aom_set_nic_controls(ModeDecisionContext *ctx, uint8_t nic_level) {
     // return NIC scaling level that can be used for memory allocation
     return nic_scaling_level;
 }
-void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level, uint8_t *allow_HVA_HVB,
-                                uint8_t *allow_HV4, uint8_t *min_nsq_bsize) {
+void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level,
+                                double lineart_psy_bias, double texture_psy_bias, EncMode enc_mode,
+                                uint8_t *allow_HVA_HVB, uint8_t *allow_HV4, uint8_t *min_nsq_bsize) {
     NsqGeomCtrls  nsq_geom_ctrls_struct;
     NsqGeomCtrls *nsq_geom_ctrls = &nsq_geom_ctrls_struct;
+
+    uint8_t bias_disallow_HV4 = false;
+    if ((lineart_psy_bias >= 3.0 || texture_psy_bias >= 3.0) &&
+        enc_mode >= ENC_MR)
+        bias_disallow_HV4 = true;
+    uint8_t bias_allow_HVA_HVB = false;
+    if (texture_psy_bias >= 3.0 && enc_mode <= ENC_M2)
+        bias_allow_HVA_HVB = true;
+
     switch (nsq_geom_level) {
     case 0:
         nsq_geom_ctrls->enabled            = 0;
@@ -5136,28 +5146,28 @@ void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level
     case 1:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = 1; // CHECK THIS!
+        nsq_geom_ctrls->allow_HV4          = !bias_disallow_HV4;
         nsq_geom_ctrls->allow_HVA_HVB      = 1;
         break;
 
     case 2:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = 1;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HV4          = !bias_disallow_HV4;
+        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
         break;
     case 3:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 8;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
         break;
 
     case 4:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 16;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
         break;
     default: assert(0); break;
     }
@@ -7308,10 +7318,12 @@ that use 8x8 blocks will lose significant BD-Rate as the parent 16x16 me data wi
         ctx->pd1_lvl_refinement = 1;
     else
         ctx->pd1_lvl_refinement = 2;
-    svt_aom_set_nsq_geom_ctrls(ctx, pcs->nsq_geom_level, NULL, NULL, NULL);
+    svt_aom_set_nsq_geom_ctrls(ctx, pcs->nsq_geom_level,
+                               scs->static_config.lineart_psy_bias, scs->static_config.texture_psy_bias, enc_mode,
+                               NULL, NULL, NULL);
 
     const uint16_t blks_variance = get_variance_for_cu_max_32x32_min(NULL, pcs->ppcs->variance[ctx->sb_index]);
-    if (pcs->scs->static_config.lineart_psy_bias >= 5.0 &&
+    if (pcs->scs->static_config.lineart_psy_bias >= 7.0 &&
         blks_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
         ctx->max_32_blk_size = true;
     else if (scs->static_config.max_32_tx_size)
@@ -7947,7 +7959,7 @@ Used by svt_aom_sig_deriv_enc_dec and memory allocation
 */
 bool svt_aom_get_disallow_4x4(EncMode enc_mode, uint8_t is_base) {
     if (enc_mode <= ENC_M4)
-        return false; // CHECK THIS!
+        return false;
     else if (enc_mode <= ENC_M6)
         return is_base ? false : true;
     else
@@ -8631,10 +8643,10 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     else if (rtc_tune) {
         pcs->cand_reduction_level = 1;
     } else if (enc_mode <= ENC_M0 ||
-               (scs->static_config.texture_psy_bias >= 4.0 && enc_mode <= ENC_M2))
-        pcs->cand_reduction_level = 0;
+               (scs->static_config.texture_psy_bias >= 3.0 && enc_mode <= ENC_M2))
+        pcs->cand_reduction_level = 0; // CHECK THIS!
     else if (enc_mode <= ENC_M2 ||
-             (scs->static_config.texture_psy_bias >= 4.0 && enc_mode <= ENC_M4))
+             (scs->static_config.texture_psy_bias >= 3.0 && enc_mode <= ENC_M4))
         pcs->cand_reduction_level = is_base ? 0 : 1;
     else if (enc_mode <= ENC_M4) {
         pcs->cand_reduction_level = 1;

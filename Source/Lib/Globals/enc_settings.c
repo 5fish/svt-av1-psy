@@ -856,7 +856,9 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
             "--tile-columns 1 if you are targeting a high quality encode and a multi-core "
             "high-performance decoder HW\n");
     }
-    if (config->enable_qm && (config->min_qm_level > config->max_qm_level || config->min_chroma_qm_level > config->max_chroma_qm_level)) {
+    if (config->enable_qm &&
+        ((config->min_qm_level > config->max_qm_level && config->min_qm_level != UINT8_DEFAULT) ||
+         (config->min_chroma_qm_level > config->max_chroma_qm_level && config->min_chroma_qm_level != UINT8_DEFAULT))) {
         SVT_ERROR("Instance %u:  Min quant matrix level must not greater than max quant matrix level\n",
                   channel_number + 1);
         return_error = EB_ErrorBadParameter;

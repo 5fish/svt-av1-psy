@@ -2696,7 +2696,7 @@ static void tf_ld_controls(SequenceControlSet* scs, uint8_t tf_level) {
     scs->tf_params_per_type[2].enable_8x8_pred = 0;
 }
 void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_bias) {
-    const bool disable_8x8 = lineart_psy_bias >= 3.0;
+    const bool bias_disable_8x8 = lineart_psy_bias >= 3.0;
 
     switch (tf_level)
     {
@@ -2723,7 +2723,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[0].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[0].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -2747,7 +2747,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[1].eight_pel_mode = 1;
         scs->tf_params_per_type[1].chroma_lvl = 1;
         scs->tf_params_per_type[1].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[1].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[1].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[1].sub_sampling_shift = 0;
         scs->tf_params_per_type[1].avoid_2d_qpel = 0;
         scs->tf_params_per_type[1].use_2tap = 0;
@@ -2771,7 +2771,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[2].eight_pel_mode = 1;
         scs->tf_params_per_type[2].chroma_lvl = 1;
         scs->tf_params_per_type[2].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[2].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[2].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[2].sub_sampling_shift = 0;
         scs->tf_params_per_type[2].avoid_2d_qpel = 0;
         scs->tf_params_per_type[2].use_2tap = 0;
@@ -2796,7 +2796,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[0].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[0].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -2820,7 +2820,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[1].eight_pel_mode = 1;
         scs->tf_params_per_type[1].chroma_lvl = 1;
         scs->tf_params_per_type[1].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[1].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[1].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[1].sub_sampling_shift = 0;
         scs->tf_params_per_type[1].avoid_2d_qpel = 0;
         scs->tf_params_per_type[1].use_2tap = 0;
@@ -2844,7 +2844,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[2].eight_pel_mode = 1;
         scs->tf_params_per_type[2].chroma_lvl = 1;
         scs->tf_params_per_type[2].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[2].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[2].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[2].sub_sampling_shift = 0;
         scs->tf_params_per_type[2].avoid_2d_qpel = 0;
         scs->tf_params_per_type[2].use_2tap = 0;
@@ -2869,7 +2869,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level, double lineart_psy_b
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[0].enable_8x8_pred = !disable_8x8;
+        scs->tf_params_per_type[0].enable_8x8_pred = !bias_disable_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -3960,6 +3960,12 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     // Delay needed for SCD , 1first pass of (2pass and 1pass VBR)
     if (scs->static_config.scene_change_detection || scs->vq_ctrls.sharpness_ctrls.scene_transition || scs->lap_rc)
         scs->scd_delay = MAX(scs->scd_delay, 2);
+        
+    // `-psy-bias`s PD
+    if (scs->static_config.startup_mg_size == 0) {
+        if (scs->static_config.lineart_psy_bias >= 5.0)
+            scs->static_config.startup_mg_size = CLIP3(2, 4, scs->static_config.hierarchical_levels - 1);
+    }
 
     // `-psy-bias`s RC
     if (scs->static_config.balancing_q_bias == UINT8_DEFAULT) {
@@ -4004,7 +4010,7 @@ static void set_param_based_on_input(SequenceControlSet *scs)
 
     if (scs->static_config.balancing_luminance_q_bias == UINT8_DEFAULT) {
         if (scs->static_config.balancing_q_bias)
-            if (scs->static_config.texture_psy_bias >= 6.0)
+            if (scs->static_config.texture_psy_bias >= 5.0)
                 scs->static_config.balancing_luminance_q_bias = 160;
             else if (scs->static_config.texture_psy_bias >= 4.0)
                 scs->static_config.balancing_luminance_q_bias = 120;
@@ -4044,12 +4050,12 @@ static void set_param_based_on_input(SequenceControlSet *scs)
             scs->static_config.ac_bias = 1.0;
     }
     if (scs->static_config.texture_ac_bias == DEFAULT) {
-        if (scs->static_config.texture_psy_bias >= 6.0)
-            scs->static_config.texture_ac_bias = 16.0;
-        else if (scs->static_config.texture_psy_bias >= 4.0)
+        if (scs->static_config.texture_psy_bias >= 5.0)
             scs->static_config.texture_ac_bias = 8.0;
-        else if (scs->static_config.texture_psy_bias >= 2.0)
+        else if (scs->static_config.texture_psy_bias >= 4.0)
             scs->static_config.texture_ac_bias = 4.0;
+        else if (scs->static_config.texture_psy_bias >= 2.0)
+            scs->static_config.texture_ac_bias = 2.0;
         else
             scs->static_config.texture_ac_bias = scs->static_config.ac_bias;
     }
@@ -4209,7 +4215,9 @@ static void set_param_based_on_input(SequenceControlSet *scs)
                 nsq_geom_level = svt_aom_get_nsq_geom_level(scs->static_config.enc_mode, is_base, coeff_lvl);
                 disallow_nsq = MIN(disallow_nsq, (nsq_geom_level == 0 ? 1 : 0));
                 uint8_t temp_allow_HVA_HVB = 0, temp_allow_HV4 = 0;
-                svt_aom_set_nsq_geom_ctrls(NULL, nsq_geom_level, &temp_allow_HVA_HVB, &temp_allow_HV4, &min_nsq_bsize);
+                svt_aom_set_nsq_geom_ctrls(NULL, nsq_geom_level,
+                                           scs->static_config.lineart_psy_bias, scs->static_config.texture_psy_bias, scs->static_config.enc_mode,
+                                           &temp_allow_HVA_HVB, &temp_allow_HV4, &min_nsq_bsize);
                 allow_HVA_HVB |= temp_allow_HVA_HVB;
                 allow_HV4 |= temp_allow_HV4;
                 h_v_only = h_v_only && !allow_HVA_HVB && !allow_HV4;
@@ -4397,8 +4405,8 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->static_config.scene_change_detection == 1       ||
         scs->vq_ctrls.sharpness_ctrls.tf == 1                ||
         scs->static_config.enable_variance_boost             ||
-        scs->static_config.lineart_psy_bias >= 2.0           ||
-        scs->static_config.texture_psy_bias >= 2.0           ||
+        scs->static_config.lineart_psy_bias >= 1.0           ||
+        scs->static_config.texture_psy_bias >= 1.0           ||
         scs->static_config.balancing_luminance_q_bias)
         scs->calculate_variance = 1;
     else if (scs->static_config.enc_mode <= ENC_M6)

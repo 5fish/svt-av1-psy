@@ -1653,9 +1653,8 @@ static void psy_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, str
         *ssim_dist = (*ssim_dist * 9) >> 3;
     }
 
-    const bool block_no_coeff = !cand_bf->y_has_coeff || (!cand_bf->u_has_coeff && !cand_bf->v_has_coeff);
-
     // bsize bias
+    const bool block_no_coeff = !cand_bf->y_has_coeff || (!cand_bf->u_has_coeff && !cand_bf->v_has_coeff);
     switch (ctx->bsize_bias_mode) {
         case 2:
             if (!block_no_coeff) {
@@ -1834,6 +1833,7 @@ static void psy_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, str
     switch (ctx->above_32_blk_size_bias_mode) {
         case 2:
             switch (ctx->blk_geom->bsize) {
+                case BLOCK_16X64: case BLOCK_64X16:
                 case BLOCK_32X64: case BLOCK_64X32:
                 case BLOCK_64X64:
                     psy_bias_add_dist(ctx, dist, ssim_dist, -9); break;
@@ -1846,6 +1846,7 @@ static void psy_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, str
 
         case 1:
             switch (ctx->blk_geom->bsize) {
+                case BLOCK_16X64: case BLOCK_64X16:
                 case BLOCK_32X64: case BLOCK_64X32:
                 case BLOCK_64X64:
                     psy_bias_add_dist(ctx, dist, ssim_dist, -10); break;

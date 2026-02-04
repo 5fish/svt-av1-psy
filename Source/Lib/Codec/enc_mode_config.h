@@ -58,8 +58,9 @@ uint8_t get_filter_intra_level(EncMode enc_mode);
 uint8_t svt_aom_get_inter_intra_level(EncMode enc_mode, uint8_t is_base, uint8_t transition_present);
 uint8_t svt_aom_get_obmc_level(EncMode enc_mode, uint32_t qp, uint8_t is_base, uint8_t seq_qp_mod, double lineart_psy_bias);
 
-void    svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level, uint8_t *allow_HVA_HVB,
-                                   uint8_t *allow_HV4, uint8_t *min_nsq_bsize);
+void    svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level,
+                                   double lineart_psy_bias, double texture_psy_bias, EncMode enc_mode,
+                                   uint8_t *allow_HVA_HVB, uint8_t *allow_HV4, uint8_t *min_nsq_bsize);
 void    svt_aom_set_nsq_search_ctrls(PictureControlSet *pcs, ModeDecisionContext *ctx, uint8_t nsq_search_level,
                                      uint8_t resolution);
 uint8_t svt_aom_get_tpl_synthesizer_block_size(int8_t tpl_level, uint32_t picture_width, uint32_t picture_height);
