@@ -694,7 +694,7 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /* Flag to signal the content being a screen sharing content type
     *
-    * Default is 0. */
+    * Default is 2. */
     uint32_t screen_content_mode;
 
     /* Enable adaptive quantization within a frame using segmentation.
@@ -1130,6 +1130,11 @@ typedef struct EbSvtAv1EncConfiguration {
     uint16_t texture_variance_thr;
 
     /**
+     * @brief Offset `pcs->coeff_lvl`
+     */
+    int8_t texture_coeff_lvl_offset;
+
+    /**
      * @brief Enable CDEF bias
      * 0: disabled
      * 1: enabled
@@ -1281,7 +1286,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 17 * sizeof(uint8_t) - 4 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 17 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

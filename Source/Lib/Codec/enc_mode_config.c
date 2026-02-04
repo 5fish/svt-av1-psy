@@ -7015,6 +7015,8 @@ static void set_tx_shortcut_ctrls(PictureControlSet *pcs, ModeDecisionContext *c
                "artifacts.");
 }
 
+// The levels of mds0_level has been changed in 5fish/SVT-AV1-PSY compared to mainline.
+// Be careful when backporting.
 static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level, double texture_psy_bias) {
     Mds0Ctrls *ctrls = &ctx->mds0_ctrls;
 
@@ -7050,19 +7052,13 @@ static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level, doub
         ctrls->mds0_distortion_th           = 0;
         break;
     case 4:
-        if (texture_psy_bias >= 6.0)
-            ctrls->mds0_dist_type           = SAD;
-        else
-            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type               = VAR;
         ctrls->mds0_dist_type_uv            = VAR;
         ctrls->enable_cost_based_early_exit = 1;
         ctrls->mds0_distortion_th           = 0;
         break;
     case 5:
-        if (texture_psy_bias >= 6.0)
-            ctrls->mds0_dist_type           = SAD;
-        else
-            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type               = VAR;
         ctrls->mds0_dist_type_uv            = VAR;
         ctrls->enable_cost_based_early_exit = 1;
         ctrls->mds0_distortion_th           = 50;
@@ -8642,11 +8638,9 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
         pcs->cand_reduction_level = 0;
     else if (rtc_tune) {
         pcs->cand_reduction_level = 1;
-    } else if (enc_mode <= ENC_M0 ||
-               (scs->static_config.texture_psy_bias >= 3.0 && enc_mode <= ENC_M2))
-        pcs->cand_reduction_level = 0; // CHECK THIS!
-    else if (enc_mode <= ENC_M2 ||
-             (scs->static_config.texture_psy_bias >= 3.0 && enc_mode <= ENC_M4))
+    } else if (enc_mode <= ENC_M0)
+        pcs->cand_reduction_level = 0;
+    else if (enc_mode <= ENC_M2)
         pcs->cand_reduction_level = is_base ? 0 : 1;
     else if (enc_mode <= ENC_M4) {
         pcs->cand_reduction_level = 1;

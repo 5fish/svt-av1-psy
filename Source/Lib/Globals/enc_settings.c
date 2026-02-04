@@ -435,7 +435,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->screen_content_mode > 2) {
+    if (config->screen_content_mode > 2 && config->screen_content_mode != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u : Invalid screen_content_mode. screen_content_mode must be [0 - 2]\n",
                   channel_number + 1);
         return_error = EB_ErrorBadParameter;
@@ -940,7 +940,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->noise_norm_strength > 4) {
+    if (config->noise_norm_strength > 4 && config->noise_norm_strength != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: Noise normalization strength must be between 0 and 4\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -977,6 +977,12 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     }
     if ((config->lineart_psy_bias || config->texture_psy_bias) && config->tx_bias)
         SVT_WARN("Instance %u: tx-bias is replaced by lineart-psy-bias and texture-psy-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
+
+    if ((config->texture_coeff_lvl_offset < -3 || config->texture_coeff_lvl_offset > 3) &&
+        config->texture_coeff_lvl_offset != INT8_DEFAULT) {
+        SVT_ERROR("Instance %u: texture-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
 
     if (config->cdef_bias > 1) {
         SVT_ERROR("Instance %u: cdef-bias must be between 0 and 1\n", channel_number + 1);
@@ -1142,7 +1148,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->restricted_motion_vector = FALSE;
 
     config_ptr->high_dynamic_range_input = 0;
-    config_ptr->screen_content_mode      = 2;
+    config_ptr->screen_content_mode      = UINT8_DEFAULT;
 
     // Annex A parameters
     config_ptr->profile = 0;
@@ -1225,7 +1231,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->adaptive_film_grain               = TRUE;
     config_ptr->tf_strength                       = 1;
     config_ptr->kf_tf_strength                    = 1;
-    config_ptr->noise_norm_strength               = 1;
+    config_ptr->noise_norm_strength               = UINT8_DEFAULT;
     config_ptr->ac_bias                           = DEFAULT;
     config_ptr->texture_ac_bias                   = DEFAULT;
     config_ptr->tx_bias                           = 0;
@@ -1236,6 +1242,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->lineart_psy_bias_easter_egg       = 0;
     config_ptr->lineart_variance_thr              = 44;
     config_ptr->texture_variance_thr              = 44;
+    config_ptr->texture_coeff_lvl_offset          = INT8_DEFAULT;
     config_ptr->cdef_bias                         = 0;
     config_ptr->cdef_bias_max_cdef[0]             = 4;
     config_ptr->cdef_bias_max_cdef[1]             = 1;
@@ -2803,6 +2810,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"sharpness", &config_struct->sharpness},
         {"balancing-r0-based-layer", &config_struct->balancing_r0_based_layer},
         {"balancing-r0-dampening-layer", &config_struct->balancing_r0_dampening_layer},
+        {"texture-coeff-lvl-offset", &config_struct->texture_coeff_lvl_offset},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
     };

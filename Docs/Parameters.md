@@ -100,6 +100,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **TexturePsyBias**               | --texture-psy-bias          | [0-7]                          | 0           | Improve texture retention. Check below for more description. [0: disabled]                                    |
 | **LineartVarianceThr**           | --lineart-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--lineart-psy-bias`. Check below for more description.                                         |
 | **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
+| **TextureCoeffLvlOffset**        | --texture-coeff-lvl-offset  | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
 
 ### Noise level threshold
 
@@ -114,6 +115,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 
 | `--lineart-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
 | [me] disable tf 8x8 pred | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
@@ -137,6 +139,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 
 | `--texture-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `16.0` | `16.0` | `16.0` | Applied when `--balancing-q-bias 1`; Can be overwritten |
 | [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overwritten |
@@ -145,10 +148,11 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] disallow HV4 above p-1 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] allow HVA/HVB below p2 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] `--texture-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] SAD distortion | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
+| [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `2.0` | `2.0` | `2.0` | `2.0` | Can be overwritten |
 | [md] `--texture-ac-bias` | － | `2.0` | `2.0` | `4.0` | `8.0` | `8.0` | `8.0` | Can be overwritten |
-| [md] reducing candidate reduction | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance obmc decision | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |

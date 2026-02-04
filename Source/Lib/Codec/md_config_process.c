@@ -634,7 +634,7 @@ static void set_frame_coeff_lvl(PictureControlSet *pcs) {
         coeff_high_level_th = (uint64_t)((double)coeff_high_level_th * 1.05);
     }
 
-    pcs->coeff_lvl = NORMAL_LVL; // CHECK THIS!
+    pcs->coeff_lvl = NORMAL_LVL;
     if (cmplx < coeff_vlow_level_th) {
         pcs->coeff_lvl = VLOW_LVL;
     } else if (cmplx < coeff_low_level_th) {
@@ -642,7 +642,8 @@ static void set_frame_coeff_lvl(PictureControlSet *pcs) {
     } else if (cmplx > coeff_high_level_th) {
         pcs->coeff_lvl = HIGH_LVL;
     }
-    // fprintf(stderr, "%llu / cmplx %llu coeff_lvl %d\n", pcs->picture_number, cmplx, pcs->coeff_lvl);
+
+    pcs->coeff_lvl = CLIP3(VLOW_LVL, HIGH_LVL, pcs->coeff_lvl + pcs->scs->static_config.texture_coeff_lvl_offset);
 }
 
 /* Mode Decision Configuration Kernel */

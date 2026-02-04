@@ -1544,7 +1544,6 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.adaptive_film_grain = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.adaptive_film_grain;
         input_data.tf_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.tf_strength;
         input_data.kf_tf_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.kf_tf_strength;
-        input_data.noise_norm_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.noise_norm_strength;
         input_data.ac_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.ac_bias;
         input_data.tx_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.tx_bias;
         input_data.sharp_tx = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.sharp_tx;
@@ -3960,6 +3959,14 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     // Delay needed for SCD , 1first pass of (2pass and 1pass VBR)
     if (scs->static_config.scene_change_detection || scs->vq_ctrls.sharpness_ctrls.scene_transition || scs->lap_rc)
         scs->scd_delay = MAX(scs->scd_delay, 2);
+
+    // `-psy-bias`'s Global
+    if (scs->static_config.screen_content_mode == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 1.0 || scs->static_config.texture_psy_bias >= 1.0)
+            scs->static_config.screen_content_mode = 0;
+        else
+            scs->static_config.screen_content_mode = 2;
+    }
         
     // `-psy-bias`s PD
     if (scs->static_config.startup_mg_size == 0) {
@@ -4041,6 +4048,20 @@ static void set_param_based_on_input(SequenceControlSet *scs)
             scs->static_config.min_chroma_qm_level = 11;
         else
             scs->static_config.min_chroma_qm_level = 10;
+    }
+
+    if (scs->static_config.texture_coeff_lvl_offset == INT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 4.0)
+            scs->static_config.texture_coeff_lvl_offset = 2;
+        else
+            scs->static_config.texture_coeff_lvl_offset = 0;
+    }
+
+    if (scs->static_config.noise_norm_strength == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 4.0)
+            scs->static_config.noise_norm_strength = 4;
+        else
+            scs->static_config.noise_norm_strength = 1;
     }
 
     if (scs->static_config.ac_bias == DEFAULT) {
@@ -4862,6 +4883,8 @@ static void copy_api_from_app(
     scs->static_config.lineart_psy_bias_easter_egg = config_struct->lineart_psy_bias_easter_egg;
     scs->static_config.lineart_variance_thr = config_struct->lineart_variance_thr;
     scs->static_config.texture_variance_thr = config_struct->texture_variance_thr;
+
+    scs->static_config.texture_coeff_lvl_offset = config_struct->texture_coeff_lvl_offset;
 
     // CDEF bias
     scs->static_config.cdef_bias = config_struct->cdef_bias;

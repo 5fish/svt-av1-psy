@@ -230,6 +230,7 @@
 #define TEXTURE_PSY_BIAS_TOKEN "--texture-psy-bias"
 #define LINEART_VARIANCE_THR_TOKEN "--lineart-variance-thr"
 #define TEXTURE_VARIANCE_THR_TOKEN "--texture-variance-thr"
+#define TEXTURE_COEFF_LVL_OFFSET_TOKEN "--texture-coeff-lvl-offset"
 #define CDEF_BIAS_TOKEN "--cdef-bias"
 #define CDEF_BIAS_MAX_CDEF_TOKEN "--cdef-bias-max-cdef"
 #define CDEF_BIAS_MIN_CDEF_TOKEN "--cdef-bias-min-cdef"
@@ -1396,6 +1397,10 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Threshold for `--texture-psy-bias`. [0.0-16.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     TEXTURE_COEFF_LVL_OFFSET_TOKEN,
+     "[PSY] Offset `pcs->coeff_lvl`. [-3-3]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      CDEF_BIAS_TOKEN,
      "[PSY] Enable CDEF bias, default is 0 [0-1]",
      set_cfg_generic_token},
@@ -1709,6 +1714,8 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, TEXTURE_PSY_BIAS_TOKEN, "TexturePsyBias", set_cfg_generic_token},
     {SINGLE_INPUT, LINEART_VARIANCE_THR_TOKEN, "LineartVarianceThr", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_VARIANCE_THR_TOKEN, "TextureVarianceThr", set_cfg_generic_token},
+
+    {SINGLE_INPUT, TEXTURE_COEFF_LVL_OFFSET_TOKEN, "TextureCoeffLvlOffset", set_cfg_generic_token},
 
     // CDEF Bias
     {SINGLE_INPUT, CDEF_BIAS_TOKEN, "CDEFBias", set_cfg_generic_token},
