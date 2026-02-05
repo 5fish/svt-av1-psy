@@ -24,7 +24,7 @@ uint8_t svt_aom_get_nic_level(EncMode enc_mode, uint8_t is_base, uint32_t qp, ui
 void    svt_aom_set_depth_ctrls(PictureControlSet *pcs, ModeDecisionContext *ctx, uint8_t depth_level);
 uint8_t svt_aom_get_enable_me_16x16(EncMode enc_mode);
 Bool    svt_aom_is_ref_same_size(PictureControlSet *pcs, uint8_t list_idx, uint8_t ref_idx);
-uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution);
+uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution, uint8_t lineart_disable_me_8x8);
 void    svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureControlSet *pcs);
 void    svt_aom_sig_deriv_block(PictureControlSet *pcs, ModeDecisionContext *ctx);
 void    svt_aom_sig_deriv_pre_analysis_pcs(PictureParentControlSet *pcs);

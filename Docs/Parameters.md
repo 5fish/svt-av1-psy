@@ -100,6 +100,8 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **TexturePsyBias**               | --texture-psy-bias          | [0-7]                          | 0           | Improve texture retention. Check below for more description. [0: disabled]                                    |
 | **LineartVarianceThr**           | --lineart-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--lineart-psy-bias`. Check below for more description.                                         |
 | **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
+| **LineartDisableWarpedMotion**   | --lineart-disable-warped-motion | [0-1]                      | 0           | Disable warped motion                                                                                         |
+| **LineartDisableMe8x8**          | --lineart-disable-me-8x8    | [0-1]                          | 0           | Disable me 8x8 and tf 8x8 pred                                                                                |
 | **TextureCoeffLvlOffset**        | --texture-coeff-lvl-offset  | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
 
 ### Noise level threshold
@@ -117,11 +119,12 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
 | [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
-| [me] disable tf 8x8 pred | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [me] `--lineart-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [me] `--lineart-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] disallow HV4 above p-1 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
@@ -145,8 +148,8 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overwritten |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [md] disallow HV4 above p-1 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] allow HVA/HVB below p2 | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] allow HVA/HVB at p2 or slower | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] `--texture-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] SAD distortion | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |

@@ -978,6 +978,14 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     if ((config->lineart_psy_bias || config->texture_psy_bias) && config->tx_bias)
         SVT_WARN("Instance %u: tx-bias is replaced by lineart-psy-bias and texture-psy-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
 
+    if (config->lineart_disable_warped_motion > 1 && config->lineart_disable_warped_motion != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: lineart-disable-warped-motion must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->lineart_disable_me_8x8 > 1 && config->lineart_disable_me_8x8 != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: lineart-disable-me-8x8 must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
     if ((config->texture_coeff_lvl_offset < -3 || config->texture_coeff_lvl_offset > 3) &&
         config->texture_coeff_lvl_offset != INT8_DEFAULT) {
         SVT_ERROR("Instance %u: texture-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
@@ -1242,6 +1250,8 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->lineart_psy_bias_easter_egg       = 0;
     config_ptr->lineart_variance_thr              = 44;
     config_ptr->texture_variance_thr              = 44;
+    config_ptr->lineart_disable_warped_motion     = UINT8_DEFAULT;
+    config_ptr->lineart_disable_me_8x8            = UINT8_DEFAULT;
     config_ptr->texture_coeff_lvl_offset          = INT8_DEFAULT;
     config_ptr->cdef_bias                         = 0;
     config_ptr->cdef_bias_max_cdef[0]             = 4;
@@ -2709,6 +2719,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"tx-bias", &config_struct->tx_bias},
+        {"lineart-disable-warped-motion", &config_struct->lineart_disable_warped_motion},
+        {"lineart-disable-me-8x8", &config_struct->lineart_disable_me_8x8},
         {"cdef-bias", &config_struct->cdef_bias},
         {"dlf-bias", &config_struct->dlf_bias},
         {"dlf-sharpness", &config_struct->dlf_sharpness},

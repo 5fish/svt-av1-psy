@@ -106,7 +106,7 @@ EbErrorType svt_aom_me_sb_results_ctor(MeSbResults *obj_ptr, PictureControlSetIn
     EbInputResolution resolution;
     svt_aom_derive_input_resolution(&resolution, init_data_ptr->picture_width * init_data_ptr->picture_height);
     uint8_t number_of_pus = svt_aom_get_enable_me_16x16(init_data_ptr->enc_mode)
-        ? svt_aom_get_enable_me_8x8(init_data_ptr->enc_mode, init_data_ptr->rtc_tune, resolution)
+        ? svt_aom_get_enable_me_8x8(init_data_ptr->enc_mode, init_data_ptr->rtc_tune, resolution, init_data_ptr->static_config.lineart_disable_me_8x8)
             ? SQUARE_PU_COUNT
             : MAX_SB64_PU_COUNT_NO_8X8
         : MAX_SB64_PU_COUNT_WO_16X16;
@@ -1424,7 +1424,7 @@ static EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *obje
 
     // 8x8 can only be used if 16x16 is enabled
     object_ptr->enable_me_8x8 = object_ptr->enable_me_16x16
-        ? svt_aom_get_enable_me_8x8(init_data_ptr->enc_mode, init_data_ptr->rtc_tune, resolution)
+        ? svt_aom_get_enable_me_8x8(init_data_ptr->enc_mode, init_data_ptr->rtc_tune, resolution, init_data_ptr->static_config.lineart_disable_me_8x8)
         : 0;
     EB_NEW(object_ptr->dg_detector, svt_aom_dg_detector_seg_ctor);
 

@@ -1129,9 +1129,8 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint16_t texture_variance_thr;
 
-    /**
-     * @brief Offset `pcs->coeff_lvl`
-     */
+    uint8_t lineart_disable_warped_motion;
+    uint8_t lineart_disable_me_8x8;
     int8_t texture_coeff_lvl_offset;
 
     /**
@@ -1286,7 +1285,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 17 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 19 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

@@ -74,7 +74,7 @@ static void get_sb128_me_data(PictureControlSet *pcs, ModeDecisionContext *ctx, 
 }
 
 // use this function to set the enable_me_8x8 level
-uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution) {
+uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution, uint8_t lineart_disable_me_8x8) {
     uint8_t enable_me_8x8 = 0;
     if (rtc_tune) {
         if (enc_mode <= ENC_M9)
@@ -92,6 +92,9 @@ uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolu
         else
             enable_me_8x8 = 0;
     }
+
+    if (lineart_disable_me_8x8)
+        enable_me_8x8 = 0;
 
     return enable_me_8x8;
 }
@@ -8555,7 +8558,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     // Set Warped Motion level and enabled flag
     pcs->wm_level = 0;
     if (frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME || frm_hdr->error_resilient_mode ||
-        pcs->ppcs->frame_superres_enabled || pcs->ppcs->frame_resize_enabled) {
+        pcs->ppcs->frame_superres_enabled || pcs->ppcs->frame_resize_enabled ||
+        scs->static_config.lineart_disable_warped_motion) {
         pcs->wm_level = 0;
     } else {
         if (enc_mode <= ENC_M1) {
@@ -8599,7 +8603,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     frm_hdr->allow_warped_motion = enable_wm &&
         !(frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME) &&
         !frm_hdr->error_resilient_mode && !pcs->ppcs->frame_superres_enabled &&
-        scs->static_config.resize_mode == RESIZE_NONE;
+        scs->static_config.resize_mode == RESIZE_NONE &&
+        !scs->static_config.lineart_disable_warped_motion;
 
     frm_hdr->is_motion_mode_switchable = frm_hdr->allow_warped_motion;
     ppcs->pic_obmc_level               = svt_aom_get_obmc_level(enc_mode, sq_qp, is_base, scs->seq_qp_mod, scs->static_config.lineart_psy_bias);
