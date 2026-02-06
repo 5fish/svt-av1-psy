@@ -4047,6 +4047,12 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         else
             scs->static_config.lineart_disable_me_8x8 = 0;
     }
+    if (scs->static_config.lineart_disable_sgrproj == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 4.0)
+            scs->static_config.lineart_disable_sgrproj = 1;
+        else
+            scs->static_config.lineart_disable_sgrproj = 0;
+    }
 
     if (scs->static_config.min_qm_level == UINT8_DEFAULT) {
         if (scs->static_config.texture_psy_bias >= 3.0)
@@ -4897,7 +4903,14 @@ static void copy_api_from_app(
 
     scs->static_config.lineart_disable_warped_motion = config_struct->lineart_disable_warped_motion;
     scs->static_config.lineart_disable_me_8x8 = config_struct->lineart_disable_me_8x8;
+    scs->static_config.lineart_disable_sgrproj = config_struct->lineart_disable_sgrproj;
     scs->static_config.texture_coeff_lvl_offset = config_struct->texture_coeff_lvl_offset;
+
+    // DLF bias
+    scs->static_config.dlf_bias = config_struct->dlf_bias;
+    scs->static_config.dlf_sharpness = config_struct->dlf_sharpness;
+    memcpy(scs->static_config.dlf_bias_max_dlf, config_struct->dlf_bias_max_dlf, 2 * sizeof(uint8_t));
+    memcpy(scs->static_config.dlf_bias_min_dlf, config_struct->dlf_bias_min_dlf, 2 * sizeof(uint8_t));
 
     // CDEF bias
     scs->static_config.cdef_bias = config_struct->cdef_bias;
@@ -4905,12 +4918,6 @@ static void copy_api_from_app(
     memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
     scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
     scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
-
-    // DLF bias
-    scs->static_config.dlf_bias = config_struct->dlf_bias;
-    scs->static_config.dlf_sharpness = config_struct->dlf_sharpness;
-    memcpy(scs->static_config.dlf_bias_max_dlf, config_struct->dlf_bias_max_dlf, 2 * sizeof(uint8_t));
-    memcpy(scs->static_config.dlf_bias_min_dlf, config_struct->dlf_bias_min_dlf, 2 * sizeof(uint8_t));
 
     // Balancing Q bias
     scs->static_config.balancing_q_bias = config_struct->balancing_q_bias;

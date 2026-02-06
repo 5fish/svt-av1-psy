@@ -986,10 +986,32 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: lineart-disable-me-8x8 must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
+    if (config->lineart_disable_sgrproj > 1 && config->lineart_disable_sgrproj != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: lineart-disable-sgrproj must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
     if ((config->texture_coeff_lvl_offset < -3 || config->texture_coeff_lvl_offset > 3) &&
         config->texture_coeff_lvl_offset != INT8_DEFAULT) {
         SVT_ERROR("Instance %u: texture-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
+    }
+
+    if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
+        config->dlf_sharpness != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: dlf-sharpness must be between 0 and 7\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias > 1) {
+        SVT_ERROR("Instance %u: dlf-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (config->dlf_bias) {
+        if (config->dlf_bias_max_dlf[0] < config->dlf_bias_min_dlf[0] ||
+            config->dlf_bias_max_dlf[1] < config->dlf_bias_min_dlf[1]) {
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf must be greater than or equal to dlf-bias-min-dlf\n", channel_number + 1);
+            SVT_ERROR("Instance %u: dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n", channel_number + 1);
+            return_error = EB_ErrorBadParameter;
+        }
     }
 
     if (config->cdef_bias > 1) {
@@ -1021,24 +1043,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
 
         if (config->cdef_bias_damping_offset < -4 || config->cdef_bias_damping_offset > 8) {
             SVT_ERROR("Instance %u: cdef-bias-damping-offset must be between -4 and 8\n", channel_number + 1);
-            return_error = EB_ErrorBadParameter;
-        }
-    }
-
-    if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
-        config->dlf_sharpness != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: dlf-sharpness must be between 0 and 7\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
-    if (config->dlf_bias > 1) {
-        SVT_ERROR("Instance %u: dlf-bias must be between 0 and 1\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
-    if (config->dlf_bias) {
-        if (config->dlf_bias_max_dlf[0] < config->dlf_bias_min_dlf[0] ||
-            config->dlf_bias_max_dlf[1] < config->dlf_bias_min_dlf[1]) {
-            SVT_ERROR("Instance %u: dlf-bias-max-dlf must be greater than or equal to dlf-bias-min-dlf\n", channel_number + 1);
-            SVT_ERROR("Instance %u: dlf-bias-max-dlf and dlf-bias-min-dlf are specified in the format of strength_y,strength_uv\n", channel_number + 1);
             return_error = EB_ErrorBadParameter;
         }
     }
@@ -1252,7 +1256,14 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->texture_variance_thr              = 44;
     config_ptr->lineart_disable_warped_motion     = UINT8_DEFAULT;
     config_ptr->lineart_disable_me_8x8            = UINT8_DEFAULT;
+    config_ptr->lineart_disable_sgrproj           = UINT8_DEFAULT;
     config_ptr->texture_coeff_lvl_offset          = INT8_DEFAULT;
+    config_ptr->dlf_bias                          = 0;
+    config_ptr->dlf_sharpness                     = UINT8_DEFAULT;
+    config_ptr->dlf_bias_max_dlf[0]               = 8;
+    config_ptr->dlf_bias_max_dlf[1]               = 2;
+    config_ptr->dlf_bias_min_dlf[0]               = 2;
+    config_ptr->dlf_bias_min_dlf[1]               = 0;
     config_ptr->cdef_bias                         = 0;
     config_ptr->cdef_bias_max_cdef[0]             = 4;
     config_ptr->cdef_bias_max_cdef[1]             = 1;
@@ -1264,12 +1275,6 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->cdef_bias_min_cdef[3]             = 0;
     config_ptr->cdef_bias_max_sec_cdef_rel        = 0;
     config_ptr->cdef_bias_damping_offset          = 0;
-    config_ptr->dlf_bias                          = 0;
-    config_ptr->dlf_sharpness                     = UINT8_DEFAULT;
-    config_ptr->dlf_bias_max_dlf[0]               = 8;
-    config_ptr->dlf_bias_max_dlf[1]               = 2;
-    config_ptr->dlf_bias_min_dlf[0]               = 2;
-    config_ptr->dlf_bias_min_dlf[1]               = 0;
     config_ptr->balancing_q_bias                  = UINT8_DEFAULT;
     config_ptr->balancing_r0_based_layer          = INT8_DEFAULT;
     config_ptr->balancing_r0_dampening_layer      = INT8_DEFAULT;
@@ -2721,9 +2726,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"tx-bias", &config_struct->tx_bias},
         {"lineart-disable-warped-motion", &config_struct->lineart_disable_warped_motion},
         {"lineart-disable-me-8x8", &config_struct->lineart_disable_me_8x8},
-        {"cdef-bias", &config_struct->cdef_bias},
+        {"lineart-disable-sgrproj", &config_struct->lineart_disable_sgrproj},
         {"dlf-bias", &config_struct->dlf_bias},
         {"dlf-sharpness", &config_struct->dlf_sharpness},
+        {"cdef-bias", &config_struct->cdef_bias},
         {"fast-decode", &config_struct->fast_decode},
         {"enable-tf", &config_struct->enable_tf},
         {"hbd-mds", &config_struct->hbd_mds},

@@ -102,6 +102,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
 | **LineartDisableWarpedMotion**   | --lineart-disable-warped-motion | [0-1]                      | 0           | Disable warped motion                                                                                         |
 | **LineartDisableMe8x8**          | --lineart-disable-me-8x8    | [0-1]                          | 0           | Disable me 8x8 and tf 8x8 pred                                                                                |
+| **LineartDisableSGRPROJ**        | --lineart-disable-sgrproj   | [0-1]                          | 0           | Disable SGRPROJ in restoration                                                                                |
 | **TextureCoeffLvlOffset**        | --texture-coeff-lvl-offset  | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
 
 ### Noise level threshold
@@ -131,12 +132,13 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance `bsize` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
 | [md] variance 32x32 blk size taper | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
 | [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [dlf] `--dlf-sharpness 7` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | | |
 | [cdef] chroma cdef distortion bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [rest] `--lineart-disable-sgrproj 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 
 ### Texture Psy Bias
 

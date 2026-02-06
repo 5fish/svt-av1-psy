@@ -10169,7 +10169,7 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
     }
 
     ctx->above_32_blk_size_bias_mode = 0;
-    if (pcs->scs->static_config.lineart_psy_bias >= 4.0 &&
+    if (pcs->scs->static_config.lineart_psy_bias >= 5.0 &&
         (blk_geom->bwidth >= 32 || blk_geom->bheight >= 32)) {
         const uint16_t blks_variance = get_variance_for_cu_max_32x32_min(blk_geom, pcs->ppcs->variance[ctx->sb_index]);
 

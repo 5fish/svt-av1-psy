@@ -1252,7 +1252,7 @@ typedef struct ModeDecisionContext {
     // SSIM_LVL_2: addition to level 1, also use ssim cost to find best tx type in tx_type_search()
     SsimLevel tune_ssim_level;
 
-    uint64_t bias_const;
+    uint64_t psy_bias_const;
     // 1: normal active; 2: forced active with `--lineart-psy-bias -2`
     uint8_t blk_skip_taper_active;
     // 0: off; pos: lineart; neg: texture

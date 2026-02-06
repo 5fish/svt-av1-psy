@@ -232,16 +232,17 @@
 #define TEXTURE_VARIANCE_THR_TOKEN "--texture-variance-thr"
 #define LINEART_DISABLE_WARPED_MOTION_TOKEN "--lineart-disable-warped-motion"
 #define LINEART_DISABLE_ME_8X8_TOKEN "--lineart-disable-me-8x8"
+#define LINEART_DISABLE_SGRPROJ_TOKEN "--lineart-disable-sgrproj"
 #define TEXTURE_COEFF_LVL_OFFSET_TOKEN "--texture-coeff-lvl-offset"
+#define DLF_BIAS_TOKEN "--dlf-bias"
+#define DLF_SHARPNESS_TOKEN "--dlf-sharpness"
+#define DLF_BIAS_MAX_DLF_TOKEN "--dlf-bias-max-dlf"
+#define DLF_BIAS_MIN_DLF_TOKEN "--dlf-bias-min-dlf"
 #define CDEF_BIAS_TOKEN "--cdef-bias"
 #define CDEF_BIAS_MAX_CDEF_TOKEN "--cdef-bias-max-cdef"
 #define CDEF_BIAS_MIN_CDEF_TOKEN "--cdef-bias-min-cdef"
 #define CDEF_BIAS_MAX_SEC_CDEF_REL_TOKEN "--cdef-bias-max-sec-cdef-rel"
 #define CDEF_BIAS_DAMPING_OFFSET_TOKEN "--cdef-bias-damping-offset"
-#define DLF_BIAS_TOKEN "--dlf-bias"
-#define DLF_SHARPNESS_TOKEN "--dlf-sharpness"
-#define DLF_BIAS_MAX_DLF_TOKEN "--dlf-bias-max-dlf"
-#define DLF_BIAS_MIN_DLF_TOKEN "--dlf-bias-min-dlf"
 #define BALANCING_Q_BIAS_TOKEN "--balancing-q-bias"
 #define BALANCING_LUMINANCE_Q_BIAS_TOKEN "--balancing-luminance-q-bias"
 #define BALANCING_R0_BASED_LAYER_TOKEN "--balancing-r0-based-layer"
@@ -1407,8 +1408,28 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Disable me 8x8 and tf 8x8 pred. [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     LINEART_DISABLE_SGRPROJ_TOKEN,
+     "[PSY] Disable SGRPROJ in restoration. [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      TEXTURE_COEFF_LVL_OFFSET_TOKEN,
      "[PSY] Offset `pcs->coeff_lvl`. [-3-3]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     DLF_BIAS_TOKEN,
+     "[PSY] Enable DLF bias, default is 0 [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     DLF_SHARPNESS_TOKEN,
+     "[PSY] DLF Sharpness, default is `--sharpness`",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     DLF_BIAS_MAX_DLF_TOKEN,
+     "[PSY] Max DLF strength, default is 8,2",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     DLF_BIAS_MIN_DLF_TOKEN,
+     "[PSY] Min DLF strength, default is 2,0",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      CDEF_BIAS_TOKEN,
@@ -1429,22 +1450,6 @@ ConfigEntry config_entry_psy[] = {
     {SINGLE_INPUT,
      CDEF_BIAS_DAMPING_OFFSET_TOKEN,
      "[PSY] Offset CDEF damping, default is 1 [-12-4]",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     DLF_BIAS_TOKEN,
-     "[PSY] Enable DLF bias, default is 0 [0-1]",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     DLF_SHARPNESS_TOKEN,
-     "[PSY] DLF Sharpness, default is `--sharpness`",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     DLF_BIAS_MAX_DLF_TOKEN,
-     "[PSY] Max DLF strength, default is 8,2",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     DLF_BIAS_MIN_DLF_TOKEN,
-     "[PSY] Min DLF strength, default is 2,0",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      BALANCING_Q_BIAS_TOKEN,
@@ -1727,7 +1732,14 @@ ConfigEntry config_entry[] = {
 
     {SINGLE_INPUT, LINEART_DISABLE_WARPED_MOTION_TOKEN, "LineartDisableWarpedMotion", set_cfg_generic_token},
     {SINGLE_INPUT, LINEART_DISABLE_ME_8X8_TOKEN, "LineartDisableMe8x8", set_cfg_generic_token},
+    {SINGLE_INPUT, LINEART_DISABLE_SGRPROJ_TOKEN, "LineartDisableSGRPROJ", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_COEFF_LVL_OFFSET_TOKEN, "TextureCoeffLvlOffset", set_cfg_generic_token},
+
+    // DLF Bias
+    {SINGLE_INPUT, DLF_BIAS_TOKEN, "DLFBias", set_cfg_generic_token},
+    {SINGLE_INPUT, DLF_SHARPNESS_TOKEN, "DLFSharpness", set_cfg_generic_token},
+    {SINGLE_INPUT, DLF_BIAS_MAX_DLF_TOKEN, "DLFBiasMaxDLF", set_cfg_generic_token},
+    {SINGLE_INPUT, DLF_BIAS_MIN_DLF_TOKEN, "DLFBiasMinDLF", set_cfg_generic_token},
 
     // CDEF Bias
     {SINGLE_INPUT, CDEF_BIAS_TOKEN, "CDEFBias", set_cfg_generic_token},
@@ -1735,12 +1747,6 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, CDEF_BIAS_MIN_CDEF_TOKEN, "CDEFBiasMinCDEF", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_MAX_SEC_CDEF_REL_TOKEN, "CDEFBiasMaxSecCDEFRel", set_cfg_generic_token},
     {SINGLE_INPUT, CDEF_BIAS_DAMPING_OFFSET_TOKEN, "CDEFBiasDampingOffset", set_cfg_generic_token},
-
-    // DLF Bias
-    {SINGLE_INPUT, DLF_BIAS_TOKEN, "DLFBias", set_cfg_generic_token},
-    {SINGLE_INPUT, DLF_SHARPNESS_TOKEN, "DLFSharpness", set_cfg_generic_token},
-    {SINGLE_INPUT, DLF_BIAS_MAX_DLF_TOKEN, "DLFBiasMaxDLF", set_cfg_generic_token},
-    {SINGLE_INPUT, DLF_BIAS_MIN_DLF_TOKEN, "DLFBiasMinDLF", set_cfg_generic_token},
 
     // Balancing Q Bias
     {SINGLE_INPUT, BALANCING_Q_BIAS_TOKEN, "BalancingQBias", set_cfg_generic_token},

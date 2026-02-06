@@ -1517,11 +1517,11 @@ EbErrorType svt_aom_full_cost_light_pd0(ModeDecisionContext *ctx, struct ModeDec
 
 static INLINE uint64_t psy_bias_shift_const(ModeDecisionContext *ctx, const int8_t lshift) {
     if (lshift > 0)
-        return ctx->bias_const << lshift;
+        return ctx->psy_bias_const << lshift;
     else if (lshift == 0)
-        return ctx->bias_const;
+        return ctx->psy_bias_const;
     else
-        return ctx->bias_const >> -lshift;
+        return ctx->psy_bias_const >> -lshift;
 }
 static INLINE void psy_bias_add_dist(ModeDecisionContext *ctx, uint64_t *mode_distortion, uint64_t *mode_ssim_distortion, const int8_t lshift) {
     switch (ctx->blk_geom->bsize) {

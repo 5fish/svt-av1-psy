@@ -1131,7 +1131,30 @@ typedef struct EbSvtAv1EncConfiguration {
 
     uint8_t lineart_disable_warped_motion;
     uint8_t lineart_disable_me_8x8;
+    uint8_t lineart_disable_sgrproj;
     int8_t texture_coeff_lvl_offset;
+
+    /**
+     * @brief Enable DLF bias
+     * 0: disabled
+     * 1: enabled
+     * Default is 0
+     */
+    uint8_t dlf_bias;
+    /**
+     * @brief Sharpness for DLF
+     * Min value is 0
+     * Max value is 7
+     */
+    uint8_t dlf_sharpness;
+    /**
+     * @brief Max DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_max_dlf[2];
+    /**
+     * @brief Min DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_min_dlf[2];
 
     /**
      * @brief Enable CDEF bias
@@ -1161,28 +1184,6 @@ typedef struct EbSvtAv1EncConfiguration {
      * Max value is 8.
      */
     int8_t cdef_bias_damping_offset;
-
-    /**
-     * @brief Enable DLF bias
-     * 0: disabled
-     * 1: enabled
-     * Default is 0
-     */
-    uint8_t dlf_bias;
-    /**
-     * @brief Sharpness for DLF
-     * Min value is 0
-     * Max value is 7
-     */
-    uint8_t dlf_sharpness;
-    /**
-     * @brief Max DLF strength for luma and chroma.
-     */
-    uint8_t dlf_bias_max_dlf[2];
-    /**
-     * @brief Min DLF strength for luma and chroma.
-     */
-    uint8_t dlf_bias_min_dlf[2];
 
     /**
      * @brief Enable balancing Q bias
@@ -1285,7 +1286,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 19 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 20 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

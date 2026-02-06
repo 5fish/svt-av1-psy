@@ -1490,7 +1490,7 @@ static uint8_t svt_aom_get_wn_filter_level(EncMode enc_mode, uint8_t input_resol
 }
 
 // Returns the level for self-guided restoration filter
-static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode) {
+static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
     uint8_t sg_filter_lvl = 0;
     if (enc_mode <= ENC_M0)
         sg_filter_lvl = 1;
@@ -1501,6 +1501,9 @@ static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resol
 
     // higher resolutions will shut restoration to save memory
     if (input_resolution >= INPUT_SIZE_8K_RANGE || (fast_decode && !(input_resolution <= INPUT_SIZE_360p_RANGE)))
+        sg_filter_lvl = 0;
+
+    if (lineart_disable_sgrproj)
         sg_filter_lvl = 0;
 
     return sg_filter_lvl;
@@ -1949,7 +1952,7 @@ void svt_aom_sig_deriv_multi_processes(SequenceControlSet *scs, PictureParentCon
         svt_aom_derive_input_resolution(&init_input_resolution,
                                         scs->max_initial_input_luma_width * scs->max_initial_input_luma_height);
         wn = svt_aom_get_wn_filter_level(enc_mode, init_input_resolution, is_not_last_layer, is_base);
-        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode);
+        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode, scs->static_config.lineart_disable_sgrproj);
     }
 
     Av1Common *cm = pcs->av1_cm;
@@ -2290,9 +2293,9 @@ static void set_inter_comp_controls(ModeDecisionContext *ctx, uint8_t inter_comp
     default: assert(0); break;
     }
 }
-uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode) {
+uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
     uint8_t sg = 0;
-    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode);
+    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode, lineart_disable_sgrproj);
 
     return (sg > 0);
 }
@@ -2301,7 +2304,7 @@ uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_
   Used by signal_derivation_pre_analysis_oq and memory allocation
 */
 uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_restoration, uint8_t input_resolution,
-                                       uint8_t fast_decode) {
+                                       uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
     if (config_enable_restoration != DEFAULT)
         return config_enable_restoration;
 
@@ -2313,7 +2316,7 @@ uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_re
                 break;
         }
     }
-    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode);
+    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode, lineart_disable_sgrproj);
     return (sg > 0 || wn > 0);
 }
 
@@ -2392,7 +2395,8 @@ void svt_aom_sig_deriv_pre_analysis_scs(SequenceControlSet *scs) {
             scs->static_config.enc_mode,
             scs->static_config.enable_restoration_filtering,
             init_input_resolution,
-            scs->static_config.fast_decode);
+            scs->static_config.fast_decode,
+            scs->static_config.lineart_disable_sgrproj);
     } else
         scs->seq_header.enable_restoration = (uint8_t)scs->static_config.enable_restoration_filtering;
 
@@ -7339,8 +7343,8 @@ that use 8x8 blocks will lose significant BD-Rate as the parent 16x16 me data wi
     // something in the range of a few hundred to a few thousand, and it
     // needs something that corresponds with quality, and the qstep table
     // just happenes to fit both of these two points.
-    ctx->bias_const = svt_aom_dc_quant_qtx(pcs->ppcs->frm_hdr.quantization_params.base_q_idx, 0,
-                                           ctx->encoder_bit_depth);
+    ctx->psy_bias_const = svt_aom_dc_quant_qtx(pcs->ppcs->frm_hdr.quantization_params.base_q_idx, 0,
+                                               ctx->encoder_bit_depth);
 }
 static void set_depth_early_exit_ctrls(ModeDecisionContext *ctx, uint8_t early_exit_level) {
     DepthEarlyExitCtrls *ctrls = &ctx->depth_early_exit_ctrls;
