@@ -6136,27 +6136,34 @@ static void set_lpd1_ctrls(ModeDecisionContext *ctx, uint8_t lpd1_lvl) {
     }
 }
 
-static void set_detect_high_freq_ctrls(ModeDecisionContext *ctx, uint8_t detect_high_freq_lvl) {
+static void set_detect_high_freq_ctrls(ModeDecisionContext *ctx, uint8_t detect_high_freq_lvl, double lineart_psy_bias) {
+    uint8_t lineart_bias_dev_thr = lineart_psy_bias >= 1.0;
     DetectHighFreqCtrls *ctrls = &ctx->detect_high_freq_ctrls;
     switch (detect_high_freq_lvl) {
     case 0: ctrls->enabled = 0; break;
     case 1:
-        ctrls->enabled            = 1;
-        ctrls->high_satd_th       = 10000;
-        ctrls->satd_to_sad_dev_th = 500;
-        ctrls->me_8x8_sad_var_th  = 2500;
-        ctrls->max_pic_lpd0_lvl   = 3;
-        ctrls->max_pic_lpd1_lvl   = 3;
-        ctrls->max_pd1_txt_lvl    = 8;
+        ctrls->enabled                = 1;
+        ctrls->high_satd_th           = 10000;
+        if (!lineart_bias_dev_thr)
+            ctrls->satd_to_sad_dev_th = 500;
+        else
+            ctrls->satd_to_sad_dev_th = 50;
+        ctrls->me_8x8_sad_var_th      = 2500;
+        ctrls->max_pic_lpd0_lvl       = 3;
+        ctrls->max_pic_lpd1_lvl       = 3;
+        ctrls->max_pd1_txt_lvl        = 8;
         break;
     case 2:
-        ctrls->enabled            = 1;
-        ctrls->high_satd_th       = 15000;
-        ctrls->satd_to_sad_dev_th = 600;
-        ctrls->me_8x8_sad_var_th  = 7500;
-        ctrls->max_pic_lpd0_lvl   = 3;
-        ctrls->max_pic_lpd1_lvl   = 3;
-        ctrls->max_pd1_txt_lvl    = 8;
+        ctrls->enabled                = 1;
+        ctrls->high_satd_th           = 15000;
+        if (!lineart_bias_dev_thr)
+            ctrls->satd_to_sad_dev_th = 600;
+        else
+            ctrls->satd_to_sad_dev_th = 60;
+        ctrls->me_8x8_sad_var_th      = 7500;
+        ctrls->max_pic_lpd0_lvl       = 3;
+        ctrls->max_pic_lpd1_lvl       = 3;
+        ctrls->max_pd1_txt_lvl        = 8;
         break;
     default: assert(0); break;
     }
@@ -7105,7 +7112,7 @@ void svt_aom_sig_deriv_enc_dec_common(SequenceControlSet *scs, PictureControlSet
     const bool is_islice = pcs->slice_type == I_SLICE;
 
     SuperBlock *sb_ptr = pcs->sb_ptr_array[ctx->sb_index];
-    set_detect_high_freq_ctrls(ctx, pcs->vq_ctrls.detect_high_freq_lvl);
+    set_detect_high_freq_ctrls(ctx, pcs->vq_ctrls.detect_high_freq_lvl, pcs->scs->static_config.lineart_psy_bias);
     ctx->high_freq_present    = 0;
     ctx->high_freq_satd_to_me = (uint32_t)~0;
     const bool rtc_tune       = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
@@ -9178,7 +9185,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     // An SB is tagged as problematic when the deviation is higher than the normal (i.e. when me-sad and satd are not correlated)
     // For the detected SB(s), apply a better level for Depth-removal, LPD0, LPD1, and TXT of regular PD1.
     // Not applicable for I_SLICE and for SB 128x128
-    if (pcs->slice_type == I_SLICE || scs->super_block_size == 128) {
+    if (pcs->slice_type == I_SLICE || scs->super_block_size == 128 ||
+        scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0) {
         pcs->vq_ctrls.detect_high_freq_lvl = 0;
     } else {
         if (rtc_tune) {

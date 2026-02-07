@@ -1133,6 +1133,7 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t lineart_disable_me_8x8;
     uint8_t lineart_disable_sgrproj;
     int8_t texture_coeff_lvl_offset;
+    uint8_t lineart_texture_intra_mode_bias;
 
     /**
      * @brief Enable DLF bias
@@ -1284,11 +1285,15 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
+    uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 20 * sizeof(uint8_t) - 5 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 20 * sizeof(uint8_t) - 7 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
+
+// Why? How? What?
+// Apparently C has internal paddings, so the manual padding doesn't work at all. The size of this is different in all forks and mainline.
+// _Static_assert(sizeof(EbSvtAv1EncConfiguration) == 640, "Unexpected size of EbSvtAv1EncConfiguration");
 
 /**
  * Returns a string containing "v$tag-$commit_count-g$hash${dirty:+-dirty}"

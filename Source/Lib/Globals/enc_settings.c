@@ -995,6 +995,11 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: texture-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
+    if (config->lineart_texture_intra_mode_bias > 1 &&
+        config->lineart_texture_intra_mode_bias != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: lineart-texture-intra-mode-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
 
     if ((config->dlf_sharpness < 0 || config->dlf_sharpness > 7) &&
         config->dlf_sharpness != UINT8_DEFAULT) {
@@ -1058,7 +1063,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: balancing-r0-based-layer must be between -5 and 0\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if ((config->balancing_r0_dampening_layer< -5 || config->balancing_r0_dampening_layer > 1) &&
+    if ((config->balancing_r0_dampening_layer < -5 || config->balancing_r0_dampening_layer > 1) &&
         config->balancing_r0_dampening_layer != INT8_MAX) {
         SVT_ERROR("Instance %u: balancing-r0-dampening-layer must be between -5 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
@@ -1258,6 +1263,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->lineart_disable_me_8x8            = UINT8_DEFAULT;
     config_ptr->lineart_disable_sgrproj           = UINT8_DEFAULT;
     config_ptr->texture_coeff_lvl_offset          = INT8_DEFAULT;
+    config_ptr->lineart_texture_intra_mode_bias   = UINT8_DEFAULT;
     config_ptr->dlf_bias                          = 0;
     config_ptr->dlf_sharpness                     = UINT8_DEFAULT;
     config_ptr->dlf_bias_max_dlf[0]               = 8;
@@ -2727,6 +2733,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"lineart-disable-warped-motion", &config_struct->lineart_disable_warped_motion},
         {"lineart-disable-me-8x8", &config_struct->lineart_disable_me_8x8},
         {"lineart-disable-sgrproj", &config_struct->lineart_disable_sgrproj},
+        {"lineart-texture-intra-mode-bias", &config_struct->lineart_texture_intra_mode_bias},
         {"dlf-bias", &config_struct->dlf_bias},
         {"dlf-sharpness", &config_struct->dlf_sharpness},
         {"cdef-bias", &config_struct->cdef_bias},

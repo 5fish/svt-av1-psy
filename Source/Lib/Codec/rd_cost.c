@@ -1653,6 +1653,13 @@ static void psy_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, str
         *ssim_dist = (*ssim_dist * 9) >> 3;
     }
 
+    if (pcs->scs->static_config.lineart_texture_intra_mode_bias &&
+        !((int8_t)pcs->temporal_layer_index <= (int8_t)pcs->ppcs->hierarchical_levels - (int8_t)pcs->scs->static_config.hierarchical_levels) &&
+        is_intra_mode(cand_bf->cand->pred_mode)) {
+        *dist = (*dist * 9) >> 3;
+        *ssim_dist = (*ssim_dist * 9) >> 3;
+    }
+
     // bsize bias
     const bool block_no_coeff = !cand_bf->y_has_coeff || (!cand_bf->u_has_coeff && !cand_bf->v_has_coeff);
     switch (ctx->bsize_bias_mode) {

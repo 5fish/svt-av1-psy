@@ -234,6 +234,7 @@
 #define LINEART_DISABLE_ME_8X8_TOKEN "--lineart-disable-me-8x8"
 #define LINEART_DISABLE_SGRPROJ_TOKEN "--lineart-disable-sgrproj"
 #define TEXTURE_COEFF_LVL_OFFSET_TOKEN "--texture-coeff-lvl-offset"
+#define LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN "--lineart-texture-intra-mode-bias"
 #define DLF_BIAS_TOKEN "--dlf-bias"
 #define DLF_SHARPNESS_TOKEN "--dlf-sharpness"
 #define DLF_BIAS_MAX_DLF_TOKEN "--dlf-bias-max-dlf"
@@ -1416,6 +1417,10 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Offset `pcs->coeff_lvl`. [-3-3]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN,
+     "[PSY] Bias against intra mode in non base layers. [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      DLF_BIAS_TOKEN,
      "[PSY] Enable DLF bias, default is 0 [0-1]",
      set_cfg_generic_token},
@@ -1734,6 +1739,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, LINEART_DISABLE_ME_8X8_TOKEN, "LineartDisableMe8x8", set_cfg_generic_token},
     {SINGLE_INPUT, LINEART_DISABLE_SGRPROJ_TOKEN, "LineartDisableSGRPROJ", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_COEFF_LVL_OFFSET_TOKEN, "TextureCoeffLvlOffset", set_cfg_generic_token},
+    {SINGLE_INPUT, LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN, "LineartTextureIntraModeBias", set_cfg_generic_token},
 
     // DLF Bias
     {SINGLE_INPUT, DLF_BIAS_TOKEN, "DLFBias", set_cfg_generic_token},

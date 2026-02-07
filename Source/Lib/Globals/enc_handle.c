@@ -3959,6 +3959,10 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->scd_delay = MAX(scs->scd_delay, 2);
 
     // `-psy-bias`'s Global
+    if ((scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0) &&
+        scs->static_config.tx_bias)
+        SVT_WARN("lineart-psy-bias / texture-psy-bias is intended to replace tx-bias and not intended to be used together\n");
+
     if (scs->static_config.screen_content_mode == UINT8_DEFAULT) {
         if (scs->static_config.lineart_psy_bias >= 1.0 || scs->static_config.texture_psy_bias >= 1.0)
             scs->static_config.screen_content_mode = 0;
@@ -4097,6 +4101,16 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         else
             scs->static_config.texture_ac_bias = scs->static_config.ac_bias;
     }
+
+    if (scs->static_config.lineart_texture_intra_mode_bias == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 3.0 ||
+            scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.lineart_texture_intra_mode_bias = 1;
+        else
+            scs->static_config.lineart_texture_intra_mode_bias = 0;
+    }
+    if (scs->static_config.lineart_texture_intra_mode_bias && scs->static_config.tx_bias)
+        SVT_WARN("lineart-texture-intra-mode-bias is not intended to be used together with tx-bias\n");
 
     // `-psy-bias`s DLF & CDEF
     if ((scs->static_config.lineart_psy_bias >= 1.0) || (scs->static_config.texture_psy_bias >= 1.0)) {
@@ -4905,6 +4919,7 @@ static void copy_api_from_app(
     scs->static_config.lineart_disable_me_8x8 = config_struct->lineart_disable_me_8x8;
     scs->static_config.lineart_disable_sgrproj = config_struct->lineart_disable_sgrproj;
     scs->static_config.texture_coeff_lvl_offset = config_struct->texture_coeff_lvl_offset;
+    scs->static_config.lineart_texture_intra_mode_bias = config_struct->lineart_texture_intra_mode_bias;
 
     // DLF bias
     scs->static_config.dlf_bias = config_struct->dlf_bias;

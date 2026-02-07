@@ -888,7 +888,7 @@ static int crf_qindex_calc(PictureControlSet *pcs, RATE_CONTROL *rc, int qindex)
             weight = MIN(weight + 0.1, 1);
 
         double qstep_ratio;
-        if (pcs->temporal_layer_index >= AOMMAX(1, pcs->ppcs->hierarchical_levels + scs->static_config.balancing_r0_dampening_layer))
+        if ((int8_t)pcs->temporal_layer_index >= AOMMAX(1, (int8_t)pcs->ppcs->hierarchical_levels + scs->static_config.balancing_r0_dampening_layer))
             qstep_ratio = sqrt(sqrt(ppcs->r0)) * weight * (1.000 + scs->static_config.qp_scale_compress_strength * 0.125);
         else
             qstep_ratio = sqrt(ppcs->r0) * weight * (1.000 + scs->static_config.qp_scale_compress_strength * 0.125);
