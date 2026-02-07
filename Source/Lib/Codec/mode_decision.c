@@ -4201,7 +4201,12 @@ void generate_md_stage_0_cand_light_pd1(
     if (ctx->intra_ctrls.enable_intra && ctx->blk_geom->sq_size < 128) {
         uint8_t dc_cand_only_flag = (ctx->intra_ctrls.intra_mode_end == DC_PRED);
         if (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled && ctx->cand_reduction_ctrls.cand_elimination_ctrls.dc_only && !dc_cand_only_flag && ctx->md_subpel_me_ctrls.enabled) {
-            uint32_t th = pcs->ppcs->temporal_layer_index == 0 ? 10 : !pcs->ppcs->is_highest_layer ? 30 : 200;
+            uint8_t is_base;
+            if (!pcs->scs->static_config.balancing_q_bias)
+                is_base = pcs->ppcs->temporal_layer_index == 0;
+            else
+                is_base = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0;
+            uint32_t th = is_base ? 10 : !pcs->ppcs->is_highest_layer ? 30 : 200;
             th *= (ctx->blk_geom->bheight * ctx->blk_geom->bwidth);
             if (ctx->md_me_dist < th)
                 dc_cand_only_flag = 1;

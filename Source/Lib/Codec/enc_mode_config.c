@@ -700,7 +700,11 @@ void svt_aom_sig_deriv_me(SequenceControlSet *scs, PictureParentControlSet *pcs,
     const uint8_t     sc_class1        = pcs->sc_class1;
     EbInputResolution input_resolution = scs->input_resolution;
     const bool        rtc_tune         = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
-    const bool        is_base          = pcs->temporal_layer_index == 0;
+    bool              is_base;
+    if (!scs->static_config.balancing_q_bias)
+                      is_base          = pcs->temporal_layer_index == 0;
+    else
+                      is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0;
     // Set ME search area
     set_me_search_params(scs, pcs, me_ctx, input_resolution);
 
@@ -1697,8 +1701,13 @@ static void svt_aom_set_dlf_controls(PictureParentControlSet *pcs, uint8_t dlf_l
     set controls for intra block copy
 */
 static void set_intrabc_level(PictureParentControlSet *pcs, SequenceControlSet *scs, uint8_t ibc_level) {
+    uint8_t       is_base;
+    if (!scs->static_config.balancing_q_bias)
+                  is_base          = pcs->temporal_layer_index == 0;
+    else
+                  is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0;
     IntraBCCtrls *intraBC_ctrls    = &pcs->intraBC_ctrls;
-    uint8_t       allow_4x4_blocks = !svt_aom_get_disallow_4x4(pcs->enc_mode, pcs->temporal_layer_index == 0);
+    uint8_t       allow_4x4_blocks = !svt_aom_get_disallow_4x4(pcs->enc_mode, is_base);
 
     switch (ibc_level) {
     case 0: intraBC_ctrls->enabled = 0; break;
@@ -1813,7 +1822,11 @@ void svt_aom_sig_deriv_multi_processes(SequenceControlSet *scs, PictureParentCon
     FrameHeader            *frm_hdr          = &pcs->frm_hdr;
     EncMode                 enc_mode         = pcs->enc_mode;
     const uint8_t           is_islice        = pcs->slice_type == I_SLICE;
-    const uint8_t           is_base          = pcs->temporal_layer_index == 0;
+    uint8_t                 is_base;
+    if (!scs->static_config.balancing_q_bias)
+                            is_base          = pcs->temporal_layer_index == 0;
+    else
+                            is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0;
     const EbInputResolution input_resolution = pcs->input_resolution;
     const uint8_t           fast_decode      = scs->static_config.fast_decode;
     const bool              rtc_tune  = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
@@ -7741,7 +7754,11 @@ void svt_aom_sig_deriv_enc_dec(SequenceControlSet *scs, PictureControlSet *pcs, 
     EncMode                  enc_mode             = pcs->enc_mode;
     uint8_t                  pd_pass              = ctx->pd_pass;
     PictureParentControlSet *ppcs                 = pcs->ppcs;
-    const uint8_t            is_base              = ppcs->temporal_layer_index == 0;
+    uint8_t                  is_base;
+    if (!scs->static_config.balancing_q_bias)
+                             is_base              = ppcs->temporal_layer_index == 0;
+    else
+                             is_base              = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0;
     const EbInputResolution  input_resolution     = ppcs->input_resolution;
     const uint8_t            is_islice            = pcs->slice_type == I_SLICE;
     const uint8_t            sc_class1            = ppcs->sc_class1;
@@ -8199,7 +8216,11 @@ set lpd0_level
 static void set_pic_lpd0_lvl(PictureControlSet *pcs, EncMode enc_mode) {
     PictureParentControlSet *ppcs = pcs->ppcs;
 
-    const uint8_t is_base            = ppcs->temporal_layer_index == 0;
+    uint8_t       is_base;
+    if (!pcs->scs->static_config.balancing_q_bias)
+                  is_base            = pcs->temporal_layer_index == 0;
+    else
+                  is_base            = (ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0;
     const uint8_t is_islice          = pcs->slice_type == I_SLICE;
     const Bool    transition_present = (ppcs->transition_present == 1);
     const uint8_t sc_class1          = ppcs->sc_class1;
@@ -8493,8 +8514,16 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     PictureParentControlSet *ppcs                = pcs->ppcs;
     EncMode                  enc_mode            = pcs->enc_mode;
     const uint8_t            is_ref              = ppcs->is_ref;
-    const uint8_t            is_base             = ppcs->temporal_layer_index == 0;
-    const uint8_t            is_layer1           = ppcs->temporal_layer_index == 1;
+    uint8_t                  is_base;
+    if (!scs->static_config.balancing_q_bias)
+                             is_base             = pcs->temporal_layer_index == 0;
+    else
+                             is_base             = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0;
+    uint8_t                  is_layer1;
+    if (!scs->static_config.balancing_q_bias)
+                             is_layer1           = pcs->temporal_layer_index == 1;
+    else
+                             is_layer1           = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 1;
     const EbInputResolution  input_resolution    = ppcs->input_resolution;
     const uint8_t            is_islice           = pcs->slice_type == I_SLICE;
     const uint8_t            sc_class1           = ppcs->sc_class1;
@@ -9238,7 +9267,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
                                   input_resolution,
                                   rtc_tune,
                                   sc_class1,
-                                  (pcs->temporal_layer_index == 0));
+                                  is_base);
     }
     svt_aom_set_dlf_controls(pcs->ppcs, dlf_level);
 }
