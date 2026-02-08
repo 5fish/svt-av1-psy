@@ -881,10 +881,10 @@ void finish_cdef_search(PictureControlSet *pcs, SequenceControlSet *scs) {
     }
 
     nb_strength_bits = 0;
-    if (scs->static_config.texture_preserving_qmc_bias) {
+    if (scs->static_config.texture_psy_bias >= 5.0) {
         for (i = 0; i < sb_count; i++) {
             // The same rule as compute_cdef_dist_sad_mse in cdef_process.c
-            if (scs->static_config.cdef_bias && // Always true when `--texture-preserving-qmc-bias`
+            if (scs->static_config.cdef_bias &&
                 pcs->ppcs->frm_hdr.quantization_params.base_q_idx >> 6 == 0)
                 mse[0][i][0] = (63 * mse[0][i][0]) >> 6;
             else

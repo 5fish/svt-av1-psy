@@ -353,7 +353,9 @@ void mode_decision_configuration_init_qp_update(PictureControlSet *pcs) {
                                  pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                  pcs->ppcs->enable_restoration,
                                  pcs->ppcs->frm_hdr.allow_intrabc,
-                                 &pcs->md_frame_context);
+                                 &pcs->md_frame_context,
+                                 pcs->scs->static_config.lineart_psy_bias,
+                                 pcs->scs->static_config.texture_psy_bias);
     // Initial Rate Estimation of the Motion vectors
     svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
     // Initial Rate Estimation of the quantized coefficients
@@ -640,6 +642,8 @@ static void set_frame_coeff_lvl(PictureControlSet *pcs) {
     } else if (cmplx > coeff_high_level_th) {
         pcs->coeff_lvl = HIGH_LVL;
     }
+
+    pcs->coeff_lvl = CLIP3(VLOW_LVL, HIGH_LVL, pcs->coeff_lvl + pcs->scs->static_config.psy_bias_coeff_lvl_offset);
 }
 
 /* Mode Decision Configuration Kernel */
@@ -783,7 +787,9 @@ void *svt_aom_mode_decision_configuration_kernel(void *input_ptr) {
                                      pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                      pcs->ppcs->enable_restoration,
                                      pcs->ppcs->frm_hdr.allow_intrabc,
-                                     &pcs->md_frame_context);
+                                     &pcs->md_frame_context,
+                                     scs->static_config.lineart_psy_bias,
+                                     scs->static_config.texture_psy_bias);
         // Initial Rate Estimation of the Motion vectors
         svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
         // Initial Rate Estimation of the quantized coefficients

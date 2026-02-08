@@ -128,7 +128,7 @@ EbErrorType svt_aom_mode_decision_context_ctor(ModeDecisionContext *ctx, EbColor
                                                EncMode enc_mode, uint16_t max_block_cnt, uint32_t encoder_bit_depth,
                                                EbFifo *mode_decision_configuration_input_fifo_ptr,
                                                EbFifo *mode_decision_output_fifo_ptr, uint8_t enable_hbd_mode_decision,
-                                               uint8_t cfg_palette, uint8_t seq_qp_mod) {
+                                               uint8_t cfg_palette, uint8_t seq_qp_mod, double lineart_psy_bias) {
     uint32_t buffer_index;
     uint32_t cand_index;
 
@@ -236,7 +236,7 @@ EbErrorType svt_aom_mode_decision_context_ctor(ModeDecisionContext *ctx, EbColor
         for (uint8_t qp = 1; qp <= MAX_QP_VALUE; qp++) {
             if (obmc_allowed)
                 break;
-            obmc_allowed |= svt_aom_get_obmc_level(enc_mode, qp, is_base, seq_qp_mod);
+            obmc_allowed |= svt_aom_get_obmc_level(enc_mode, qp, is_base, seq_qp_mod, lineart_psy_bias);
         }
     }
     if (obmc_allowed) {

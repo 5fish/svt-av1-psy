@@ -11,8 +11,11 @@
 
 #include <math.h>
 #include <stdbool.h>
+#include "utility.h"
 #include "ac_bias.h"
 #include "aom_dsp_rtcd.h"
+#include "me_context.h"
+#include "segmentation.h"
 
 /* Regular version of "AC Bias"
  *
@@ -186,4 +189,20 @@ double get_effective_ac_bias(const double ac_bias, const bool is_islice, const u
     case 2: return ac_bias * 0.9;
     default: return ac_bias;
     }
+}
+
+double get_effective_ac_bias_texture_psy_bias(const double ac_bias, const bool is_islice, const uint8_t temporal_layer_index,
+                                              const double texture_ac_bias, const uint16_t texture_variance_thr,
+                                              uint16_t **variance, const uint16_t sb_index, const BlockGeom *blk_geom) {
+    const double effective_ac_bias = get_effective_ac_bias(ac_bias, is_islice, temporal_layer_index);
+    const double effective_texture_ac_bias = get_effective_ac_bias(texture_ac_bias, is_islice, temporal_layer_index);
+
+    const uint16_t blk_variance = get_variance_for_cu_16x16_min(blk_geom, variance[sb_index]);
+
+    if (blk_variance >= texture_variance_thr >> 1)
+        return effective_ac_bias;
+    else if (blk_variance >= texture_variance_thr >> 2)
+        return effective_ac_bias * ((double)2/3) + effective_texture_ac_bias * ((double)1/3);
+    else
+        return effective_texture_ac_bias;
 }

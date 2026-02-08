@@ -351,9 +351,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         is_16bit);
 
                     if (pli) {
-                        if (scs->static_config.chroma_qmc_bias == 1)
-                            curr_mse <<= 1;
-                        else if (scs->static_config.chroma_qmc_bias == 2)
+                        if (scs->static_config.lineart_psy_bias >= 4.0)
                             curr_mse += curr_mse >> 1;
                     }
 
@@ -431,9 +429,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         is_16bit);
 
                     if (pli) {
-                        if (scs->static_config.chroma_qmc_bias == 1)
-                            curr_mse <<= 1;
-                        else if (scs->static_config.chroma_qmc_bias == 2)
+                        if (scs->static_config.lineart_psy_bias >= 4.0)
                             curr_mse += curr_mse >> 1;
                     }
 
