@@ -564,12 +564,14 @@ static int get_gfu_boost_from_r0_lap(double min_factor, double max_factor, doubl
     const int boost  = (int)rint(factor / r0);
     return boost;
 }
-static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, uint8_t balancing_q_bias) {
+static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, uint8_t balancing_q_bias, uint8_t balancing_tpl_intra_mode_beta_bias_active) {
     assert(beta > 0.0);
     int q = svt_aom_dc_quant_qtx(qindex, 0, bit_depth);
     int newq;
+    if (balancing_tpl_intra_mode_beta_bias_active && beta > 1)
+        newq = (int)rint(q / pow(beta, (double)3/8));
     // use a less aggressive action when lowering the q for non I_slice
-    if ((!is_intra || balancing_q_bias) && beta > 1)
+    else if ((!is_intra || balancing_q_bias) && beta > 1)
         newq = (int)rint(q / sqrt(sqrt(beta)));
     else
         newq = (int)rint(q / sqrt(beta));
@@ -1643,6 +1645,50 @@ void svt_variance_adjust_qp(PictureControlSet *pcs, bool readjust_base_q_idx) {
     }
 }
 
+// Copied from `get_sb_tpl_intra_stats` from `enc_mode_config.c`
+static Bool does_sb_tpl_favour_intra_mode(PictureControlSet *pcs, uint32_t sb_index) {
+    PictureParentControlSet *ppcs = pcs->ppcs;
+
+    // Check that TPL data is available and that INTRA was tested in TPL.
+    // Note that not all INTRA modes may be tested in TPL.
+    if (ppcs->tpl_ctrls.enable && ppcs->tpl_src_data_ready &&
+        (pcs->temporal_layer_index < ppcs->hierarchical_levels || !ppcs->tpl_ctrls.disable_intra_pred_nref)) {
+        const int      aligned16_width = (ppcs->aligned_width + 15) >> 4;
+        const int      tpl_blk_size    = ppcs->tpl_ctrls.dispenser_search_level == 0 ? 16
+                    : ppcs->tpl_ctrls.dispenser_search_level == 1                    ? 32
+                                                                                     : 64;
+
+        // Get actual SB width (for cases of incomplete SBs)
+        SbGeom *sb_geom = &ppcs->sb_geom[sb_index];
+        int     sb_cols = MAX(1, sb_geom->width / tpl_blk_size);
+        int     sb_rows = MAX(1, sb_geom->height / tpl_blk_size);
+        const uint32_t mb_origin_x     = sb_geom->org_x;
+        const uint32_t mb_origin_y     = sb_geom->org_y;
+
+        int            intra_count     = 0;
+
+        // Loop over all blocks in the SB
+        for (int i = 0; i < sb_rows; i++) {
+            TplSrcStats *tpl_src_stats_buffer =
+                &ppcs->pa_me_data
+                     ->tpl_src_stats_buffer[((mb_origin_y >> 4) + i) * aligned16_width + (mb_origin_x >> 4)];
+            for (int j = 0; j < sb_cols; j++) {
+                if (is_intra_mode(tpl_src_stats_buffer->best_mode) &&
+                    !av1_is_directional_mode(tpl_src_stats_buffer->best_mode)) {
+                    intra_count++;
+                }
+                tpl_src_stats_buffer++;
+            }
+        }
+
+        int total_count = sb_rows * sb_cols;
+        if (intra_count >= (total_count >> 1) + (total_count >> 2))
+            return 1;
+        else
+            return 0;
+    }
+    return 0;
+}
 /******************************************************
  * svt_aom_sb_qp_derivation_tpl_la
  * Calculates the QP per SB based on the tpl statistics
@@ -1666,7 +1712,9 @@ void svt_aom_sb_qp_derivation_tpl_la(PictureControlSet *pcs) {
             SuperBlock *sb_ptr = pcs->sb_ptr_array[sb_addr];
             double      beta   = ppcs_ptr->pa_me_data->tpl_beta[sb_addr];
             int         offset = svt_av1_get_deltaq_offset(
-                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE, scs->static_config.balancing_q_bias);
+                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE,
+                scs->static_config.balancing_q_bias,
+                scs->static_config.balancing_q_bias && scs->static_config.balancing_tpl_intra_mode_beta_bias && does_sb_tpl_favour_intra_mode(pcs, sb_addr));
             offset = AOMMIN(offset, pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) - 1);
             offset = AOMMAX(offset, -pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) + 1);
 

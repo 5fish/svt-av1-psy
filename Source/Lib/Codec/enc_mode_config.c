@@ -74,7 +74,7 @@ static void get_sb128_me_data(PictureControlSet *pcs, ModeDecisionContext *ctx, 
 }
 
 // use this function to set the enable_me_8x8 level
-uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution, uint8_t lineart_disable_me_8x8) {
+uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution, uint8_t psy_bias_disable_me_8x8) {
     uint8_t enable_me_8x8 = 0;
     if (rtc_tune) {
         if (enc_mode <= ENC_M9)
@@ -93,7 +93,7 @@ uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolu
             enable_me_8x8 = 0;
     }
 
-    if (lineart_disable_me_8x8)
+    if (psy_bias_disable_me_8x8)
         enable_me_8x8 = 0;
 
     return enable_me_8x8;
@@ -1494,7 +1494,7 @@ static uint8_t svt_aom_get_wn_filter_level(EncMode enc_mode, uint8_t input_resol
 }
 
 // Returns the level for self-guided restoration filter
-static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
+static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     uint8_t sg_filter_lvl = 0;
     if (enc_mode <= ENC_M0)
         sg_filter_lvl = 1;
@@ -1507,7 +1507,7 @@ static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resol
     if (input_resolution >= INPUT_SIZE_8K_RANGE || (fast_decode && !(input_resolution <= INPUT_SIZE_360p_RANGE)))
         sg_filter_lvl = 0;
 
-    if (lineart_disable_sgrproj)
+    if (psy_bias_disable_sgrproj)
         sg_filter_lvl = 0;
 
     return sg_filter_lvl;
@@ -1965,7 +1965,7 @@ void svt_aom_sig_deriv_multi_processes(SequenceControlSet *scs, PictureParentCon
         svt_aom_derive_input_resolution(&init_input_resolution,
                                         scs->max_initial_input_luma_width * scs->max_initial_input_luma_height);
         wn = svt_aom_get_wn_filter_level(enc_mode, init_input_resolution, is_not_last_layer, is_base);
-        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode, scs->static_config.lineart_disable_sgrproj);
+        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode, scs->static_config.psy_bias_disable_sgrproj);
     }
 
     Av1Common *cm = pcs->av1_cm;
@@ -2306,9 +2306,9 @@ static void set_inter_comp_controls(ModeDecisionContext *ctx, uint8_t inter_comp
     default: assert(0); break;
     }
 }
-uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
+uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     uint8_t sg = 0;
-    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode, lineart_disable_sgrproj);
+    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode, psy_bias_disable_sgrproj);
 
     return (sg > 0);
 }
@@ -2317,7 +2317,7 @@ uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_
   Used by signal_derivation_pre_analysis_oq and memory allocation
 */
 uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_restoration, uint8_t input_resolution,
-                                       uint8_t fast_decode, uint8_t lineart_disable_sgrproj) {
+                                       uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     if (config_enable_restoration != DEFAULT)
         return config_enable_restoration;
 
@@ -2329,7 +2329,7 @@ uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_re
                 break;
         }
     }
-    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode, lineart_disable_sgrproj);
+    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode, psy_bias_disable_sgrproj);
     return (sg > 0 || wn > 0);
 }
 
@@ -2409,7 +2409,7 @@ void svt_aom_sig_deriv_pre_analysis_scs(SequenceControlSet *scs) {
             scs->static_config.enable_restoration_filtering,
             init_input_resolution,
             scs->static_config.fast_decode,
-            scs->static_config.lineart_disable_sgrproj);
+            scs->static_config.psy_bias_disable_sgrproj);
     } else
         scs->seq_header.enable_restoration = (uint8_t)scs->static_config.enable_restoration_filtering;
 
@@ -4035,6 +4035,14 @@ static void set_cand_reduction_ctrls(PictureControlSet *pcs, ModeDecisionContext
     CandReductionCtrls *cand_reduction_ctrls = &ctx->cand_reduction_ctrls;
     const bool          rtc_tune = (pcs->scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
 
+    uint8_t       is_base_layer1;
+    if (!pcs->scs->static_config.balancing_q_bias)
+                  is_base_layer1 = pcs->temporal_layer_index <= 1;
+    else
+                  is_base_layer1 = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) <= 1;
+    const uint8_t psy_bias_cand_elimination = pcs->scs->static_config.texture_psy_bias >= 3.0 &&
+                                              !is_base_layer1;
+
     switch (cand_reduction_level) {
     case 0:
 
@@ -4081,7 +4089,12 @@ static void set_cand_reduction_ctrls(PictureControlSet *pcs, ModeDecisionContext
         cand_reduction_ctrls->lpd1_mvp_best_me_list = 0;
 
         // cand_elimination_ctrls
-        cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        if (!psy_bias_cand_elimination)
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        else {
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 2;
+            cand_reduction_ctrls->cand_elimination_ctrls.dc_only = 1;
+        }
 
         // reduce_unipred_candidates
         cand_reduction_ctrls->reduce_unipred_candidates = 0;
@@ -5147,13 +5160,13 @@ void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level
     NsqGeomCtrls  nsq_geom_ctrls_struct;
     NsqGeomCtrls *nsq_geom_ctrls = &nsq_geom_ctrls_struct;
 
-    uint8_t bias_disallow_HV4 = false;
+    uint8_t psy_bias_disallow_HV4 = false;
     if ((lineart_psy_bias >= 3.0 || texture_psy_bias >= 3.0) &&
         enc_mode >= ENC_MR)
-        bias_disallow_HV4 = true;
-    uint8_t bias_allow_HVA_HVB = false;
+        psy_bias_disallow_HV4 = true;
+    uint8_t psy_bias_allow_HVA_HVB = false;
     if (texture_psy_bias >= 3.0 && enc_mode <= ENC_M2)
-        bias_allow_HVA_HVB = true;
+        psy_bias_allow_HVA_HVB = true;
 
     switch (nsq_geom_level) {
     case 0:
@@ -5166,28 +5179,28 @@ void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level
     case 1:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = !bias_disallow_HV4;
+        nsq_geom_ctrls->allow_HV4          = !psy_bias_disallow_HV4;
         nsq_geom_ctrls->allow_HVA_HVB      = 1;
         break;
 
     case 2:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = !bias_disallow_HV4;
-        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
+        nsq_geom_ctrls->allow_HV4          = !psy_bias_disallow_HV4;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
     case 3:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 8;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
 
     case 4:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 16;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = bias_allow_HVA_HVB;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
     default: assert(0); break;
     }
@@ -8599,7 +8612,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     pcs->wm_level = 0;
     if (frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME || frm_hdr->error_resilient_mode ||
         pcs->ppcs->frame_superres_enabled || pcs->ppcs->frame_resize_enabled ||
-        scs->static_config.lineart_disable_warped_motion) {
+        scs->static_config.psy_bias_disable_warped_motion) {
         pcs->wm_level = 0;
     } else {
         if (enc_mode <= ENC_M1) {
@@ -8644,7 +8657,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
         !(frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME) &&
         !frm_hdr->error_resilient_mode && !pcs->ppcs->frame_superres_enabled &&
         scs->static_config.resize_mode == RESIZE_NONE &&
-        !scs->static_config.lineart_disable_warped_motion;
+        !scs->static_config.psy_bias_disable_warped_motion;
 
     frm_hdr->is_motion_mode_switchable = frm_hdr->allow_warped_motion;
     ppcs->pic_obmc_level               = svt_aom_get_obmc_level(enc_mode, sq_qp, is_base, scs->seq_qp_mod, scs->static_config.lineart_psy_bias);

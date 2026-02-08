@@ -1117,6 +1117,10 @@ typedef struct EbSvtAv1EncConfiguration {
      * @brief Easter egg for `--lineart-psy-bias Kumiko`
      */
     int8_t lineart_psy_bias_easter_egg;
+    /**
+     * @brief Easter egg for `--texture-psy-bias cat`
+     */
+    int8_t texture_psy_bias_easter_egg;
 
     /**
      * @brief Threshold for `--lineart-psy-bias`.
@@ -1129,11 +1133,11 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint16_t texture_variance_thr;
 
-    uint8_t lineart_disable_warped_motion;
-    uint8_t lineart_disable_me_8x8;
-    uint8_t lineart_disable_sgrproj;
-    int8_t texture_coeff_lvl_offset;
-    uint8_t lineart_texture_intra_mode_bias;
+    uint8_t psy_bias_disable_warped_motion;
+    uint8_t psy_bias_disable_me_8x8;
+    uint8_t psy_bias_disable_sgrproj;
+    int8_t psy_bias_coeff_lvl_offset;
+    uint8_t psy_bias_intra_mode_bias;
 
     /**
      * @brief Enable DLF bias
@@ -1214,6 +1218,14 @@ typedef struct EbSvtAv1EncConfiguration {
     int8_t balancing_r0_dampening_layer;
 
     /**
+     * @brief Boost a Super Block if TPL search result favours intra instead of inter prediction modes.
+     * 0: disabled
+     * 1: enabled
+     * Default is 1
+     */
+    uint8_t balancing_tpl_intra_mode_beta_bias;
+
+    /**
      * @brief noise level Q bias
      * Max value: 1.5
      * Min value: 0.67
@@ -1287,7 +1299,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 20 * sizeof(uint8_t) - 7 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
+                    - 2 * sizeof(Bool) - 21 * sizeof(uint8_t) - 8 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 4 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

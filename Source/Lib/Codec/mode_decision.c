@@ -4200,7 +4200,9 @@ void generate_md_stage_0_cand_light_pd1(
     // Intra
     if (ctx->intra_ctrls.enable_intra && ctx->blk_geom->sq_size < 128) {
         uint8_t dc_cand_only_flag = (ctx->intra_ctrls.intra_mode_end == DC_PRED);
-        if (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled && ctx->cand_reduction_ctrls.cand_elimination_ctrls.dc_only && !dc_cand_only_flag && ctx->md_subpel_me_ctrls.enabled) {
+        if ((ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled == 1 ||
+             (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled == 2 && ctx->cand_elimination_acceptable)) &&
+             ctx->cand_reduction_ctrls.cand_elimination_ctrls.dc_only && !dc_cand_only_flag && ctx->md_subpel_me_ctrls.enabled) {
             uint8_t is_base;
             if (!pcs->scs->static_config.balancing_q_bias)
                 is_base = pcs->ppcs->temporal_layer_index == 0;
@@ -4248,7 +4250,8 @@ EbErrorType generate_md_stage_0_cand(
     ctx->inject_new_me = 1;
     ctx->inject_new_pme = 1;
     uint8_t dc_cand_only_flag = ctx->intra_ctrls.enable_intra && (ctx->intra_ctrls.intra_mode_end == DC_PRED);
-    if (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled)
+    if (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled == 1 ||
+        (ctx->cand_reduction_ctrls.cand_elimination_ctrls.enabled == 2 && ctx->cand_elimination_acceptable))
         eliminate_candidate_based_on_pme_me_results(ctx,
             !pcs->ppcs->is_highest_layer,
             &dc_cand_only_flag);

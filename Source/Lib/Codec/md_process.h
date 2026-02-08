@@ -1260,6 +1260,7 @@ typedef struct ModeDecisionContext {
     uint8_t above_32_blk_size_bias_mode;
     // `--max-32-tx-size` and `--lineart-psy-bias`
     bool max_32_blk_size;
+    uint8_t cand_elimination_acceptable;
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet *pcs, uint32_t *fast_lambda, uint32_t *full_lambda,

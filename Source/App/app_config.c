@@ -230,11 +230,11 @@
 #define TEXTURE_PSY_BIAS_TOKEN "--texture-psy-bias"
 #define LINEART_VARIANCE_THR_TOKEN "--lineart-variance-thr"
 #define TEXTURE_VARIANCE_THR_TOKEN "--texture-variance-thr"
-#define LINEART_DISABLE_WARPED_MOTION_TOKEN "--lineart-disable-warped-motion"
-#define LINEART_DISABLE_ME_8X8_TOKEN "--lineart-disable-me-8x8"
-#define LINEART_DISABLE_SGRPROJ_TOKEN "--lineart-disable-sgrproj"
-#define TEXTURE_COEFF_LVL_OFFSET_TOKEN "--texture-coeff-lvl-offset"
-#define LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN "--lineart-texture-intra-mode-bias"
+#define PSY_BIAS_DISABLE_WARPED_MOTION_TOKEN "--psy-bias-disable-warped-motion"
+#define PSY_BIAS_DISABLE_ME_8X8_TOKEN "--psy-bias-disable-me-8x8"
+#define PSY_BIAS_DISABLE_SGRPROJ_TOKEN "--psy-bias-disable-sgrproj"
+#define PSY_BIAS_COEFF_LVL_OFFSET_TOKEN "--psy-bias-coeff-lvl-offset"
+#define PSY_BIAS_INTRA_MODE_BIAS_TOKEN "--psy-bias-intra-mode-bias"
 #define DLF_BIAS_TOKEN "--dlf-bias"
 #define DLF_SHARPNESS_TOKEN "--dlf-sharpness"
 #define DLF_BIAS_MAX_DLF_TOKEN "--dlf-bias-max-dlf"
@@ -248,6 +248,7 @@
 #define BALANCING_LUMINANCE_Q_BIAS_TOKEN "--balancing-luminance-q-bias"
 #define BALANCING_R0_BASED_LAYER_TOKEN "--balancing-r0-based-layer"
 #define BALANCING_R0_DAMPENING_LAYER_TOKEN "--balancing-r0-dampening-layer"
+#define BALANCING_TPL_INTRA_MODE_BETA_BIAS_TOKEN "--balancing-tpl-intra-mode-beta-bias"
 #define NOISE_LEVEL_Q_BIAS_TOKEN "--noise-level-q-bias"
 #define SHARP_TX_TOKEN "--sharp-tx"
 #define HBD_MDS_TOKEN "--hbd-mds"
@@ -1401,24 +1402,24 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Threshold for `--texture-psy-bias`. [0.0-16.0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     LINEART_DISABLE_WARPED_MOTION_TOKEN,
+     PSY_BIAS_DISABLE_WARPED_MOTION_TOKEN,
      "[PSY] Disable warped motion. [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     LINEART_DISABLE_ME_8X8_TOKEN,
+     PSY_BIAS_DISABLE_ME_8X8_TOKEN,
      "[PSY] Disable me 8x8 and tf 8x8 pred. [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     LINEART_DISABLE_SGRPROJ_TOKEN,
+     PSY_BIAS_DISABLE_SGRPROJ_TOKEN,
      "[PSY] Disable SGRPROJ in restoration. [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     TEXTURE_COEFF_LVL_OFFSET_TOKEN,
+     PSY_BIAS_COEFF_LVL_OFFSET_TOKEN,
      "[PSY] Offset `pcs->coeff_lvl`. [-3-3]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
-     LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN,
-     "[PSY] Bias against intra mode in non base layers. [0-1]",
+     PSY_BIAS_INTRA_MODE_BIAS_TOKEN,
+     "[PSY] Bias against intra mode in non base layers. [0-5]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      DLF_BIAS_TOKEN,
@@ -1471,6 +1472,10 @@ ConfigEntry config_entry_psy[] = {
     {SINGLE_INPUT,
      BALANCING_LUMINANCE_Q_BIAS_TOKEN,
      "[PSY] Balancing luminance Q bias [0.0-25.0]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     BALANCING_TPL_INTRA_MODE_BETA_BIAS_TOKEN,
+     "[PSY] Boost a Super Block if TPL search result favours intra instead of inter prediction modes, default is 1 [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      NOISE_LEVEL_Q_BIAS_TOKEN,
@@ -1735,11 +1740,11 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, LINEART_VARIANCE_THR_TOKEN, "LineartVarianceThr", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_VARIANCE_THR_TOKEN, "TextureVarianceThr", set_cfg_generic_token},
 
-    {SINGLE_INPUT, LINEART_DISABLE_WARPED_MOTION_TOKEN, "LineartDisableWarpedMotion", set_cfg_generic_token},
-    {SINGLE_INPUT, LINEART_DISABLE_ME_8X8_TOKEN, "LineartDisableMe8x8", set_cfg_generic_token},
-    {SINGLE_INPUT, LINEART_DISABLE_SGRPROJ_TOKEN, "LineartDisableSGRPROJ", set_cfg_generic_token},
-    {SINGLE_INPUT, TEXTURE_COEFF_LVL_OFFSET_TOKEN, "TextureCoeffLvlOffset", set_cfg_generic_token},
-    {SINGLE_INPUT, LINEART_TEXTURE_INTRA_MODE_BIAS_TOKEN, "LineartTextureIntraModeBias", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_DISABLE_WARPED_MOTION_TOKEN, "PsyBiasDisableWarpedMotion", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_DISABLE_ME_8X8_TOKEN, "PsyBiasDisableMe8x8", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_DISABLE_SGRPROJ_TOKEN, "PsyBiasDisableSGRPROJ", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_COEFF_LVL_OFFSET_TOKEN, "PsyBiasCoeffLvlOffset", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_INTRA_MODE_BIAS_TOKEN, "PsyBiasIntraModeBias", set_cfg_generic_token},
 
     // DLF Bias
     {SINGLE_INPUT, DLF_BIAS_TOKEN, "DLFBias", set_cfg_generic_token},
@@ -1763,6 +1768,9 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, BALANCING_R0_BASED_LAYER_TOKEN, "BalancingR0BasedLayer", set_cfg_generic_token},
     // Balancing Beta Dampening Layer
     {SINGLE_INPUT, BALANCING_R0_DAMPENING_LAYER_TOKEN, "BalancingR0DampeningLayer", set_cfg_generic_token},
+
+    // Balancing TPL Intra Mode Beta Bias
+    {SINGLE_INPUT, BALANCING_TPL_INTRA_MODE_BETA_BIAS_TOKEN, "BalancingTPLIntraModeBetaBias", set_cfg_generic_token},
 
     // Noise Level Q Bias
     {SINGLE_INPUT, NOISE_LEVEL_Q_BIAS_TOKEN, "NoiseLevelQBias", set_cfg_generic_token},
@@ -2508,6 +2516,8 @@ uint32_t get_help(int32_t argc, char *const argv[]) {
                    cd_token_index->name);
         }
     }
+
+    printf("\nCheck `Docs/Parameters.md` in the encoder's repository for more information on the parameters.\n");
 
     return 1;
 }

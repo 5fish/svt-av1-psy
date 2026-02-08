@@ -100,11 +100,11 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **TexturePsyBias**               | --texture-psy-bias          | [0-7]                          | 0           | Improve texture retention. Check below for more description. [0: disabled]                                    |
 | **LineartVarianceThr**           | --lineart-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--lineart-psy-bias`. Check below for more description.                                         |
 | **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
-| **LineartDisableWarpedMotion**   | --lineart-disable-warped-motion | [0-1]                      | 0           | Disable warped motion                                                                                         |
-| **LineartDisableMe8x8**          | --lineart-disable-me-8x8    | [0-1]                          | 0           | Disable me 8x8 and tf 8x8 pred                                                                                |
-| **LineartDisableSGRPROJ**        | --lineart-disable-sgrproj   | [0-1]                          | 0           | Disable SGRPROJ in restoration                                                                                |
-| **TextureCoeffLvlOffset**        | --texture-coeff-lvl-offset  | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
-| **LineartTextureIntraModeBias**  | --lineart-texture-intra-mode-bias | [0-1]                    | 0           | Bias against intra mode in non base layers                                                                    |
+| **PsyBiasDisableWarpedMotion**   | --psy-bias-disable-warped-motion | [0-1]                     | 0           | Disable warped motion                                                                                         |
+| **PsyBiasDisableMe8x8**          | --psy-bias-disable-me-8x8   | [0-1]                          | 0           | Disable me 8x8 and tf 8x8 pred                                                                                |
+| **PsyBiasDisableSGRPROJ**        | --psy-bias-disable-sgrproj  | [0-1]                          | 0           | Disable SGRPROJ in restoration                                                                                |
+| **PsyBiasCoeffLvlOffset**        | --psy-bias-coeff-lvl-offset | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
+| **PsyBiasIntraModeBias**         | --psy-bias-intra-mode-bias  | [0-5]                          | 0           | Bias against intra mode in non base layers                                                                    |
 
 ### Noise level threshold
 
@@ -121,8 +121,8 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
 | [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
-| [me] `--lineart-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [me] `--lineart-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [me] `--psy-bias-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [me] `--psy-bias-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
@@ -134,7 +134,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--lineart-texture-intra-mode-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] `--psy-bias-intra-mode-bias` | ✕ | ✕ | `1` | `1` | `1` | `1` | `1` | Can be overwritten |
 | [md] variance `bsize` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
 | [md] variance 32x32 blk size taper | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
@@ -142,7 +142,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [dlf] `--dlf-sharpness 7` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | | |
 | [cdef] chroma cdef distortion bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [rest] `--lineart-disable-sgrproj 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [rest] `--psy-bias-disable-sgrproj 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 
 ### Texture Psy Bias
 
@@ -152,13 +152,16 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `16.0` | `16.0` | `16.0` | Applied when `--balancing-q-bias 1`; Can be overwritten |
 | [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overwritten |
+| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] allow HVA/HVB at p2 or slower | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
-| [md] `--texture-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
+| [md] no nic `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] SAD distortion | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
 | [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overwritten |
 | [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `2.0` | `2.0` | `2.0` | `2.0` | Can be overwritten |
@@ -167,12 +170,12 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `GLOBALMV` bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--lineart-texture-intra-mode-bias 1` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overwritten |
+| [md] `--psy-bias-intra-mode-bias` | ✕ | ✕ | `1` | `1` | `2` | `2` | `2` | Can be overwritten |
 | [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [cdef] `--enable-cdef 0` | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | Can be overwritten |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | － | |
 | [cdef] bias towards disabling CDEF | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | － | |
-| [cdef] `--cdef-bias-max-cdef -,0,-,0` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | － | Only the secondary CDEF strength is disabled; You may still set primary CDEF strength to any value you prefer. |
+| [cdef] `--cdef-bias-max-cdef -,0,-,0` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | － | Only secondary CDEF strength is disabled |
 
 ### `--lineart-variance-thr` and `--texture-variance-thr` calculation
 
@@ -209,6 +212,7 @@ You can search for `static_config.variance_md_bias_thr` variable in the code for
 | **BalancingLuminanceQBias**      | --balancing-luminance-q-bias     | [0.0-25.0] | 0.0         | Enable balancing luminance Q bias. Boost Super Block with low luminance via beta. Recommended to be used with `--balancing-q-bias` but can be used without. [0: disabled, 8.0: default with `--balancing-q-bias 1`] |
 | **BalancingR0BasedLayer**        | --balancing-r0-based-layer       | [-5-0]     | -3          | Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM. This affects a wide range of features and can be used without `--balancing-q-bias`. It's recommended not to change this parameter when using `--balancing-q-bias 1` [-3: default encoder behaviour, 0: default with `--balancing-q-bias 1`] |
 | **BalancingR0DampeningLayer**    | --balancing-r0-dampening-layer   | [-5-1]     | 1           | Dampen r0-based boosting in frames with temporal layer higher than or equal to hierarchical levels + `--balancing-r0-dampening-layer`. This affects a wide range of features and can be used without `--balancing-q-bias`. [1: disabled, -2: default with `--balancing-q-bias 1`] |
+| **BalancingTPLIntraModeBetaBias** | --balancing-tpl-intra-mode-beta-bias | [0-1] | 1           | Boost a Super Block if TPL search result favours intra instead of inter prediction modes. Requires `--balancing-q-bias 1`. [0: disabled [Default]]   |
 | **NoiseLevelQBias**              | --noise-level-q-bias             | [0.67-1.50] | 1.0        | Boost a frame's base qindex when noise level is below the threshold [1.0: disabled, >1: boost frames with low noise, <1: dampen frames with low noise, 0.91-1.10: recommended range] |
 | **FilteringNoiseDetection**      | --filtering-noise-detection      | [0-4]      | 0           | Controls noise detection which disables CDEF/restoration when noise level is high enough, enabled by default on tunes 0 and 3 [0: default tune behavior, 1: on, 2: off, 3: on (CDEF only), 4: on (restoration only)] |
 | **AutoTiling**                   | --auto-tiling                    | [0-1]      | 0           | Automatically sets tiles appropriate for the source input resolution [0: off (manual), 1: on (automatic)]                                            |

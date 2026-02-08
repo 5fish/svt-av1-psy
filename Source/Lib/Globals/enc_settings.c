@@ -978,26 +978,25 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     if ((config->lineart_psy_bias || config->texture_psy_bias) && config->tx_bias)
         SVT_WARN("Instance %u: tx-bias is replaced by lineart-psy-bias and texture-psy-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
 
-    if (config->lineart_disable_warped_motion > 1 && config->lineart_disable_warped_motion != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: lineart-disable-warped-motion must be between 0 and 1\n", channel_number + 1);
+    if (config->psy_bias_disable_warped_motion > 1 && config->psy_bias_disable_warped_motion != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-disable-warped-motion must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->lineart_disable_me_8x8 > 1 && config->lineart_disable_me_8x8 != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: lineart-disable-me-8x8 must be between 0 and 1\n", channel_number + 1);
+    if (config->psy_bias_disable_me_8x8 > 1 && config->psy_bias_disable_me_8x8 != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-disable-me-8x8 must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->lineart_disable_sgrproj > 1 && config->lineart_disable_sgrproj != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: lineart-disable-sgrproj must be between 0 and 1\n", channel_number + 1);
+    if (config->psy_bias_disable_sgrproj > 1 && config->psy_bias_disable_sgrproj != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-disable-sgrproj must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if ((config->texture_coeff_lvl_offset < -3 || config->texture_coeff_lvl_offset > 3) &&
-        config->texture_coeff_lvl_offset != INT8_DEFAULT) {
-        SVT_ERROR("Instance %u: texture-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
+    if ((config->psy_bias_coeff_lvl_offset < -3 || config->psy_bias_coeff_lvl_offset > 3) &&
+        config->psy_bias_coeff_lvl_offset != INT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-coeff-lvl-offset must be between -3 and 3\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->lineart_texture_intra_mode_bias > 1 &&
-        config->lineart_texture_intra_mode_bias != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: lineart-texture-intra-mode-bias must be between 0 and 1\n", channel_number + 1);
+    if (config->psy_bias_intra_mode_bias > 5 && config->psy_bias_intra_mode_bias != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-intra-mode-bias must be between 0 and 5\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1052,8 +1051,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         }
     }
 
-    if ((config->balancing_q_bias < 0 || config->balancing_q_bias > 1) &&
-        config->balancing_q_bias != UINT8_DEFAULT) {
+    if (config->balancing_q_bias > 1 && config->balancing_q_bias != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: balancing-q-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -1066,6 +1064,11 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     if ((config->balancing_r0_dampening_layer < -5 || config->balancing_r0_dampening_layer > 1) &&
         config->balancing_r0_dampening_layer != INT8_MAX) {
         SVT_ERROR("Instance %u: balancing-r0-dampening-layer must be between -5 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
+    if (config->balancing_tpl_intra_mode_beta_bias > 1 && config->balancing_tpl_intra_mode_beta_bias != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: balancing-tpl-intra-mode-beta-bias must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1257,13 +1260,14 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->lineart_psy_bias                  = 0.0;
     config_ptr->texture_psy_bias                  = 0.0;
     config_ptr->lineart_psy_bias_easter_egg       = 0;
+    config_ptr->texture_psy_bias_easter_egg       = 0;
     config_ptr->lineart_variance_thr              = 44;
     config_ptr->texture_variance_thr              = 44;
-    config_ptr->lineart_disable_warped_motion     = UINT8_DEFAULT;
-    config_ptr->lineart_disable_me_8x8            = UINT8_DEFAULT;
-    config_ptr->lineart_disable_sgrproj           = UINT8_DEFAULT;
-    config_ptr->texture_coeff_lvl_offset          = INT8_DEFAULT;
-    config_ptr->lineart_texture_intra_mode_bias   = UINT8_DEFAULT;
+    config_ptr->psy_bias_disable_warped_motion    = UINT8_DEFAULT;
+    config_ptr->psy_bias_disable_me_8x8           = UINT8_DEFAULT;
+    config_ptr->psy_bias_disable_sgrproj          = UINT8_DEFAULT;
+    config_ptr->psy_bias_coeff_lvl_offset         = INT8_DEFAULT;
+    config_ptr->psy_bias_intra_mode_bias          = UINT8_DEFAULT;
     config_ptr->dlf_bias                          = 0;
     config_ptr->dlf_sharpness                     = UINT8_DEFAULT;
     config_ptr->dlf_bias_max_dlf[0]               = 8;
@@ -1285,6 +1289,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->balancing_r0_based_layer          = INT8_DEFAULT;
     config_ptr->balancing_r0_dampening_layer      = INT8_DEFAULT;
     config_ptr->balancing_luminance_q_bias        = UINT8_DEFAULT;
+    config_ptr->balancing_tpl_intra_mode_beta_bias = UINT8_DEFAULT;
     config_ptr->noise_level_q_bias                = 1.0;
     config_ptr->sharp_tx                          = 1;
     config_ptr->hbd_mds                           = 0;
@@ -1523,7 +1528,13 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->lineart_variance_thr,
                      config->lineart_variance_thr >> 1);
 
-        if (config->texture_psy_bias >= 1.0)
+        if (config->texture_psy_bias_easter_egg == 1) {
+            SVT_INFO("SVT [config]: \x1b[30m\x1b[1m\x1b[4mcat bias\x1b[0m\x1b[30m\x1b[1m / variance base / common thr \t\t\t\t: %.0f - meow - / %d / %d\x1b[0m\n",
+                     floor(config->texture_psy_bias),
+                     config->texture_variance_thr,
+                     config->texture_variance_thr >> 2);
+        }
+        else if (config->texture_psy_bias >= 1.0)
             SVT_INFO("SVT [config]: texture PSY bias / variance base / common thr \t\t\t: %.0f / %d / %d\n",
                      floor(config->texture_psy_bias),
                      config->texture_variance_thr,
@@ -1552,11 +1563,11 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
         // Mode Decision
         if (config->enable_qm) {
             if (config->max_qm_level == 15 && config->max_chroma_qm_level == 15)
-                SVT_INFO("SVT [config]: quantizer matrix - min luma / chroma level \t\t\t: %d / %d\n",
+                SVT_INFO("SVT [config]: quantizer matrix - min luma / min chroma level \t\t: %d / %d\n",
                          config->min_qm_level,
                          config->min_chroma_qm_level);
             else
-                SVT_INFO("SVT [config]: QM - luma min / max level / chroma min / max level \t\t: %d / %d / %d / %d\n",
+                SVT_INFO("SVT [config]: QM - min / max luma level / min / max chroma level \t\t: %d / %d / %d / %d\n",
                          config->min_qm_level,
                          config->max_qm_level,
                          config->min_chroma_qm_level,
@@ -2499,6 +2510,24 @@ static EbErrorType str_to_lineart_psy_bias(const char *nptr, EbSvtAv1EncConfigur
     return return_error;
 }
 
+static EbErrorType str_to_texture_psy_bias(const char *nptr, EbSvtAv1EncConfiguration *config_struct) {
+    EbErrorType return_error;
+
+    return_error = str_to_double(nptr, &config_struct->texture_psy_bias, NULL);
+
+    if (return_error == EB_ErrorBadParameter) {
+        if (!strcmp(nptr, "cat")) {
+            config_struct->texture_psy_bias = 5.0;
+            config_struct->texture_psy_bias_easter_egg = 1;
+            return_error = EB_ErrorNone;
+        }
+        else
+            return EB_ErrorBadParameter;
+    }
+
+    return return_error;
+}
+
 static EbErrorType str_to_variance_thr(const char *nptr, uint16_t *target) {
     double      variance_thr;
     EbErrorType return_error;
@@ -2643,6 +2672,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     // custom value fields
     if (!strcmp(name, "lineart-psy-bias"))
         return str_to_lineart_psy_bias(value, config_struct);
+    if (!strcmp(name, "texture-psy-bias"))
+        return str_to_texture_psy_bias(value, config_struct);
 
     if (!strcmp(name, "lineart-variance-thr"))
         return str_to_variance_thr(value, &config_struct->lineart_variance_thr);
@@ -2722,6 +2753,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"use-fixed-qindex-offsets", &config_struct->use_fixed_qindex_offsets},
         {"startup-mg-size", &config_struct->startup_mg_size},
         {"balancing-q-bias", &config_struct->balancing_q_bias},
+        {"balancing-tpl-intra-mode-beta-bias", &config_struct->balancing_tpl_intra_mode_beta_bias},
         {"variance-boost-strength", &config_struct->variance_boost_strength},
         {"variance-octile", &config_struct->variance_octile},
         {"frame-luma-bias", &config_struct->frame_luma_bias},
@@ -2730,10 +2762,10 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"kf-tf-strength", &config_struct->kf_tf_strength},
         {"noise-norm-strength", &config_struct->noise_norm_strength},
         {"tx-bias", &config_struct->tx_bias},
-        {"lineart-disable-warped-motion", &config_struct->lineart_disable_warped_motion},
-        {"lineart-disable-me-8x8", &config_struct->lineart_disable_me_8x8},
-        {"lineart-disable-sgrproj", &config_struct->lineart_disable_sgrproj},
-        {"lineart-texture-intra-mode-bias", &config_struct->lineart_texture_intra_mode_bias},
+        {"psy-bias-disable-warped-motion", &config_struct->psy_bias_disable_warped_motion},
+        {"psy-bias-disable-me-8x8", &config_struct->psy_bias_disable_me_8x8},
+        {"psy-bias-disable-sgrproj", &config_struct->psy_bias_disable_sgrproj},
+        {"psy-bias-intra-mode-bias", &config_struct->psy_bias_intra_mode_bias},
         {"dlf-bias", &config_struct->dlf_bias},
         {"dlf-sharpness", &config_struct->dlf_sharpness},
         {"cdef-bias", &config_struct->cdef_bias},
@@ -2783,8 +2815,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"qp-scale-compress-strength", &config_struct->qp_scale_compress_strength},
         {"ac-bias", &config_struct->ac_bias},
         {"texture-ac-bias", &config_struct->texture_ac_bias},
-        {"noise-level-q-bias", &config_struct->noise_level_q_bias},
-        {"texture-psy-bias", &config_struct->texture_psy_bias}
+        {"noise-level-q-bias", &config_struct->noise_level_q_bias}
     };
     const size_t double_opts_size = sizeof(double_opts) / sizeof(double_opts[0]);
 
@@ -2835,7 +2866,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"sharpness", &config_struct->sharpness},
         {"balancing-r0-based-layer", &config_struct->balancing_r0_based_layer},
         {"balancing-r0-dampening-layer", &config_struct->balancing_r0_dampening_layer},
-        {"texture-coeff-lvl-offset", &config_struct->texture_coeff_lvl_offset},
+        {"psy-bias-coeff-lvl-offset", &config_struct->psy_bias_coeff_lvl_offset},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},
         {"cdef-bias-damping-offset", &config_struct->cdef_bias_damping_offset},
     };

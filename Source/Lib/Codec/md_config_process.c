@@ -643,7 +643,7 @@ static void set_frame_coeff_lvl(PictureControlSet *pcs) {
         pcs->coeff_lvl = HIGH_LVL;
     }
 
-    pcs->coeff_lvl = CLIP3(VLOW_LVL, HIGH_LVL, pcs->coeff_lvl + pcs->scs->static_config.texture_coeff_lvl_offset);
+    pcs->coeff_lvl = CLIP3(VLOW_LVL, HIGH_LVL, pcs->coeff_lvl + pcs->scs->static_config.psy_bias_coeff_lvl_offset);
 }
 
 /* Mode Decision Configuration Kernel */
