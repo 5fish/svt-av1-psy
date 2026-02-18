@@ -1155,8 +1155,13 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint8_t enable_photon_noise_chroma;
 
+    /**
+     * @brief Check if color range is provided by the user
+     */
+    Bool color_range_provided;
+
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 8 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(int32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 9 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double) - sizeof(uint32_t)];
 
 } EbSvtAv1EncConfiguration;
 

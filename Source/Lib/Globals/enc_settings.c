@@ -1108,11 +1108,13 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->resize_kf_denom = SCALE_NUMERATOR;
 
     // Color description default values
+<<<<<<< HEAD
     config_ptr->color_description_present_flag = FALSE;
     config_ptr->color_primaries                = 2;
     config_ptr->transfer_characteristics       = 2;
     config_ptr->matrix_coefficients            = 2;
     config_ptr->color_range                    = EB_CR_STUDIO_RANGE;
+    config_ptr->color_range_provided		   = FALSE;	
     config_ptr->chroma_sample_position         = EB_CSP_UNKNOWN;
     config_ptr->pass                           = 0;
     memset(&config_ptr->mastering_display, 0, sizeof(config_ptr->mastering_display));
@@ -2192,7 +2194,22 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     COLOR_OPT("color-primaries", color_primaries);
     COLOR_OPT("transfer-characteristics", transfer_characteristics);
     COLOR_OPT("matrix-coefficients", matrix_coefficients);
-    COLOR_OPT("color-range", color_range);
+
+    if (!strcmp(name, "color-range")) {
+        return_error = str_to_color_range(value, &config_struct->color_range);
+        if (return_error == EB_ErrorNone) {
+            config_struct->color_range_provided = true;
+            return return_error;
+        }
+        uint32_t val;
+        return_error = str_to_uint(value, &val, NULL);
+        if (return_error == EB_ErrorNone) {
+            config_struct->color_range          = val;
+            config_struct->color_range_provided = true;
+        }
+        return return_error;
+    }
+
     COLOR_OPT("chroma-sample-position", chroma_sample_position);
 
     // custom struct fields
