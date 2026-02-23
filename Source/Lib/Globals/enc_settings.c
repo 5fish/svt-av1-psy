@@ -828,11 +828,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
 				channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-	
-    if (config->photon_noise_iso == 0 && config->enable_photon_noise_chroma == 1) {
-        SVT_WARN("Instance %u: Photon noise chroma signal is ignored when photon noise level is 0\n",
-				channel_number + 1);
-    }
 
     // Limit 8K & 16K support
     if ((uint64_t)(scs->max_input_luma_width * scs->max_input_luma_height) > INPUT_SIZE_4K_TH) {
