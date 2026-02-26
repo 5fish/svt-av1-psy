@@ -5829,11 +5829,12 @@ EB_API void svt_av1_print_version(void) {
     "unknown compiler"
 #endif
     ;
-    SVT_INFO("SVT [build]  : %s %zu bit / %s %s\n", compiler,  sizeof(void*) * 8,
+#if !REPRODUCIBLE_BUILDS
+    SVT_INFO("SVT [build]  : %s %zu bit / %s %s\n", compiler, sizeof(void*) * 8,
              __DATE__, __TIME__);
-// #if !REPRODUCIBLE_BUILDS
-//     SVT_INFO("LIB Build date: %s %s\n", __DATE__, __TIME__);
-// #endif
+#else
+    SVT_INFO("SVT [build]  : %s %zu bit\n", compiler, sizeof(void*) * 8);
+#endif
     SVT_INFO("-------------------------------------------\n");
 }
 
