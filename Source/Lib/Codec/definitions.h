@@ -2653,6 +2653,9 @@ typedef enum {
 
 #define MAX_U32 0xFFFFFFFF
 
+#define CONVERT_TO_STR_COMPILE_TIME_HELPER(x) #x
+#define CONVERT_TO_STR_COMPILE_TIME(x) CONVERT_TO_STR_COMPILE_TIME_HELPER(x)
+
 #ifdef __cplusplus
 }
 #endif
