@@ -1,6 +1,6 @@
 ## 5fish/SVT-AV1-PSY
 
-This fork is based on the unreleased [SVT-AV1-PSY 2.3.0-C](https://github.com/psy-ex/svt-av1-psy/tree/testing-2.3.0-C), and includes backports of changes and improvements made in 3.x+ versions of SVT-AV1-PSY and its continuations by the original developers, [SVT-AV1-PSYEX](https://github.com/BlueSwordM/svt-av1-psyex) and [SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr)* (currently excluding any HDR-specific changes.)
+This fork is based on the unreleased [SVT-AV1-PSY 2.3.0-C](https://github.com/psy-ex/svt-av1-psy/tree/testing-2.3.0-C), and includes backports of changes and improvements made in 3.x+ versions of SVT-AV1-PSY and its continuations by the original developers, [SVT-AV1-PSYEX](https://github.com/BlueSwordM/svt-av1-psyex) and [SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr).
 
 Additionally, some features have been ported from [SVT-AV1-Essential](https://github.com/nekotrix/SVT-AV1-Essential) and [SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr).
 
