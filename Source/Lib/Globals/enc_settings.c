@@ -1103,7 +1103,6 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->resize_kf_denom = SCALE_NUMERATOR;
 
     // Color description default values
-<<<<<<< HEAD
     config_ptr->color_description_present_flag = FALSE;
     config_ptr->color_primaries                = 2;
     config_ptr->transfer_characteristics       = 2;
