@@ -1010,7 +1010,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 1.
      */
     Bool adaptive_film_grain;
-
+	
     /**
      * @brief Manually adjust temporal filtering strength
      * 0: 10 + (4 - 0) = 14 (8x weaker)

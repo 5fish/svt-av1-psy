@@ -145,7 +145,7 @@ static EbColorRange find_color_range(EbSvtAv1EncConfiguration *config) {
     if (config->color_range_provided) {
         return config->color_range;
     }
-    return config->avif ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
+    return EB_CR_STUDIO_RANGE;
 }
 
 static TransferFunction find_transfer_function(EbTransferCharacteristics tc) {
