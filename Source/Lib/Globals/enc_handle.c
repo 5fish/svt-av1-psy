@@ -1537,20 +1537,16 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.enable_variance_boost = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.enable_variance_boost;
         input_data.variance_boost_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.variance_boost_strength;
         input_data.variance_octile = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.variance_octile;
-        input_data.sharpness = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.sharpness;
         input_data.qp_scale_compress_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.qp_scale_compress_strength;
         input_data.frame_luma_bias = AOMMAX(enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.frame_luma_bias, enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.luminance_qp_bias);
         input_data.luminance_qp_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.luminance_qp_bias; // alias for frame luma bias
-        input_data.max_32_tx_size = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.max_32_tx_size;
         input_data.adaptive_film_grain = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.adaptive_film_grain;
         input_data.tf_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.tf_strength;
         input_data.kf_tf_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.kf_tf_strength;
-        input_data.noise_norm_strength = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.noise_norm_strength;
         input_data.ac_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.ac_bias;
         input_data.tx_bias = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.tx_bias;
         input_data.sharp_tx = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.sharp_tx;
         input_data.hbd_mds = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.hbd_mds;
-        input_data.complex_hvs = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.complex_hvs;
         input_data.alt_ssim_tuning = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.alt_ssim_tuning;
         input_data.auto_tiling = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.auto_tiling;
         input_data.chroma_grain = enc_handle_ptr->scs_instance_array[instance_index]->scs->static_config.chroma_grain;
@@ -2698,7 +2694,6 @@ static void tf_ld_controls(SequenceControlSet* scs, uint8_t tf_level) {
     scs->tf_params_per_type[2].enable_8x8_pred = 0;
 }
 void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
-
     switch (tf_level)
     {
     case 0:
@@ -2724,7 +2719,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[0].enable_8x8_pred = 1;
+        scs->tf_params_per_type[0].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -2748,7 +2743,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[1].eight_pel_mode = 1;
         scs->tf_params_per_type[1].chroma_lvl = 1;
         scs->tf_params_per_type[1].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[1].enable_8x8_pred = 1;
+        scs->tf_params_per_type[1].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[1].sub_sampling_shift = 0;
         scs->tf_params_per_type[1].avoid_2d_qpel = 0;
         scs->tf_params_per_type[1].use_2tap = 0;
@@ -2772,7 +2767,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[2].eight_pel_mode = 1;
         scs->tf_params_per_type[2].chroma_lvl = 1;
         scs->tf_params_per_type[2].pred_error_32x32_th = 0;
-        scs->tf_params_per_type[2].enable_8x8_pred = 1;
+        scs->tf_params_per_type[2].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[2].sub_sampling_shift = 0;
         scs->tf_params_per_type[2].avoid_2d_qpel = 0;
         scs->tf_params_per_type[2].use_2tap = 0;
@@ -2797,7 +2792,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[0].enable_8x8_pred = 1;
+        scs->tf_params_per_type[0].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -2821,7 +2816,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[1].eight_pel_mode = 1;
         scs->tf_params_per_type[1].chroma_lvl = 1;
         scs->tf_params_per_type[1].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[1].enable_8x8_pred = 1;
+        scs->tf_params_per_type[1].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[1].sub_sampling_shift = 0;
         scs->tf_params_per_type[1].avoid_2d_qpel = 0;
         scs->tf_params_per_type[1].use_2tap = 0;
@@ -2845,7 +2840,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[2].eight_pel_mode = 1;
         scs->tf_params_per_type[2].chroma_lvl = 1;
         scs->tf_params_per_type[2].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[2].enable_8x8_pred = 1;
+        scs->tf_params_per_type[2].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[2].sub_sampling_shift = 0;
         scs->tf_params_per_type[2].avoid_2d_qpel = 0;
         scs->tf_params_per_type[2].use_2tap = 0;
@@ -2870,7 +2865,7 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
         scs->tf_params_per_type[0].eight_pel_mode = 1;
         scs->tf_params_per_type[0].chroma_lvl = 1;
         scs->tf_params_per_type[0].pred_error_32x32_th = 8 * 32 * 32;
-        scs->tf_params_per_type[0].enable_8x8_pred = 1;
+        scs->tf_params_per_type[0].enable_8x8_pred = !scs->static_config.psy_bias_disable_me_8x8;
         scs->tf_params_per_type[0].sub_sampling_shift = 0;
         scs->tf_params_per_type[0].avoid_2d_qpel = 0;
         scs->tf_params_per_type[0].use_2tap = 0;
@@ -3291,13 +3286,17 @@ void tf_controls(SequenceControlSet* scs, uint8_t tf_level) {
 static void derive_vq_params(SequenceControlSet* scs) {
     VqCtrls* vq_ctrl = &scs->vq_ctrls;
 
+    uint8_t psy_bias_disable_unipred_bias = 0;
+    if (scs->static_config.texture_psy_bias >= 1.0)
+        psy_bias_disable_unipred_bias = 1;
+
     if (scs->static_config.tune == 0 || scs->static_config.tune == 3 || 
         (scs->static_config.alt_ssim_tuning && (scs->static_config.tune == 2 || scs->static_config.tune == 4))) {
 
         // Sharpness
         vq_ctrl->sharpness_ctrls.scene_transition = 1;
         vq_ctrl->sharpness_ctrls.tf               = 1;
-        vq_ctrl->sharpness_ctrls.unipred_bias     = 1;
+        vq_ctrl->sharpness_ctrls.unipred_bias     = !psy_bias_disable_unipred_bias;
         vq_ctrl->sharpness_ctrls.ifs              = 1;
         vq_ctrl->sharpness_ctrls.cdef             = 1;
         vq_ctrl->sharpness_ctrls.restoration      = 1;
@@ -3961,64 +3960,282 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     // Delay needed for SCD , 1first pass of (2pass and 1pass VBR)
     if (scs->static_config.scene_change_detection || scs->vq_ctrls.sharpness_ctrls.scene_transition || scs->lap_rc)
         scs->scd_delay = MAX(scs->scd_delay, 2);
-    
-    if (scs->static_config.chroma_qmc_bias)
-        scs->static_config.cdef_bias = 1;
-    if (scs->static_config.texture_preserving_qmc_bias) {
-        // Explanations in Parameters.md
-        if (scs->static_config.balancing_q_bias == DEFAULT)
-            scs->static_config.balancing_q_bias = 1;
 
-        scs->static_config.cdef_bias = 1;
-        scs->static_config.cdef_bias_max_cdef[1] = 0;
-        scs->static_config.cdef_bias_max_cdef[3] = 0;
-        scs->static_config.cdef_bias_min_cdef[1] = 0;
-        scs->static_config.cdef_bias_min_cdef[3] = 0;
+    // `-psy-bias`s Global
+    if ((scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0) &&
+        scs->static_config.tx_bias)
+        SVT_WARN("lineart-psy-bias / texture-psy-bias is intended to replace tx-bias and not intended to be used together\n");
+
+    if (scs->static_config.screen_content_mode == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 1.0 || scs->static_config.texture_psy_bias >= 1.0)
+            scs->static_config.screen_content_mode = 0;
+        else
+            scs->static_config.screen_content_mode = 2;
+    }
+        
+    // `-psy-bias`s PD
+    if (scs->static_config.startup_mg_size == 0) {
+        if (scs->static_config.lineart_psy_bias >= 5.0)
+            scs->static_config.startup_mg_size = CLIP3(2, 4, scs->static_config.hierarchical_levels - 1);
     }
 
-    if (scs->static_config.dlf_sharpness == DEFAULT)
-        scs->static_config.dlf_sharpness = CLIP3(0, 7, scs->static_config.sharpness);
+    // `-psy-bias`s RC
+    if (scs->static_config.balancing_q_bias == UINT8_DEFAULT) {
+        if ((scs->static_config.lineart_psy_bias >= 1.0) || (scs->static_config.texture_psy_bias >= 1.0))
+            scs->static_config.balancing_q_bias = 1;
+    }
 
     if (scs->static_config.qp_scale_compress_strength == DEFAULT &&
-        scs->static_config.balancing_q_bias == DEFAULT) {
+        scs->static_config.balancing_q_bias == UINT8_DEFAULT) {
         scs->static_config.qp_scale_compress_strength = 1.0;
         scs->static_config.balancing_q_bias = 0;
     }
     else if (scs->static_config.qp_scale_compress_strength != DEFAULT &&
-             scs->static_config.balancing_q_bias == DEFAULT)
+             scs->static_config.balancing_q_bias == UINT8_DEFAULT)
         scs->static_config.balancing_q_bias = 0;
     else if (scs->static_config.qp_scale_compress_strength == DEFAULT &&
-             scs->static_config.balancing_q_bias != DEFAULT)
+             scs->static_config.balancing_q_bias != UINT8_DEFAULT)
         scs->static_config.qp_scale_compress_strength = 0.0;
 
     if (scs->static_config.balancing_q_bias && scs->static_config.qp_scale_compress_strength)
         SVT_WARN("balancing-q-bias is intended to replace qp-scale-compress-strength and not intended to be used together\n");
     if (scs->static_config.balancing_q_bias && scs->static_config.low_q_taper)
-        SVT_WARN("low-q-taper's effect when being used together with balancing-q-bias is untested\n");
+        SVT_WARN("balancing-q-bias is not intended to be used together with low-q-taper\n");
+    if (scs->static_config.balancing_q_bias && (scs->static_config.frame_luma_bias || scs->static_config.luminance_qp_bias))
+        SVT_WARN("balancing-q-bias is not intended to be used together with frame-luma-bias / luminance-qp-bias\n");
 
-    if (scs->static_config.balancing_luminance_q_bias == UINT8_MAX) {
+    if (scs->static_config.balancing_r0_based_layer == INT8_DEFAULT) {
         if (scs->static_config.balancing_q_bias)
-            scs->static_config.balancing_luminance_q_bias = 80;
-        else
-            scs->static_config.balancing_luminance_q_bias = 0;
-    }
-    if (scs->static_config.balancing_luminance_q_bias && (scs->static_config.frame_luma_bias || scs->static_config.luminance_qp_bias))
-        SVT_WARN("The effect of frame-luma-bias / luminance-qp-bias when used in conjunction with balancing-luminance-q-bias is untested\n");
-
-    if (scs->static_config.balancing_r0_based_layer == INT8_MAX) {
-        if (scs->static_config.balancing_q_bias &&
-            !scs->static_config.texture_preserving_qmc_bias)
             scs->static_config.balancing_r0_based_layer = 0;
         else
             scs->static_config.balancing_r0_based_layer = -3;
     }
-    if (scs->static_config.balancing_r0_dampening_layer == INT8_MAX) {
-        if (scs->static_config.balancing_q_bias &&
-            !scs->static_config.texture_preserving_qmc_bias)
-            scs->static_config.balancing_r0_dampening_layer = -2;
+    if (scs->static_config.balancing_r0_dampening_layer == INT8_DEFAULT) {
+        if (scs->static_config.balancing_q_bias)
+            if (scs->static_config.texture_psy_bias >= 5.0)
+                scs->static_config.balancing_r0_dampening_layer = -3;
+            else
+                scs->static_config.balancing_r0_dampening_layer = -2;
         else
-            scs->static_config.balancing_r0_dampening_layer = 1;
+            scs->static_config.balancing_r0_dampening_layer     = 1;
     }
+
+    if (scs->static_config.balancing_luminance_q_bias == UINT8_DEFAULT) {
+        if (scs->static_config.balancing_q_bias) {
+            if (scs->static_config.texture_psy_bias >= 6.0)
+                scs->static_config.balancing_luminance_q_bias = 160;
+            else if (scs->static_config.lineart_psy_bias >= 6.0 ||
+                     scs->static_config.texture_psy_bias >= 4.0)
+                scs->static_config.balancing_luminance_q_bias = 120;
+            else if (scs->static_config.lineart_psy_bias >= 4.0 ||
+                     scs->static_config.texture_psy_bias >= 3.0)
+                scs->static_config.balancing_luminance_q_bias = 100;
+            else
+                scs->static_config.balancing_luminance_q_bias = 80;
+
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.balancing_luminance_q_bias += 40;
+            else if (scs->static_config.high_quality_encode_psy_bias)
+                scs->static_config.balancing_luminance_q_bias += 20;
+        }
+        else
+            scs->static_config.balancing_luminance_q_bias     = 0;
+    }
+    if (scs->static_config.balancing_luminance_lambda_bias == DEFAULT) {
+        if (scs->static_config.balancing_q_bias) {
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.balancing_luminance_lambda_bias = 0.9;
+            else
+                scs->static_config.balancing_luminance_lambda_bias = 0.0;
+        }
+        else
+            scs->static_config.balancing_luminance_lambda_bias = 0.0;
+    }
+    if (scs->static_config.balancing_texture_lambda_bias == DEFAULT) {
+        if (scs->static_config.balancing_q_bias) {
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.balancing_texture_lambda_bias = 0.9;
+            else
+                scs->static_config.balancing_texture_lambda_bias = 0.0;
+        }
+        else
+            scs->static_config.balancing_texture_lambda_bias = 0.0;
+    }
+
+    if (scs->static_config.balancing_tpl_intra_mode_beta_bias == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.balancing_tpl_intra_mode_beta_bias = 1;
+        else
+            scs->static_config.balancing_tpl_intra_mode_beta_bias = 0;
+    }
+
+    if (scs->static_config.enable_variance_boost == UINT8_DEFAULT) {
+        if ((scs->static_config.lineart_psy_bias >= 1.0) || (scs->static_config.texture_psy_bias >= 1.0))
+            scs->static_config.enable_variance_boost = 0;
+        else
+            scs->static_config.enable_variance_boost = 1;
+    }
+
+    // `-psy-bias`s MD
+    if (scs->static_config.sharpness == INT8_DEFAULT) {
+        if (scs->static_config.high_fidelity_encode_psy_bias)
+            scs->static_config.sharpness = 4;
+        else
+            scs->static_config.sharpness = 2;
+    }
+    if (scs->static_config.psy_bias_mds0_sad == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 7.0)
+            scs->static_config.psy_bias_mds0_sad = 1;
+        else
+            scs->static_config.psy_bias_mds0_sad = 0;
+    }
+    if (scs->static_config.psy_bias_disable_warped_motion == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 3.0)
+            scs->static_config.psy_bias_disable_warped_motion = 1;
+        else
+            scs->static_config.psy_bias_disable_warped_motion = 0;
+    }
+    if (scs->static_config.psy_bias_disable_me_8x8 == UINT8_DEFAULT) {
+        if (scs->static_config.high_fidelity_encode_psy_bias)
+            scs->static_config.psy_bias_disable_me_8x8 = 0;
+        else if (scs->static_config.lineart_psy_bias >= 3.0)
+            scs->static_config.psy_bias_disable_me_8x8 = 1;
+        else
+            scs->static_config.psy_bias_disable_me_8x8 = 0;
+    }
+    if (scs->static_config.psy_bias_disable_sgrproj == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 4.0)
+            scs->static_config.psy_bias_disable_sgrproj = 1;
+        else
+            scs->static_config.psy_bias_disable_sgrproj = 0;
+    }
+
+    if (scs->static_config.min_qm_level == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 3.0)
+            scs->static_config.min_qm_level = 9;
+        else
+            scs->static_config.min_qm_level = 8;
+    }
+    if (scs->static_config.min_chroma_qm_level == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 3.0)
+            scs->static_config.min_chroma_qm_level = 11;
+        else
+            scs->static_config.min_chroma_qm_level = 10;
+    }
+
+    if (scs->static_config.psy_bias_coeff_lvl_offset == INT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.psy_bias_coeff_lvl_offset = 2;
+        else
+            scs->static_config.psy_bias_coeff_lvl_offset = 0;
+    }
+
+    if (scs->static_config.psy_bias_qm_bias == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0)
+            scs->static_config.psy_bias_qm_bias = 1;
+        else
+            scs->static_config.psy_bias_qm_bias = 0;
+    }
+
+    if (scs->static_config.noise_norm_strength == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.noise_norm_strength = 4;
+        else if (scs->static_config.lineart_psy_bias >= 5.0)
+            scs->static_config.noise_norm_strength = 0;
+        else
+            scs->static_config.noise_norm_strength = 1;
+    }
+
+    if (scs->static_config.ac_bias == DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.ac_bias = 3.0;
+        else if (scs->static_config.texture_psy_bias >= 1.0) {
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.ac_bias = 1.5;
+            else
+                scs->static_config.ac_bias = 1.0;
+        }
+        else
+            scs->static_config.ac_bias = 1.0;
+    }
+    if (scs->static_config.texture_ac_bias == DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.texture_ac_bias = 8.0;
+        else if (scs->static_config.texture_psy_bias >= 4.0) {
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.texture_ac_bias = 4.5;
+            else
+                scs->static_config.texture_ac_bias = 3.0;
+        }
+        else
+            scs->static_config.texture_ac_bias = scs->static_config.ac_bias;
+    }
+    if (scs->static_config.lineart_energy_bias == DEFAULT) {
+        if (scs->static_config.high_quality_encode_psy_bias)
+            scs->static_config.lineart_energy_bias = 0.98;
+        else
+            scs->static_config.lineart_energy_bias = 1.00;
+    }
+    if (scs->static_config.texture_energy_bias == DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.texture_energy_bias = 1.10;
+        else if (scs->static_config.texture_psy_bias >= 3.0) {
+            if (scs->static_config.high_fidelity_encode_psy_bias)
+                scs->static_config.texture_energy_bias = 1.04;
+            else
+                scs->static_config.texture_energy_bias = 1.02;
+        }
+        else
+            scs->static_config.texture_energy_bias = 1.00;
+    }
+    if (scs->static_config.satd_bias == DEFAULT) {
+        if (scs->static_config.high_fidelity_encode_psy_bias)
+            scs->static_config.satd_bias = 1.0;
+        else
+            scs->static_config.satd_bias = 0.0;
+    }
+    
+    if (scs->static_config.psy_bias_mds0_intra_inter_mode_bias == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 5.0)
+            scs->static_config.psy_bias_mds0_intra_inter_mode_bias = 1;
+        else
+            scs->static_config.psy_bias_mds0_intra_inter_mode_bias = 0;
+    }
+
+    if (scs->static_config.psy_bias_inter_mode_bias == UINT8_DEFAULT) {
+        if (scs->static_config.texture_psy_bias >= 6.0)
+            scs->static_config.psy_bias_inter_mode_bias = 2;
+        if (scs->static_config.lineart_psy_bias >= 3.0 ||
+            scs->static_config.texture_psy_bias >= 3.0)
+            scs->static_config.psy_bias_inter_mode_bias = 1;
+        else
+            scs->static_config.psy_bias_inter_mode_bias = 0;
+    }
+    if (scs->static_config.psy_bias_inter_mode_bias && scs->static_config.tx_bias)
+        SVT_WARN("psy-bias-inter-mode-bias is not intended to be used together with tx-bias\n");
+
+    // `-psy-bias`s DLF & CDEF
+    if ((scs->static_config.lineart_psy_bias >= 1.0) || (scs->static_config.texture_psy_bias >= 1.0)) {
+        scs->static_config.dlf_bias = 1;
+        scs->static_config.cdef_bias = 1;
+    }
+    if (scs->static_config.dlf_sharpness == UINT8_DEFAULT) {
+        if (scs->static_config.lineart_psy_bias >= 6.0)
+            scs->static_config.dlf_sharpness = 7;
+        else
+            scs->static_config.dlf_sharpness = 1;
+    }
+    svt_av1_verify_dlf_bias_max_min_dlf(&scs->static_config, &scs->static_config);
+
+    if (scs->static_config.cdef_level != 0 && scs->static_config.cdef_bias) {
+        if (!(scs->static_config.cdef_level == DEFAULT || scs->static_config.cdef_level == 1) ||
+            scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B ||
+            scs->static_config.enc_mode > ENC_M4)
+            SVT_WARN("CDEF level is set to 1, or full CDEF decision, when cdef-bias is enabled\n");
+
+        scs->static_config.cdef_level = 1;
+    }
+    svt_av1_verify_cdef_bias_max_min_cdef(&scs->static_config, &scs->static_config);
 
     // no future minigop is used for lowdelay prediction structure
     if (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_P || scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) {
@@ -4053,11 +4270,19 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     // In low delay mode, sb size is set to 64
     // in 240P resolution, sb size is set to 64
     if ((scs->static_config.fast_decode && scs->static_config.qp <= 56 && !(scs->input_resolution <= INPUT_SIZE_360p_RANGE)) ||
-        scs->static_config.resize_mode > RESIZE_NONE ||
+        scs->static_config.resize_mode > RESIZE_NONE         ||
         scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B ||
-        (scs->input_resolution == INPUT_SIZE_240p_RANGE) ||
-        scs->static_config.enable_variance_boost ||
-        scs->static_config.balancing_q_bias)
+        (scs->input_resolution == INPUT_SIZE_240p_RANGE)     ||
+        scs->static_config.enable_variance_boost             ||
+        scs->static_config.balancing_q_bias                  ||
+        scs->static_config.lineart_psy_bias >= 1.0           ||
+        scs->static_config.texture_psy_bias >= 1.0           ||
+        scs->static_config.balancing_luminance_q_bias        ||
+        scs->static_config.balancing_luminance_lambda_bias   ||
+        scs->static_config.balancing_texture_lambda_bias     ||
+        scs->static_config.texture_ac_bias != scs->static_config.ac_bias ||
+        scs->static_config.lineart_energy_bias != 1.0        ||
+        scs->static_config.texture_energy_bias != 1.0)
         scs->super_block_size = 64;
     else
         if (scs->static_config.enc_mode <= ENC_M1)
@@ -4114,16 +4339,8 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         SVT_WARN("Aggressive variance boost strength used. This is a curve that's only useful under specific situations. Use with caution!\n");
     }
 
-    if (scs->static_config.max_32_tx_size && scs->static_config.qp >= 20 && scs->static_config.tune != 4 && !scs->static_config.variance_md_bias) {
+    if (scs->static_config.max_32_tx_size && scs->static_config.qp >= 20 && scs->static_config.tune != 4 && !(scs->static_config.lineart_psy_bias >= 2.0)) {
         SVT_WARN("Restricting transform sizes to a max of 32x32 might reduce coding efficiency at low to medium fidelity settings. Use with caution!\n");
-    }
-    if (scs->static_config.cdef_level != 0 && scs->static_config.cdef_bias) {
-        if (!(scs->static_config.cdef_level == DEFAULT || scs->static_config.cdef_level == 1) ||
-            scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B ||
-            scs->static_config.enc_mode > ENC_M4)
-            SVT_WARN("CDEF level is set to 1, or full CDEF decision, when cdef-bias is enabled\n");
-        // Always set to 1
-        scs->static_config.cdef_level = 1;
     }
 
     // scs->static_config.hierarchical_levels = (scs->static_config.rate_control_mode > 1) ? 3 : scs->static_config.hierarchical_levels;
@@ -4152,7 +4369,9 @@ static void set_param_based_on_input(SequenceControlSet *scs)
                 nsq_geom_level = svt_aom_get_nsq_geom_level(scs->static_config.enc_mode, is_base, coeff_lvl);
                 disallow_nsq = MIN(disallow_nsq, (nsq_geom_level == 0 ? 1 : 0));
                 uint8_t temp_allow_HVA_HVB = 0, temp_allow_HV4 = 0;
-                svt_aom_set_nsq_geom_ctrls(NULL, nsq_geom_level, &temp_allow_HVA_HVB, &temp_allow_HV4, &min_nsq_bsize);
+                svt_aom_set_nsq_geom_ctrls(NULL, nsq_geom_level,
+                                           scs->static_config.lineart_psy_bias, scs->static_config.texture_psy_bias, scs->static_config.enc_mode,
+                                           &temp_allow_HVA_HVB, &temp_allow_HV4, &min_nsq_bsize);
                 allow_HVA_HVB |= temp_allow_HVA_HVB;
                 allow_HV4 |= temp_allow_HV4;
                 h_v_only = h_v_only && !allow_HVA_HVB && !allow_HV4;
@@ -4221,10 +4440,6 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->right_padding += 4;
         scs->bot_padding   += 4;
     }
-
-    if (scs->static_config.chroma_qmc_bias == 1 &&
-        scs->static_config.startup_mg_size == 0)
-        scs->static_config.startup_mg_size = CLIP3(2, 4, scs->static_config.hierarchical_levels - 1);
 
     scs->static_config.enable_overlays = (scs->static_config.enable_tf == 0) ||
         (scs->static_config.rate_control_mode != SVT_AV1_RC_MODE_CQP_OR_CRF) ?
@@ -4344,9 +4559,14 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->static_config.scene_change_detection == 1       ||
         scs->vq_ctrls.sharpness_ctrls.tf == 1                ||
         scs->static_config.enable_variance_boost             ||
-        scs->static_config.variance_md_bias                  ||
-        scs->static_config.texture_preserving_qmc_bias       ||
-        scs->static_config.balancing_luminance_q_bias)
+        scs->static_config.lineart_psy_bias >= 1.0           ||
+        scs->static_config.texture_psy_bias >= 1.0           ||
+        scs->static_config.balancing_luminance_q_bias        ||
+        scs->static_config.balancing_luminance_lambda_bias   ||
+        scs->static_config.balancing_texture_lambda_bias     ||
+        scs->static_config.texture_ac_bias != scs->static_config.ac_bias ||
+        scs->static_config.lineart_energy_bias != 1.0        ||
+        scs->static_config.texture_energy_bias != 1.0)
         scs->calculate_variance = 1;
     else if (scs->static_config.enc_mode <= ENC_M6)
         scs->calculate_variance = 1;
@@ -4544,6 +4764,59 @@ static void copy_api_from_app(
             SVT_WARN("Low delay mode only support encodermode [7-%d]. Forcing encoder mode to 7\n", ENC_M13);
         }
     }
+
+    // Extended CRF
+    scs->static_config.qp = ((EbSvtAv1EncConfiguration*)config_struct)->qp;
+    scs->static_config.extended_crf_qindex_offset = config_struct->extended_crf_qindex_offset;
+
+    // Balancing Q bias
+    scs->static_config.balancing_q_bias = config_struct->balancing_q_bias;
+    scs->static_config.balancing_luminance_q_bias = config_struct->balancing_luminance_q_bias;
+    scs->static_config.balancing_noise_level_q_bias = config_struct->balancing_noise_level_q_bias;
+    scs->static_config.balancing_luminance_lambda_bias = config_struct->balancing_luminance_lambda_bias;
+    scs->static_config.balancing_texture_lambda_bias = config_struct->balancing_texture_lambda_bias;
+
+    scs->static_config.balancing_r0_based_layer = config_struct->balancing_r0_based_layer;
+    scs->static_config.balancing_r0_dampening_layer = config_struct->balancing_r0_dampening_layer;
+
+    scs->static_config.balancing_tpl_intra_mode_beta_bias = config_struct->balancing_tpl_intra_mode_beta_bias;
+
+    // `-psy-bias`
+    scs->static_config.lineart_psy_bias = config_struct->lineart_psy_bias;
+    scs->static_config.texture_psy_bias = config_struct->texture_psy_bias;
+    scs->static_config.lineart_psy_bias_easter_egg = config_struct->lineart_psy_bias_easter_egg;
+    scs->static_config.texture_psy_bias_easter_egg = config_struct->texture_psy_bias_easter_egg;
+    scs->static_config.lineart_variance_thr = config_struct->lineart_variance_thr;
+    scs->static_config.texture_variance_thr = config_struct->texture_variance_thr;
+
+    scs->static_config.psy_bias_mds0_sad = config_struct->psy_bias_mds0_sad;
+    scs->static_config.psy_bias_disable_warped_motion = config_struct->psy_bias_disable_warped_motion;
+    scs->static_config.psy_bias_disable_me_8x8 = config_struct->psy_bias_disable_me_8x8;
+    scs->static_config.psy_bias_disable_sgrproj = config_struct->psy_bias_disable_sgrproj;
+    scs->static_config.psy_bias_coeff_lvl_offset = config_struct->psy_bias_coeff_lvl_offset;
+    scs->static_config.psy_bias_mds0_intra_inter_mode_bias = config_struct->psy_bias_mds0_intra_inter_mode_bias;
+    scs->static_config.psy_bias_inter_mode_bias = config_struct->psy_bias_inter_mode_bias;
+    scs->static_config.psy_bias_qm_bias = config_struct->psy_bias_qm_bias;
+
+    scs->static_config.high_quality_encode_psy_bias = config_struct->high_quality_encode_psy_bias;
+    scs->static_config.high_fidelity_encode_psy_bias = config_struct->high_fidelity_encode_psy_bias;
+    if (scs->static_config.high_quality_encode_psy_bias == DEFAULT) {
+        if ((scs->static_config.lineart_psy_bias >= 1.0 || scs->static_config.texture_psy_bias >= 1.0) &&
+            (scs->static_config.qp << 2) + scs->static_config.extended_crf_qindex_offset <= 96) // --crf 24.00
+            scs->static_config.high_quality_encode_psy_bias = 1.0;
+        else
+            scs->static_config.high_quality_encode_psy_bias = 0.0;
+    }
+    if (scs->static_config.high_fidelity_encode_psy_bias == DEFAULT) {
+        if ((scs->static_config.lineart_psy_bias >= 1.0 || scs->static_config.texture_psy_bias >= 1.0) &&
+            (scs->static_config.qp << 2) + scs->static_config.extended_crf_qindex_offset <= 64) // --crf 16.00
+            scs->static_config.high_fidelity_encode_psy_bias = 1.0;
+        else
+            scs->static_config.high_fidelity_encode_psy_bias = 0.0;
+    }
+    if (scs->static_config.high_fidelity_encode_psy_bias)
+        scs->static_config.high_quality_encode_psy_bias = 1.0;
+
     scs->static_config.tune = config_struct->tune;
     scs->static_config.hierarchical_levels = ((EbSvtAv1EncConfiguration*)config_struct)->hierarchical_levels;
 
@@ -4557,6 +4830,9 @@ static void copy_api_from_app(
             !(scs->static_config.enc_mode <= ENC_M9) || input_resolution >= INPUT_SIZE_8K_RANGE
                 ? 4
                 : 5;
+
+        if (scs->static_config.high_fidelity_encode_psy_bias)
+            scs->static_config.hierarchical_levels = AOMMIN(scs->static_config.hierarchical_levels, 3);
     }
     if (scs->static_config.pass == ENC_SINGLE_PASS && scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) {
         if (scs->static_config.hierarchical_levels != 2) {
@@ -4644,7 +4920,6 @@ static void copy_api_from_app(
     }
     scs->static_config.pin_threads = ((EbSvtAv1EncConfiguration*)config_struct)->pin_threads;
     scs->static_config.target_socket = ((EbSvtAv1EncConfiguration*)config_struct)->target_socket;
-    scs->static_config.qp = ((EbSvtAv1EncConfiguration*)config_struct)->qp;
     scs->static_config.recon_enabled = ((EbSvtAv1EncConfiguration*)config_struct)->recon_enabled;
     scs->static_config.enable_tpl_la = ((EbSvtAv1EncConfiguration*)config_struct)->enable_tpl_la;
     if (scs->static_config.enable_tpl_la != 1){
@@ -4755,9 +5030,6 @@ static void copy_api_from_app(
     // Sharpness
     scs->static_config.sharpness = config_struct->sharpness;
 
-    // Extended CRF
-    scs->static_config.extended_crf_qindex_offset = config_struct->extended_crf_qindex_offset;
-
     // QP scaling compression
     scs->static_config.qp_scale_compress_strength = config_struct->qp_scale_compress_strength;
 
@@ -4784,6 +5056,10 @@ static void copy_api_from_app(
 
     // AC bias
     scs->static_config.ac_bias = config_struct->ac_bias;
+    scs->static_config.texture_ac_bias = config_struct->texture_ac_bias;
+    scs->static_config.lineart_energy_bias = config_struct->lineart_energy_bias;
+    scs->static_config.texture_energy_bias = config_struct->texture_energy_bias;
+    scs->static_config.satd_bias = config_struct->satd_bias;
 
     // TX bias
     scs->static_config.tx_bias = config_struct->tx_bias;
@@ -4794,50 +5070,27 @@ static void copy_api_from_app(
     // Noise level thr
     scs->static_config.noise_level_thr = config_struct->noise_level_thr;
 
-    // Variance md bias
-    scs->static_config.variance_md_bias = config_struct->variance_md_bias;
-    scs->static_config.variance_md_bias_thr = config_struct->variance_md_bias_thr;
-
-    // Chroma distortion taper
-    scs->static_config.chroma_qmc_bias = config_struct->chroma_qmc_bias;
-
-    // Texturing preserving md bias
-    scs->static_config.texture_preserving_qmc_bias = config_struct->texture_preserving_qmc_bias;
-
-    // CDEF bias
-    scs->static_config.cdef_bias = config_struct->cdef_bias;
-    memcpy(scs->static_config.cdef_bias_max_cdef, config_struct->cdef_bias_max_cdef, 4 * sizeof(uint8_t));
-    memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
-    scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
-    scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
-
     // DLF bias
     scs->static_config.dlf_bias = config_struct->dlf_bias;
     scs->static_config.dlf_sharpness = config_struct->dlf_sharpness;
     memcpy(scs->static_config.dlf_bias_max_dlf, config_struct->dlf_bias_max_dlf, 2 * sizeof(uint8_t));
     memcpy(scs->static_config.dlf_bias_min_dlf, config_struct->dlf_bias_min_dlf, 2 * sizeof(uint8_t));
 
-    // Balancing Q bias
-    scs->static_config.balancing_q_bias = config_struct->balancing_q_bias;
-    // Balancing luminance Q bias
-    scs->static_config.balancing_luminance_q_bias = config_struct->balancing_luminance_q_bias;
-
-    // Balancing r0-based layer
-    scs->static_config.balancing_r0_based_layer = config_struct->balancing_r0_based_layer;
-    // Balancing r0 dampening layer
-    scs->static_config.balancing_r0_dampening_layer = config_struct->balancing_r0_dampening_layer;
-
-    // Noise level Q bias
-    scs->static_config.noise_level_q_bias = config_struct->noise_level_q_bias;
+    // CDEF bias
+    scs->static_config.cdef_bias = config_struct->cdef_bias;
+    memcpy(scs->static_config.cdef_bias_max_cdef, config_struct->cdef_bias_max_cdef, 4 * sizeof(uint8_t));
+    memcpy(scs->static_config.cdef_bias_min_cdef, config_struct->cdef_bias_min_cdef, 4 * sizeof(uint8_t));
+    scs->static_config.cdef_bias_max_sec_cdef_rel = config_struct->cdef_bias_max_sec_cdef_rel;
+    memcpy(scs->static_config.texture_cdef_bias_max_cdef, config_struct->texture_cdef_bias_max_cdef, 4 * sizeof(uint8_t));
+    memcpy(scs->static_config.texture_cdef_bias_min_cdef, config_struct->texture_cdef_bias_min_cdef, 4 * sizeof(uint8_t));
+    scs->static_config.texture_cdef_bias_max_sec_cdef_rel = config_struct->texture_cdef_bias_max_sec_cdef_rel;
+    scs->static_config.cdef_bias_damping_offset = config_struct->cdef_bias_damping_offset;
 
     // Sharp TX
     scs->static_config.sharp_tx = config_struct->sharp_tx;
 
     // HBD-MDS
     scs->static_config.hbd_mds = config_struct->hbd_mds;
-
-    // Complex HVS
-    scs->static_config.complex_hvs = config_struct->complex_hvs;
 
     // Alternative SSIM tuning
     scs->static_config.alt_ssim_tuning = config_struct->alt_ssim_tuning;

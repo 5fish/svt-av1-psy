@@ -89,36 +89,19 @@ void svt_av1_build_quantizer(EbBitDepth bit_depth, int32_t y_dc_delta_q, int32_t
         int32_t qrounding_factor = q == 0 ? 64 : 48;
         int32_t qrounding_factor_fp = pcs->scs->static_config.tune != 3 ? 64 : 48;
         int diff = q - pcs->frm_hdr.quantization_params.base_q_idx; // q-range diff based on current quantizer
+        // Merged from mainline a1db947
+        if ((pcs->scs->static_config.sharpness > 0 && diff < 0) || (pcs->scs->static_config.sharpness < 0 && diff > 0)) {
+            int32_t offset = pcs->scs->static_config.sharpness > 0 ? MAX(pcs->scs->static_config.sharpness << 1, abs(diff))
+                                                                   : MIN(abs(pcs->scs->static_config.sharpness) << 1, diff);
+            qzbin_factor += (pcs->scs->static_config.sharpness > 0) ? -offset : offset;
+            qrounding_factor += (pcs->scs->static_config.sharpness > 0) ? offset : -offset;
+            qzbin_factor     = CLIP3(1, 256, qzbin_factor);
+            qrounding_factor = CLIP3(1, 256, qrounding_factor);
+        }
 
         for (i = 0; i < 2; ++i) {
             quant_qtx                   = i == 0 ? svt_aom_dc_quant_qtx(q, y_dc_delta_q, bit_depth)
                                                  : svt_aom_ac_quant_qtx(q, 0, bit_depth);
-            if (pcs->scs->static_config.sharpness != 0) {
-                if (pcs->scs->static_config.sharpness > 0) { // If sharpness is positive
-                    if (diff < 0) { // If we're going to lower quant, decrease zbin factor and increase rounding
-                        qzbin_factor -= MAX(pcs->scs->static_config.sharpness << 1, abs(diff)); // Example range with --sharpness 4: Subtract qzbin_factor by diff, or by (4 << 1), preferring which is closer to 0
-                        qrounding_factor += MAX(pcs->scs->static_config.sharpness << 1, abs(diff));
-                        qrounding_factor_fp += MAX(pcs->scs->static_config.sharpness << 1, abs(diff));
-                    } else if (diff > 0) { // If we're going higher quant, reset both zbin and rounding factor
-                        qzbin_factor     = svt_aom_get_qzbin_factor(q, bit_depth);
-                        qrounding_factor = q == 0 ? 64 : 48;
-                        qrounding_factor_fp = pcs->scs->static_config.tune != 3 ? 64 : 48;
-                    }
-                } else if (pcs->scs->static_config.sharpness < 0) { // If sharpness is negative
-                    if (diff < 0) { // If we're going to lower quant, reset both zbin and rounding factor
-                        qzbin_factor     = svt_aom_get_qzbin_factor(q, bit_depth);
-                        qrounding_factor = q == 0 ? 64 : 48;
-                        qrounding_factor_fp = pcs->scs->static_config.tune != 3 ? 64 : 48;
-                    } else if (diff > 0) { // If we're going higher quant, increase zbin and decrease rounding factors
-                        qzbin_factor += MIN(abs(pcs->scs->static_config.sharpness) << 1, diff); // Choose minimum here since diff > 0
-                        qrounding_factor -= MIN(abs(pcs->scs->static_config.sharpness) << 1, diff);
-                        qrounding_factor_fp -= MIN(abs(pcs->scs->static_config.sharpness) << 1, diff);
-                    }
-                }
-                qzbin_factor = MIN(MAX(qzbin_factor, 1), 256); // Ensure we don't go too low or high
-                qrounding_factor = MIN(MAX(qrounding_factor, 1), 256);
-                qrounding_factor_fp = MIN(MAX(qrounding_factor_fp, 1), 256);
-            }
             svt_aom_invert_quant(&quants->y_quant[q][i], &quants->y_quant_shift[q][i], quant_qtx);
             quants->y_quant_fp[q][i] = (int16_t)((1 << 16) / quant_qtx);
             quants->y_round_fp[q][i] = (int16_t)((qrounding_factor_fp * quant_qtx) >> 7);
@@ -181,9 +164,10 @@ static INLINE int aom_get_qmlevel(int qindex, int first, int last) {
 static INLINE double sigmoid_qm_func(int qindex) {
     return 2 / (1 + exp(0.01 * qindex));
 }
-static INLINE int psy_get_qmlevel(int qindex, int first, int last) {
+static INLINE int psy_get_qmlevel(int qindex, int first, int last, int psy_bias_qm_bias) {
     // mapping qindex(0, 255) to QM level(first, last), temporary(?) fix to avoid crash using CLIP3.
-    return CLIP3(first, last, (int)rint(first + (pow((double)(qindex), sigmoid_qm_func(qindex)) * (last + 1 - first)) / pow(QINDEX_RANGE, sigmoid_qm_func(qindex))));
+    return CLIP3(first, last, (int)rint(first + (pow((double)(qindex), sigmoid_qm_func(qindex)) * (last + 1 - first)) / pow(QINDEX_RANGE, sigmoid_qm_func(qindex))) +
+                              psy_bias_qm_bias);
 }
 
 // Polynomial to determine QM levels tuned for still images
@@ -215,7 +199,27 @@ static INLINE int psy_still_get_qmlevel(int qindex, int min, int max) {
     return CLIP3(min, max, qm_level);
 }
 
-void svt_av1_qm_init(PictureParentControlSet *pcs) {
+static double satd_bias_qmatrix_bias_8x8[64] = {
+1.0, 1.0, 1.0, 1.1, 1.2, 1.3, 1.4, 1.0,
+1.0, 1.0, 1.0, 1.0, 1.1, 1.1, 1.1, 1.1,
+1.0, 1.0, 1.0, 1.0, 0.9, 0.8, 0.6, 0.4,
+1.1, 1.0, 1.0, 0.9, 0.9, 0.6, 0.4, 0.2,
+1.2, 1.1, 0.9, 0.9, 0.6, 0.4, 0.2, 0.2,
+1.3, 1.1, 0.8, 0.6, 0.4, 0.2, 0.2, 0.2,
+1.4, 1.1, 0.6, 0.4, 0.2, 0.2, 0.2, 0.2,
+1.0, 0.9, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2,
+};
+
+static double satd_bias_qmatrix_bias_4x4[16] = {
+1,          1.02591423, 1.17792190, 1.15974135,
+1.02591423, 0.97596106, 0.80932070, 0.42426407,
+1.17792190, 0.80932070, 0.42426407, 0.2,
+1.11579568, 0.42426407, 0.2,        0.2,
+};
+
+static void svt_av1_qm_init(PictureControlSet *pcs) {
+    PictureParentControlSet *ppcs = pcs->ppcs;
+
     const uint8_t num_planes = 3; // MAX_MB_PLANE;// NM- No monochroma
     uint8_t       q, c, t;
     int32_t       current;
@@ -226,60 +230,68 @@ void svt_av1_qm_init(PictureParentControlSet *pcs) {
                 const int32_t size       = tx_size_2d[t];
                 const TxSize  qm_tx_size = av1_get_adjusted_tx_size(t);
                 if (q == NUM_QM_LEVELS - 1) {
-                    pcs->gqmatrix[q][c][t]  = NULL;
-                    pcs->giqmatrix[q][c][t] = NULL;
+                    ppcs->gqmatrix[q][c][t]  = NULL;
+                    ppcs->giqmatrix[q][c][t] = NULL;
                 } else if (t != qm_tx_size) { // Reuse matrices for 'qm_tx_size'
-                    pcs->gqmatrix[q][c][t]  = pcs->gqmatrix[q][c][qm_tx_size];
-                    pcs->giqmatrix[q][c][t] = pcs->giqmatrix[q][c][qm_tx_size];
+                    ppcs->gqmatrix[q][c][t]  = ppcs->gqmatrix[q][c][qm_tx_size];
+                    ppcs->giqmatrix[q][c][t] = ppcs->giqmatrix[q][c][qm_tx_size];
                 } else {
                     assert(current + size <= QM_TOTAL_SIZE);
-                    pcs->gqmatrix[q][c][t]  = &wt_matrix_ref[q][c >= 1][current];
-                    pcs->giqmatrix[q][c][t] = &iwt_matrix_ref[q][c >= 1][current];
+                    ppcs->gqmatrix[q][c][t]  = &wt_matrix_ref[q][c >= 1][current];
+                    ppcs->giqmatrix[q][c][t] = &iwt_matrix_ref[q][c >= 1][current];
                     current += size;
                 }
             }
         }
     }
 
-    if (pcs->frm_hdr.quantization_params.using_qmatrix) {
+    int psy_bias_qm_bias = 0;
+    if (pcs->scs->static_config.psy_bias_qm_bias) {
+        if (pcs->ppcs->temporal_layer_index >= pcs->ppcs->hierarchical_levels)
+            psy_bias_qm_bias = 2;
+        else if (pcs->ppcs->temporal_layer_index + 1 >= pcs->ppcs->hierarchical_levels)
+            psy_bias_qm_bias = 1;
+    }
+
+    if (ppcs->frm_hdr.quantization_params.using_qmatrix) {
         const int32_t min_qmlevel = pcs->scs->static_config.min_qm_level;
         const int32_t max_qmlevel = pcs->scs->static_config.max_qm_level;
         const int32_t min_chroma_qmlevel = pcs->scs->static_config.min_chroma_qm_level;
         const int32_t max_chroma_qmlevel = pcs->scs->static_config.max_chroma_qm_level;
-        const int32_t base_qindex = pcs->frm_hdr.quantization_params.base_q_idx;
+        const int32_t base_qindex = ppcs->frm_hdr.quantization_params.base_q_idx;
 
         switch (pcs->scs->static_config.tune) {
             case 0:
                 //Chroma always seem to suffer too much with steep quantization matrices, so we're temporarily
                 //forcing not very steep quantization matrices for chroma channels
                 //Will enable for tune 0 and ideally within a range in the near future
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
                 break;
             case 2:
                 // Currently using Tune 3's curve for Tune 2
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
                 break;
             case 3:
                 //Chroma always seem to suffer too much with steep quantization matrices, so we're temporarily
                 //forcing not very steep quantization matrices for chroma channels
                 //Will enable for tune 3 and ideally within a range in the near future
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel, psy_bias_qm_bias);
                 break;
             case 4:
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_still_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_still_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_still_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = psy_still_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = psy_still_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = psy_still_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
                 break;
             default:
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = aom_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = aom_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
-                pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = aom_get_qmlevel(base_qindex + pcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] = aom_get_qmlevel(base_qindex, min_qmlevel, max_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_U] = aom_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_U], min_chroma_qmlevel, max_chroma_qmlevel);
+                ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_V] = aom_get_qmlevel(base_qindex + ppcs->frm_hdr.quantization_params.delta_q_ac[AOM_PLANE_V], min_chroma_qmlevel, max_chroma_qmlevel);
                 break;
         }
 #if DEBUG_QM_LEVEL
@@ -290,6 +302,26 @@ void svt_av1_qm_init(PictureParentControlSet *pcs) {
                 pcs->frm_hdr.quantization_params.qm[AOM_PLANE_U],
                 pcs->frm_hdr.quantization_params.qm[AOM_PLANE_V]);
 #endif
+
+        if (pcs->scs->static_config.satd_bias) {
+            memcpy(pcs->satd_bias_qmatrix, ppcs->gqmatrix[ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] >> 2][AOM_PLANE_Y][TX_4X4], 16);
+            QmVal *head = pcs->satd_bias_qmatrix;
+            double *bias_head = satd_bias_qmatrix_bias_4x4;
+            for (uint8_t i = 0; i < 16; i++) {
+                *head = lrint(*head * *bias_head);
+                head++;
+                bias_head++;
+            }
+    
+            memcpy(pcs->satd_bias_qmatrix + 16, ppcs->gqmatrix[ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] >> 2][AOM_PLANE_Y][TX_8X8], 64);
+            head = pcs->satd_bias_qmatrix + 16;
+            bias_head = satd_bias_qmatrix_bias_8x8;
+            for (uint8_t i = 0; i < 64; i++) {
+                *head = lrint(*head * *bias_head);
+                head++;
+                bias_head++;
+            }
+        }
     }
 }
 
@@ -333,7 +365,7 @@ void mode_decision_configuration_init_qp_update(PictureControlSet *pcs) {
     set_reference_sg_ep(pcs);
     set_global_motion_field(pcs);
 
-    svt_av1_qm_init(pcs->ppcs);
+    svt_av1_qm_init(pcs);
     MdRateEstimationContext *md_rate_est_ctx;
 
     md_rate_est_ctx = pcs->md_rate_est_ctx;
@@ -353,7 +385,9 @@ void mode_decision_configuration_init_qp_update(PictureControlSet *pcs) {
                                  pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                  pcs->ppcs->enable_restoration,
                                  pcs->ppcs->frm_hdr.allow_intrabc,
-                                 &pcs->md_frame_context);
+                                 &pcs->md_frame_context,
+                                 pcs->scs->static_config.lineart_psy_bias,
+                                 pcs->scs->static_config.texture_psy_bias);
     // Initial Rate Estimation of the Motion vectors
     svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
     // Initial Rate Estimation of the quantized coefficients
@@ -640,6 +674,8 @@ static void set_frame_coeff_lvl(PictureControlSet *pcs) {
     } else if (cmplx > coeff_high_level_th) {
         pcs->coeff_lvl = HIGH_LVL;
     }
+
+    pcs->coeff_lvl = CLIP3(VLOW_LVL, HIGH_LVL, pcs->coeff_lvl + pcs->scs->static_config.psy_bias_coeff_lvl_offset);
 }
 
 /* Mode Decision Configuration Kernel */
@@ -758,7 +794,7 @@ void *svt_aom_mode_decision_configuration_kernel(void *input_ptr) {
         }
         set_global_motion_field(pcs);
 
-        svt_av1_qm_init(pcs->ppcs);
+        svt_av1_qm_init(pcs);
         MdRateEstimationContext *md_rate_est_ctx;
 
         // QP
@@ -783,7 +819,9 @@ void *svt_aom_mode_decision_configuration_kernel(void *input_ptr) {
                                      pcs->ppcs->frm_hdr.allow_screen_content_tools,
                                      pcs->ppcs->enable_restoration,
                                      pcs->ppcs->frm_hdr.allow_intrabc,
-                                     &pcs->md_frame_context);
+                                     &pcs->md_frame_context,
+                                     scs->static_config.lineart_psy_bias,
+                                     scs->static_config.texture_psy_bias);
         // Initial Rate Estimation of the Motion vectors
         svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
         // Initial Rate Estimation of the quantized coefficients

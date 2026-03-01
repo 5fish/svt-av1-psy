@@ -65,7 +65,7 @@ void svt_aom_assert_err(uint32_t condition, char *err_msg);
 
 #define DS_SC_FACT 23
 
-#define VQ_NOISE_LVL_TH 15000
+#define VQ_NOISE_LVL_TH 16000 // Changed from 15000 to 16000 in 5fish/SVT-AV1-PSY
 #define VQ_STABILITY_ME_VAR_TH 750
 #define VQ_PIC_AVG_VARIANCE_TH 1000
 
@@ -1024,6 +1024,18 @@ static const TxType tx_type_group_sc[MAX_TX_TYPE_GROUP][TX_TYPES] = {{DCT_DCT, I
                                                                       V_FLIPADST,
                                                                       H_FLIPADST,
                                                                       INVALID_TX_TYPE}};
+static const TxType tx_type_group_psy_bias[MAX_TX_TYPE_GROUP][TX_TYPES]    = {{DCT_DCT, INVALID_TX_TYPE},
+                                                                              {V_DCT, H_DCT, INVALID_TX_TYPE},
+                                                                              {ADST_ADST, FLIPADST_FLIPADST, IDTX, INVALID_TX_TYPE},
+                                                                              {ADST_DCT, DCT_ADST, INVALID_TX_TYPE},
+                                                                              {ADST_FLIPADST, FLIPADST_ADST, INVALID_TX_TYPE},
+                                                                              {FLIPADST_DCT, DCT_FLIPADST, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST, INVALID_TX_TYPE}};
+static const TxType tx_type_group_sc_psy_bias[MAX_TX_TYPE_GROUP][TX_TYPES] = {{DCT_DCT, IDTX, INVALID_TX_TYPE},
+                                                                              {V_DCT, H_DCT, INVALID_TX_TYPE},
+                                                                              {ADST_ADST, FLIPADST_FLIPADST, INVALID_TX_TYPE},
+                                                                              {ADST_DCT, DCT_ADST, INVALID_TX_TYPE},
+                                                                              {ADST_FLIPADST, FLIPADST_ADST, INVALID_TX_TYPE},
+                                                                              {FLIPADST_DCT, DCT_FLIPADST, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST, INVALID_TX_TYPE}};
 typedef enum ATTRIBUTE_PACKED {
     // DCT only
     EXT_TX_SET_DCTONLY,

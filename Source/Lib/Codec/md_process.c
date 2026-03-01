@@ -16,6 +16,7 @@
 #include "lambda_rate_tables.h"
 #include "rc_process.h"
 #include "enc_mode_config.h"
+#include "segmentation.h"
 
 void set_block_based_depth_refinement_controls(ModeDecisionContext *ctx, uint8_t block_based_depth_refinement_level);
 static void mode_decision_context_dctor(EbPtr p) {
@@ -128,7 +129,7 @@ EbErrorType svt_aom_mode_decision_context_ctor(ModeDecisionContext *ctx, EbColor
                                                EncMode enc_mode, uint16_t max_block_cnt, uint32_t encoder_bit_depth,
                                                EbFifo *mode_decision_configuration_input_fifo_ptr,
                                                EbFifo *mode_decision_output_fifo_ptr, uint8_t enable_hbd_mode_decision,
-                                               uint8_t cfg_palette, uint8_t seq_qp_mod) {
+                                               uint8_t cfg_palette, uint8_t seq_qp_mod, double lineart_psy_bias, double high_quality_encode_psy_bias) {
     uint32_t buffer_index;
     uint32_t cand_index;
 
@@ -153,7 +154,7 @@ EbErrorType svt_aom_mode_decision_context_ctor(ModeDecisionContext *ctx, EbColor
         // min QP is 1 b/c 0 is lossless and is not supported
         for (uint8_t qp = 1; qp <= MAX_QP_VALUE; qp++) {
             uint8_t nic_level         = svt_aom_get_nic_level(enc_mode, is_base, qp, seq_qp_mod);
-            uint8_t nic_scaling_level = svt_aom_set_nic_controls(NULL, nic_level);
+            uint8_t nic_scaling_level = svt_aom_set_nic_controls(NULL, nic_level, high_quality_encode_psy_bias);
             min_nic_scaling_level     = MIN(min_nic_scaling_level, nic_scaling_level);
         }
     }
@@ -236,7 +237,7 @@ EbErrorType svt_aom_mode_decision_context_ctor(ModeDecisionContext *ctx, EbColor
         for (uint8_t qp = 1; qp <= MAX_QP_VALUE; qp++) {
             if (obmc_allowed)
                 break;
-            obmc_allowed |= svt_aom_get_obmc_level(enc_mode, qp, is_base, seq_qp_mod);
+            obmc_allowed |= svt_aom_get_obmc_level(enc_mode, qp, is_base, seq_qp_mod, lineart_psy_bias);
         }
     }
     if (obmc_allowed) {
@@ -535,6 +536,34 @@ static void av1_lambda_assign_md(PictureControlSet *pcs, ModeDecisionContext *ct
             }
         }
     }
+
+    if (pcs->scs->static_config.balancing_luminance_lambda_bias ||
+        pcs->scs->static_config.balancing_texture_lambda_bias) {
+        // luminance
+        const int32_t balancing_luminance_bias_base = CLIP3(0x50, 0x70, pcs->ppcs->avg_luma);
+        double balancing_bias = CLIP3(0, 0x40, balancing_luminance_bias_base - pcs->ppcs->balancing_luminance[ctx->sb_index]) *
+                                (((double)1/0x40) * pcs->scs->static_config.balancing_luminance_lambda_bias);
+        // texture
+        const uint16_t blks_variance = get_variance_for_cu_min_32x32_min(NULL, pcs->ppcs->variance[ctx->sb_index]);
+        if (blks_variance >= pcs->scs->static_config.texture_variance_thr >> 2)
+            ;
+        else if (blks_variance >= pcs->scs->static_config.texture_variance_thr >> 3)
+            balancing_bias = AOMMAX(pcs->scs->static_config.balancing_texture_lambda_bias * 0.5,
+                                    balancing_bias);
+        else
+            balancing_bias = AOMMAX(pcs->scs->static_config.balancing_texture_lambda_bias,
+                                    balancing_bias);
+
+        balancing_bias = 1.0 - balancing_bias;
+
+        if (balancing_bias != 1.0) {
+            ctx->full_lambda_md[0] = AOMMAX(lrint(ctx->full_lambda_md[0] * balancing_bias), 1);
+            ctx->fast_lambda_md[0] = AOMMAX(lrint(ctx->fast_lambda_md[0] * balancing_bias), 1);
+            ctx->full_lambda_md[1] = AOMMAX(lrint(ctx->full_lambda_md[1] * balancing_bias), 1);
+            ctx->fast_lambda_md[1] = AOMMAX(lrint(ctx->fast_lambda_md[1] * balancing_bias), 1);
+        }
+    }
+
     if (pcs->lambda_weight) {
         ctx->full_lambda_md[0] = (ctx->full_lambda_md[0] * pcs->lambda_weight) >> 7;
         ctx->fast_lambda_md[0] = (ctx->fast_lambda_md[0] * pcs->lambda_weight) >> 7;

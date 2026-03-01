@@ -25,6 +25,7 @@
 #include "utility.h"
 #include "pcs.h"
 #include "resize.h"
+#include "segmentation.h"
 
 void svt_aom_copy_sb8_16(uint16_t *dst, int32_t dstride, const uint8_t *src, int32_t src_voffset, int32_t src_hoffset,
                          int32_t sstride, int32_t vsize, int32_t hsize, Bool is_16bit);
@@ -209,6 +210,11 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
         stride_ref[pli] = pli == 0 ? input_pic->stride_y : (pli == 1 ? input_pic->stride_cb : input_pic->stride_cr);
     }
 
+    uint16_t blks_variance;
+    uint8_t *cdef_bias_max_cdef;
+    uint8_t *cdef_bias_min_cdef;
+    int8_t *cdef_bias_max_sec_cdef_rel;
+
     // Loop over all filter blocks (64x64)
     for (uint32_t fbr = y_b64_start_idx; fbr < y_b64_end_idx; ++fbr) {
         for (uint32_t fbc = x_b64_start_idx; fbc < x_b64_end_idx; ++fbc) {
@@ -245,6 +251,18 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                 continue;
             }
             pcs->skip_cdef_seg[fb_idx] = 0;
+
+            blks_variance = get_variance_for_cu_max_32x32_min(NULL, pcs->ppcs->variance[fb_idx]);
+            if (blks_variance >= pcs->scs->static_config.lineart_variance_thr >> 3) {
+                cdef_bias_max_cdef = pcs->scs->static_config.cdef_bias_max_cdef;
+                cdef_bias_min_cdef = pcs->scs->static_config.cdef_bias_min_cdef;
+                cdef_bias_max_sec_cdef_rel = &pcs->scs->static_config.cdef_bias_max_sec_cdef_rel;
+            }
+            else {
+                cdef_bias_max_cdef = pcs->scs->static_config.texture_cdef_bias_max_cdef;
+                cdef_bias_min_cdef = pcs->scs->static_config.texture_cdef_bias_min_cdef;
+                cdef_bias_max_sec_cdef_rel = &pcs->scs->static_config.texture_cdef_bias_max_sec_cdef_rel;
+            }
 
             uint8_t(*dir)[CDEF_NBLOCKS][CDEF_NBLOCKS] = &pcs->cdef_dir_data[fb_idx].dir;
             int32_t(*var)[CDEF_NBLOCKS][CDEF_NBLOCKS] = &pcs->cdef_dir_data[fb_idx].var;
@@ -300,17 +318,17 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
 
                     if (scs->static_config.cdef_bias) {
                         if (pli == 0) {
-                            if (pri_strength > scs->static_config.cdef_bias_max_cdef[0] || pri_strength < scs->static_config.cdef_bias_min_cdef[0] ||
-                                sec_strength > scs->static_config.cdef_bias_max_cdef[1] || sec_strength < scs->static_config.cdef_bias_min_cdef[1] ||
-                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_bias_max_sec_cdef_rel) {
+                            if (pri_strength > cdef_bias_max_cdef[0] || pri_strength < cdef_bias_min_cdef[0] ||
+                                sec_strength > cdef_bias_max_cdef[1] || sec_strength < cdef_bias_min_cdef[1] ||
+                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + *cdef_bias_max_sec_cdef_rel) {
                                 pcs->mse_seg[0][fb_idx][gi] = default_mse_uv * 64;
                                 continue;
                             }
                         }
                         else {
-                            if (pri_strength > scs->static_config.cdef_bias_max_cdef[2] || pri_strength < scs->static_config.cdef_bias_min_cdef[2] ||
-                                sec_strength > scs->static_config.cdef_bias_max_cdef[3] || sec_strength < scs->static_config.cdef_bias_min_cdef[3] ||
-                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_bias_max_sec_cdef_rel) {
+                            if (pri_strength > cdef_bias_max_cdef[2] || pri_strength < cdef_bias_min_cdef[2] ||
+                                sec_strength > cdef_bias_max_cdef[3] || sec_strength < cdef_bias_min_cdef[3] ||
+                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + *cdef_bias_max_sec_cdef_rel) {
                                 pcs->mse_seg[1][fb_idx][gi] = default_mse_uv * 64;
                                 continue;
                             }
@@ -351,9 +369,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         is_16bit);
 
                     if (pli) {
-                        if (scs->static_config.chroma_qmc_bias == 1)
-                            curr_mse <<= 1;
-                        else if (scs->static_config.chroma_qmc_bias == 2)
+                        if (scs->static_config.lineart_psy_bias >= 4.0)
                             curr_mse += curr_mse >> 1;
                     }
 
@@ -380,17 +396,17 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
 
                     if (scs->static_config.cdef_bias) {
                         if (pli == 0) {
-                            if (pri_strength > scs->static_config.cdef_bias_max_cdef[0] || pri_strength < scs->static_config.cdef_bias_min_cdef[0] ||
-                                sec_strength > scs->static_config.cdef_bias_max_cdef[1] || sec_strength < scs->static_config.cdef_bias_min_cdef[1] ||
-                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_bias_max_sec_cdef_rel) {
+                            if (pri_strength > cdef_bias_max_cdef[0] || pri_strength < cdef_bias_min_cdef[0] ||
+                                sec_strength > cdef_bias_max_cdef[1] || sec_strength < cdef_bias_min_cdef[1] ||
+                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + *cdef_bias_max_sec_cdef_rel) {
                                 pcs->mse_seg[0][fb_idx][gi] = default_mse_uv * 64;
                                 continue;
                             }
                         }
                         else {
-                            if (pri_strength > scs->static_config.cdef_bias_max_cdef[2] || pri_strength < scs->static_config.cdef_bias_min_cdef[2] ||
-                                sec_strength > scs->static_config.cdef_bias_max_cdef[3] || sec_strength < scs->static_config.cdef_bias_min_cdef[3] ||
-                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + scs->static_config.cdef_bias_max_sec_cdef_rel) {
+                            if (pri_strength > cdef_bias_max_cdef[2] || pri_strength < cdef_bias_min_cdef[2] ||
+                                sec_strength > cdef_bias_max_cdef[3] || sec_strength < cdef_bias_min_cdef[3] ||
+                                (sec_strength == 3 ? 4 : sec_strength) > pri_strength + *cdef_bias_max_sec_cdef_rel) {
                                 pcs->mse_seg[1][fb_idx][gi] = default_mse_uv * 64;
                                 continue;
                             }
@@ -431,9 +447,7 @@ static void cdef_seg_search(PictureControlSet *pcs, SequenceControlSet *scs, uin
                         is_16bit);
 
                     if (pli) {
-                        if (scs->static_config.chroma_qmc_bias == 1)
-                            curr_mse <<= 1;
-                        else if (scs->static_config.chroma_qmc_bias == 2)
+                        if (scs->static_config.lineart_psy_bias >= 4.0)
                             curr_mse += curr_mse >> 1;
                     }
 

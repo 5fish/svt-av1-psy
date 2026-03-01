@@ -64,6 +64,8 @@ typedef enum ATTRIBUTE_PACKED {
 } EncMode;
 
 #define DEFAULT -1
+#define UINT8_DEFAULT UINT8_MAX
+#define INT8_DEFAULT INT8_MAX
 
 #define EB_BUFFERFLAG_EOS 0x00000001 // signals the last packet of the stream
 #define EB_BUFFERFLAG_SHOW_EXT 0x00000002 // signals that the packet contains a show existing frame at the end
@@ -436,7 +438,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /* Initial quantization parameter for the Intra pictures used under constant
      * qp rate control mode.
      *
-     * Default is 50. */
+     * Default is 35. */
     uint32_t qp;
 
     /* force qp values for every picture that are passed in the header pointer
@@ -464,7 +466,7 @@ typedef struct EbSvtAv1EncConfiguration {
     /* Minimum QP value allowed for rate control use, only applicable when rate
      * control mode is set to 1 or 2. It has to be smaller or equal to maxQpAllowed.
      *
-     * Default is 4. */
+     * Default is 1. */
     uint32_t min_qp_allowed;
 
     // DATARATE CONTROL OPTIONS
@@ -692,7 +694,7 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /* Flag to signal the content being a screen sharing content type
     *
-    * Default is 0. */
+    * Default is 2. */
     uint32_t screen_content_mode;
 
     /* Enable adaptive quantization within a frame using segmentation.
@@ -710,9 +712,10 @@ typedef struct EbSvtAv1EncConfiguration {
 
     Bool enable_overlays;
     /**
-     * @brief Tune for a particular metric; 0: VQ, 1: PSNR, 2: SSIM.
+     * @brief Tune for a particular metric; 0: VQ, 1: PSNR, 2: SSIM, 3: Subjective SSIM, 4: Still Picture.
      *
-     * Default is 2 (Tune SSIM) for SVT-AV1-PSY. Mainline SVT-AV1 uses 1 (Tune PSNR) as default.
+     * Default is 0 for 5fish/SVT-AV1-PSY.
+     * In original SVT-AV1-PSY v2.3.0-B it was 2. In mainline SVT-AV1 it is 1.
      */
     uint8_t tune;
 
@@ -849,7 +852,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * @brief Min quant matrix flatness. Applicable when enable_qm is true.
      * Min value is 0.
      * Max value is 15.
-     * Default is 2 in SVT-AV1-PSY, mainline default is 8.
+     * Default is 8.
      */
     uint8_t min_qm_level;
     /**
@@ -859,6 +862,21 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 15.
      */
     uint8_t max_qm_level;
+    /**
+     * @brief Min quant matrix flatness. Applicable when enable_qm is true.
+     * Min value is 0.
+     * Max value is 15.
+     * Default is 10.
+     */
+    uint8_t min_chroma_qm_level;
+
+    /**
+     * @brief Max quant matrix flatness. Applicable when enable_qm is true.
+     * Min value is 0.
+     * Max value is 15.
+     * Default is 15.
+     */
+    uint8_t max_chroma_qm_level;
 
     /**
      * @brief gop_constraint_rc
@@ -928,7 +946,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * true = enable variance boost
      * Default is true in SVT-AV1-PSY.
      */
-    Bool enable_variance_boost;
+    uint8_t enable_variance_boost;
 
     /**
      * @brief Selects the curve strength to boost low variance regions according to a fast-growing formula
@@ -957,9 +975,9 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /**
      * @brief Affects loopfilter deblock sharpness and rate distortion
-     * Min value is -7.
-     * Max is 7.
-     * Default is 1.
+     * Min value is -14.
+     * Max is 14.
+     * Default is 2.
      */
     int8_t sharpness;
 
@@ -1034,22 +1052,6 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t kf_tf_strength;
 
     /**
-     * @brief Min quant matrix flatness. Applicable when enable_qm is true.
-     * Min value is 0.
-     * Max value is 15.
-     * Default is 8.
-     */
-    uint8_t min_chroma_qm_level;
-
-    /**
-     * @brief Max quant matrix flatness. Applicable when enable_qm is true.
-     * Min value is 0.
-     * Max value is 15.
-     * Default is 15.
-     */
-    uint8_t max_chroma_qm_level;
-
-    /**
      * @brief Noise normalization strength; modifies the encoder's willingness
      * to boost AC coefficients in low-noise blocks.
      * Min value is 0.
@@ -1066,6 +1068,29 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 1.00.
      */
     double ac_bias;
+    /**
+     * @brief  `--ac-bias` strength if variance is lower than thresholds derived from `--texture-variance-thr`
+     * Default is the same as `--ac-bias`.
+     */
+    double texture_ac_bias;
+    /**
+     * @brief Prefer higher energy even if the encode will have higher energy than the source in high variance regions.
+     * 1.00: Disabled
+     * Default is 1.00
+     */
+    double lineart_energy_bias;
+    /**
+     * @brief Prefer higher energy even if the encode will have higher energy than the source in low variance regions.
+     * 1.00: Disabled
+     * Default is 1.00
+     */
+    double texture_energy_bias;
+    /**
+     * @brief Add SATD calculation to distortion calculation.
+     * 1.00: Disabled
+     * Default is 1.00
+     */
+    double satd_bias;
 
     /**
      * @brief Transform size/type bias type
@@ -1094,34 +1119,80 @@ typedef struct EbSvtAv1EncConfiguration {
     int32_t noise_level_thr;
 
     /**
-     * @brief Bias prediction mode, skip, and block size based on variance
-     * 0: disabled
-     * 1: enabled
-     * Default is 0.
+     * @brief Improve lineart retention
+     * Min value is 0
+     * Max value is 7
      */
-    uint8_t variance_md_bias;
+    double lineart_psy_bias;
     /**
-     * @brief Bias prediction mode, skip, and block size based on variance
-     * Calculated from `--variance-md-bias-thr` commandline parameter via `pow(2, "variance-md-bias-thr") - 1`.
+     * @brief Improve texture retention.
+     * Min value is 0
+     * Max value is 7
      */
-    uint16_t variance_md_bias_thr;
+    double texture_psy_bias;
+    /**
+     * @brief Easter egg for `--lineart-psy-bias Kumiko`
+     */
+    int8_t lineart_psy_bias_easter_egg;
+    /**
+     * @brief Easter egg for `--texture-psy-bias cat`
+     */
+    int8_t texture_psy_bias_easter_egg;
 
     /**
-     * @brief Bias chroma Q, limit chroma distortion prediction from dropping too low in full mode decision, and bias chroma distortion prediction in CDEF decision
-     * 0: disabled
-     * 1: full
-     * 2: light
-     * Default is 0.
+     * @brief Threshold for `--lineart-psy-bias`.
+     * Calculated from `--lineart-variance-thr` commandline parameter via `pow(2, "lineart-variance-thr") - 1`.
      */
-    uint8_t chroma_qmc_bias;
+    uint16_t lineart_variance_thr;
+    /**
+     * @brief Threshold for `--texture-psy-bias`.
+     * Calculated from `--texture-variance-thr` commandline parameter via `pow(2, "texture-variance-thr") - 1`.
+     */
+    uint16_t texture_variance_thr;
+
+    uint8_t psy_bias_mds0_sad;
+    uint8_t psy_bias_disable_warped_motion;
+    uint8_t psy_bias_disable_me_8x8;
+    uint8_t psy_bias_disable_sgrproj;
+    int8_t psy_bias_coeff_lvl_offset;
+    uint8_t psy_bias_mds0_intra_inter_mode_bias;
+    uint8_t psy_bias_inter_mode_bias;
+    uint8_t psy_bias_qm_bias;
 
     /**
-     * @brief Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention
+     * @brief Bias various features for high quality encoding.
+     * Min value is 0
+     * Max value is 1
+     */
+    double high_quality_encode_psy_bias;
+    /**
+     * @brief Bias various features for high fidelity encoding.
+     * Min value is 0
+     * Max value is 1
+     */
+    double high_fidelity_encode_psy_bias;
+
+    /**
+     * @brief Enable DLF bias
      * 0: disabled
      * 1: enabled
-     * Default is 0.
+     * Default is 0
      */
-    uint8_t texture_preserving_qmc_bias;
+    uint8_t dlf_bias;
+    /**
+     * @brief Sharpness for DLF
+     * Min value is 0
+     * Max value is 7
+     */
+    uint8_t dlf_sharpness;
+    /**
+     * @brief Max DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_max_dlf[2];
+    /**
+     * @brief Min DLF strength for luma and chroma.
+     */
+    uint8_t dlf_bias_min_dlf[2];
 
     /**
      * @brief Enable CDEF bias
@@ -1145,6 +1216,9 @@ typedef struct EbSvtAv1EncConfiguration {
      * Max value is 4.
      */
     int8_t cdef_bias_max_sec_cdef_rel;
+    uint8_t texture_cdef_bias_max_cdef[4];
+    uint8_t texture_cdef_bias_min_cdef[4];
+    int8_t texture_cdef_bias_max_sec_cdef_rel;
     /**
      * @brief Use bigger or smaller CDEF damping
      * Min value is -4.
@@ -1153,40 +1227,41 @@ typedef struct EbSvtAv1EncConfiguration {
     int8_t cdef_bias_damping_offset;
 
     /**
-     * @brief Enable DLF bias
-     * 0: disabled
-     * 1: enabled
-     * Default is 0
-     */
-    uint8_t dlf_bias;
-    /**
-     * @brief Sharpness for DLF
-     * Min value is 0
-     * Max value is 7
-     */
-    int8_t dlf_sharpness;
-    /**
-     * @brief Max DLF strength for luma and chroma.
-     */
-    uint8_t dlf_bias_max_dlf[2];
-    /**
-     * @brief Min DLF strength for luma and chroma.
-     */
-    uint8_t dlf_bias_min_dlf[2];
-
-    /**
      * @brief Enable balancing Q bias
      * 0: disabled
      * 1: enabled
      * Default is 0
      */
-    int8_t balancing_q_bias;
+    uint8_t balancing_q_bias;
     /**
      * @brief Enable balancing luminance Q bias
      * 0: disabled
      * Calculated from `--balancing-luminance-q-bias` commandline parameter via `"balancing-luminance-q-bias" * 10`.
      */
     uint8_t balancing_luminance_q_bias;
+    /**
+     * @brief balancing noise level Q bias
+     * Max value: 2.0
+     * Min value: 0.5
+     * >1: boost frames with low noise
+     * <1: dampen frames with low noise
+     * Default is 1.0
+     */
+    double balancing_noise_level_q_bias;
+    /**
+     * @brief Enable balancing luminance lambda bias
+     * Min value is 0.0
+     * Max value is 1 (Exclusive)
+     * 0.0: disabled
+     */
+    double balancing_luminance_lambda_bias;
+    /**
+     * @brief Enable balancing texture lambda bias
+     * Min value is 0.0
+     * Max value is 1 (Exclusive)
+     * 0.0: disabled
+     */
+    double balancing_texture_lambda_bias;
 
     /**
      * @brief Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM.
@@ -1202,14 +1277,12 @@ typedef struct EbSvtAv1EncConfiguration {
     int8_t balancing_r0_dampening_layer;
 
     /**
-     * @brief noise level Q bias
-     * Max value: 1.5
-     * Min value: 0.67
-     * >1: boost frames with low noise
-     * <1: dampen frames with low noise
-     * Default is 1.0
+     * @brief Boost a Super Block if TPL search result favours intra instead of inter prediction modes.
+     * 0: disabled
+     * 1: enabled
+     * Default is 1
      */
-    double noise_level_q_bias;
+    uint8_t balancing_tpl_intra_mode_beta_bias;
 
     /**
      * @brief Enable sharp-tx, a toggle that enables much sharper transforms decisions for higher fidelity output,
@@ -1229,16 +1302,6 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 0.
      */
     uint8_t hbd_mds;
-
-    /**
-     * @brief Enable complex-hvs, a feature that enables the highest complexity and highest fidelity
-     * HVS model at the cost of higher CPU time
-     * 0: default preset behavior
-     * 1: highest complexity HVS model (SSD-Psy)
-     * -1: disable highest complexity HVS model at `--preset -1`
-     * Default is 0.
-     */
-    int8_t complex_hvs;
     
     /**
      * @brief Alternative SSIM tuning, enables VQ enhancements and different rdmult calculations
@@ -1283,11 +1346,15 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool alt_tf_decay;
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 8 * sizeof(Bool) - 13 * sizeof(uint8_t) - 2 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
+    // uint8_t padding[128 - 7 * sizeof(Bool) - 14 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(int32_t) - 2 * sizeof(double)
                     /* exp parameters below */
-                    - 2 * sizeof(Bool) - 18 * sizeof(uint8_t) - 6 * sizeof(int8_t) - sizeof(uint16_t) - sizeof(int32_t) - sizeof(double)];
+                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 9 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 11 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
+
+// Why? How? What?
+// Apparently C has internal paddings, so the manual padding doesn't work at all. The size of this is different in all forks and mainline.
+// _Static_assert(sizeof(EbSvtAv1EncConfiguration) == 640, "Unexpected size of EbSvtAv1EncConfiguration");
 
 /**
  * Returns a string containing "v$tag-$commit_count-g$hash${dirty:+-dirty}"

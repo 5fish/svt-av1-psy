@@ -264,11 +264,12 @@ typedef struct BlkStruct {
     EbWarpedMotionParams wm_params_l0;
     EbWarpedMotionParams wm_params_l1;
 
+    uint8_t forced_skip_taper_active;
+
     unsigned cnt_nz_coeff : 12;
     unsigned prediction_mode_flag : 2;
     // ec; skip coeff only. as defined in section 6.10.11 of the av1 text
     unsigned block_has_coeff : 1;
-    unsigned variance_md_skip_taper_active : 1;
 } BlkStruct;
 typedef struct EcBlkStruct {
     MacroBlockD *av1xd;

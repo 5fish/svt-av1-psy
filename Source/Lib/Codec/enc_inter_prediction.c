@@ -2273,8 +2273,9 @@ static void model_rd_for_sb(PictureControlSet *pcs, EbPictureBufferDesc *predict
     uint64_t            dist_sum = 0;
     SequenceControlSet *scs      = pcs->ppcs->scs;
 
-    const double effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
+    const double effective_energy_bias = get_psy_bias_effective_energy_bias(pcs, ctx);
+    const double effective_satd_bias = get_effective_satd_bias(pcs, ctx);
     EbPictureBufferDesc *input_pic    = bit_depth > 8 ? pcs->input_frame16bit : pcs->ppcs->enhanced_pic;
     const uint32_t       input_offset = (ctx->blk_org_y + input_pic->org_y) * input_pic->stride_y +
         (ctx->blk_org_x + input_pic->org_x);
@@ -2318,7 +2319,10 @@ static void model_rd_for_sb(PictureControlSet *pcs, EbPictureBufferDesc *predict
                                              ctx->blk_geom->bwidth,
                                              ctx->blk_geom->bheight >> shift,
                                              hbd,
-                                             effective_ac_bias)
+                                             effective_ac_bias,
+                                             effective_energy_bias,
+                                             effective_satd_bias,
+                                             pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL)
                     << shift;
             }
             break;
@@ -2341,7 +2345,10 @@ static void model_rd_for_sb(PictureControlSet *pcs, EbPictureBufferDesc *predict
                                              ctx->blk_geom->bwidth_uv,
                                              ctx->blk_geom->bheight_uv,
                                              hbd,
-                                             scs->static_config.ac_bias);
+                                             scs->static_config.ac_bias,
+                                             effective_energy_bias,
+                                             0.0,
+                                             NULL);
             }
             break;
         default:
@@ -2363,7 +2370,10 @@ static void model_rd_for_sb(PictureControlSet *pcs, EbPictureBufferDesc *predict
                                              ctx->blk_geom->bwidth_uv,
                                              ctx->blk_geom->bheight_uv,
                                              hbd,
-                                             scs->static_config.ac_bias);
+                                             scs->static_config.ac_bias,
+                                             effective_energy_bias,
+                                             0.0,
+                                             NULL);
             }
             break;
         }

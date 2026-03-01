@@ -54,6 +54,7 @@ typedef struct ModeDecisionCandidate {
     PredictionMode pred_mode;
     uint8_t        skip_mode; // skip mode_info + coeff. as defined in section 6.10.10 of the av1 text
     Bool           skip_mode_allowed;
+    uint8_t        cand_skip_taper_active;
     uint8_t        use_intrabc;
 
     // Intra Mode
@@ -136,21 +137,6 @@ typedef struct ModeDecisionCandidateBuffer {
     uint8_t     u_has_coeff;
     uint8_t     v_has_coeff;
     uint16_t    y_has_coeff;
-    // true: no SKIP; false: SKIP allowed
-    // Protected.
-    bool        variance_md_skip_taper_active;
-    // 0: no bias; positive: bias towards NEAR_NEARMV; negative: bias towards NEAREST_NEARESTMV;
-    // valid range is probably [-2-2]
-    // Not protected. Must check `if (pcs->scs->static_config.variance_md_bias)`!
-    int8_t      variance_md_mode_bias;
-    // 0: no bias in blocks with no coef, a little bit in blocks with coef;
-    // 1: a little in blocks with no coef, a lot in blocks with coef;
-    // 2: a lot
-    // Not protected. Must check `if (pcs->scs->static_config.variance_md_bias)`!
-    int8_t      variance_md_32_blk_size_bias;
-    // 0: no bias; 1: active
-    // Not protected. Must check `if (pcs->scs->static_config.texture_preserving_qmc_bias)`!
-    bool        texture_preserving_qmc_bias;
     bool
         valid_pred; // The prediction of SIMPLE_TRANSLATION is not valid when OBMC face-off is used (where OBMC will re-use the pred buffer of SIMPLE_TRANSLATION)
 } ModeDecisionCandidateBuffer;

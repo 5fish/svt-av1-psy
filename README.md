@@ -1,13 +1,12 @@
 Experimental additions currently available on `exp`:
 - `--chroma-grain`
 - `--alt-tf-decay`
-- `--variance-md-bias` ([@Akatmks](https://github.com/Akatmks))
-- `--cdef-bias` ([@Akatmks](https://github.com/Akatmks))
-- `--chroma-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
-- `--texture-preserving-qmc-bias` ([@Akatmks](https://github.com/Akatmks))
-- `--balancing-q-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--lineart-psy-bias`, `--texture-psy-bias` family ([@Akatmks](https://github.com/Akatmks))
+- `--balancing-q-bias` family ([@Akatmks](https://github.com/Akatmks))
+- `--texture-ac-bias`, `--lineart-energy-bias`, `--texture-energy-bias`, and `--satd-bias` ([@Akatmks](https://github.com/Akatmks))
+- `--dlf-bias` family ([@Akatmks](https://github.com/Akatmks))
+- `--cdef-bias` family ([@Akatmks](https://github.com/Akatmks))
 - `--noise-level-thr` ([@Akatmks](https://github.com/Akatmks))
-- `--noise-level-q-bias` ([@Akatmks](https://github.com/Akatmks))
 
 Thank you to [@Akatmks](https://github.com/Akatmks) for the contribution of various features.
 
@@ -101,9 +100,9 @@ Set the path to an HDR10+ JSON file for encoding HDR10+ video. SVT-AV1-PSY needs
 
 Manually adjust temporal filtering strength to adjust the trade-off between fewer artifacts in motion and fine detail retention. Each increment is a 2x increase in temporal filtering strength; the default value of 1 is 4x weaker than mainline SVT-AV1's default temporal filter (which would be equivalent to 3 here).
 
-- `--chroma-qm-min` & `--chroma-qm-max` *0 to 15*
+- `--chroma-qm-min` & `--chroma-qm-max` *0 to 15* (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/merge_requests/2442)**)
 
-Set the minimum & maximum quantization matrices for chroma planes. The defaults are 8 and 15, respectively. These options decouple chroma quantization matrix control from the luma quantization matrix options currently available, allowing for more control over chroma quality.
+Set the minimum & maximum quantization matrices for chroma planes. The defaults are 10 and 15, respectively. These options decouple chroma quantization matrix control from the luma quantization matrix options currently available, allowing for more control over chroma quality.
 
 - `Odd dimension encoding support` (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/merge_requests/2350)**)
 
@@ -157,13 +156,13 @@ Automatically sets tiles appropriate for the source input resolution, which in t
 
 5fish/SVT-AV1-PSY has different defaults than mainline SVT-AV1 in order to provide better visual fidelity out of the box. They include:
 
+- `--tune 0` by default, with an adjusted internal noise threshold to reduce risk of artifacts.
 - `--preset 4` by default.
 - Default 10-bit color depth when given a 10-bit input.
 - Disable film grain denoising by default, as it often harms visual fidelity. (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/commit/8b39b41df9e07bbcdbd19ea618762c5db3353c03)**)
 - Default to Tune 2 (SSIM) instead of Tune 1 (PSNR), as it reliably outperforms Tune 1 perceptually & throughout trusted metrics.
 - Enable quantization matrices by default.
-- Set minimum QM level to 2 by default for more consistent performance that min QM level 0 doesn't offer.
-- Set minimum chroma QM level to 8 by default to prevent the encoder from picking suboptimal chroma QMs.
+- `--chroma-qm-min 10` by default to prevent the encoder from picking suboptimal chroma QMs.
 - `--enable-variance-boost` enabled by default.
 - `--keyint -2` (the default) uses a ~10s GOP size (up to 305 frames) instead of ~5s.
 - `--sharpness 1` by default to prioritize encoder sharpness.

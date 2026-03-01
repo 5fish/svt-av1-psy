@@ -564,12 +564,14 @@ static int get_gfu_boost_from_r0_lap(double min_factor, double max_factor, doubl
     const int boost  = (int)rint(factor / r0);
     return boost;
 }
-static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, uint8_t balancing_q_bias) {
+static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double beta, uint8_t is_intra, uint8_t balancing_q_bias, uint8_t balancing_tpl_intra_mode_beta_bias_active) {
     assert(beta > 0.0);
     int q = svt_aom_dc_quant_qtx(qindex, 0, bit_depth);
     int newq;
+    if (balancing_tpl_intra_mode_beta_bias_active && beta > 1)
+        newq = (int)rint(q / pow(beta, (double)3/8));
     // use a less aggressive action when lowering the q for non I_slice
-    if ((!is_intra || balancing_q_bias) && beta > 1)
+    else if ((!is_intra || balancing_q_bias) && beta > 1)
         newq = (int)rint(q / sqrt(sqrt(beta)));
     else
         newq = (int)rint(q / sqrt(beta));
@@ -772,16 +774,15 @@ static int svt_av1_get_q_index_from_qstep_ratio(int leaf_qindex, double qstep_ra
     }
     return qindex;
 }
-static int noise_level_q_bias_core(PictureControlSet *pcs, SequenceControlSet *scs, int qindex) {
-    const int lower_thr = pcs->ppcs->noise_level_thr + (pcs->ppcs->noise_level_thr >> 4); // 1.0625 (~15938)
-    // upper_thr 2.0625 (~30938)
-
-    if (scs->static_config.noise_level_q_bias != 1.0 && pcs->ppcs->noise_level_thr) {
-        double qstep_ratio = CLIP3(0.0, 1.0, (double)(pcs->ppcs->noise_level - lower_thr) / pcs->ppcs->noise_level_thr);
-        if (scs->static_config.noise_level_q_bias > 1.0)
-            qstep_ratio = (qstep_ratio - 1.0) * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
+static int balancing_noise_level_q_bias_core(PictureControlSet *pcs, SequenceControlSet *scs, int qindex) {
+    if (scs->static_config.balancing_noise_level_q_bias != 1.0 && pcs->ppcs->noise_level) {
+        const int32_t noise_level_thr = CLIP3(13500, 17500, pcs->ppcs->noise_level_thr);
+        // 16000 ~ 32000
+        double qstep_ratio = CLIP3(0.0, 1.0, (double)(pcs->ppcs->noise_level - noise_level_thr) / noise_level_thr);
+        if (scs->static_config.balancing_noise_level_q_bias > 1.0)
+            qstep_ratio = (scs->static_config.balancing_noise_level_q_bias - 1.0) * (qstep_ratio - 1.0) + 1.0;
         else // < 0
-            qstep_ratio = qstep_ratio * (scs->static_config.noise_level_q_bias - 1.0) + 1.0;
+            qstep_ratio = (scs->static_config.balancing_noise_level_q_bias - 1.0) * qstep_ratio + 1.0;
 
         qindex = svt_av1_get_q_index_from_qstep_ratio(qindex, qstep_ratio, scs->static_config.encoder_bit_depth);
 
@@ -888,7 +889,7 @@ static int crf_qindex_calc(PictureControlSet *pcs, RATE_CONTROL *rc, int qindex)
             weight = MIN(weight + 0.1, 1);
 
         double qstep_ratio;
-        if (pcs->temporal_layer_index >= AOMMAX(1, pcs->ppcs->hierarchical_levels + scs->static_config.balancing_r0_dampening_layer))
+        if ((int8_t)pcs->temporal_layer_index >= AOMMAX(1, (int8_t)pcs->ppcs->hierarchical_levels + scs->static_config.balancing_r0_dampening_layer))
             qstep_ratio = sqrt(sqrt(ppcs->r0)) * weight * (1.000 + scs->static_config.qp_scale_compress_strength * 0.125);
         else
             qstep_ratio = sqrt(ppcs->r0) * weight * (1.000 + scs->static_config.qp_scale_compress_strength * 0.125);
@@ -1643,6 +1644,50 @@ void svt_variance_adjust_qp(PictureControlSet *pcs, bool readjust_base_q_idx) {
     }
 }
 
+// Copied from `get_sb_tpl_intra_stats` from `enc_mode_config.c`
+static Bool does_sb_tpl_favour_intra_mode(PictureControlSet *pcs, uint32_t sb_index) {
+    PictureParentControlSet *ppcs = pcs->ppcs;
+
+    // Check that TPL data is available and that INTRA was tested in TPL.
+    // Note that not all INTRA modes may be tested in TPL.
+    if (ppcs->tpl_ctrls.enable && ppcs->tpl_src_data_ready &&
+        (pcs->temporal_layer_index < ppcs->hierarchical_levels || !ppcs->tpl_ctrls.disable_intra_pred_nref)) {
+        const int      aligned16_width = (ppcs->aligned_width + 15) >> 4;
+        const int      tpl_blk_size    = ppcs->tpl_ctrls.dispenser_search_level == 0 ? 16
+                    : ppcs->tpl_ctrls.dispenser_search_level == 1                    ? 32
+                                                                                     : 64;
+
+        // Get actual SB width (for cases of incomplete SBs)
+        SbGeom *sb_geom = &ppcs->sb_geom[sb_index];
+        int     sb_cols = MAX(1, sb_geom->width / tpl_blk_size);
+        int     sb_rows = MAX(1, sb_geom->height / tpl_blk_size);
+        const uint32_t mb_origin_x     = sb_geom->org_x;
+        const uint32_t mb_origin_y     = sb_geom->org_y;
+
+        int            intra_count     = 0;
+
+        // Loop over all blocks in the SB
+        for (int i = 0; i < sb_rows; i++) {
+            TplSrcStats *tpl_src_stats_buffer =
+                &ppcs->pa_me_data
+                     ->tpl_src_stats_buffer[((mb_origin_y >> 4) + i) * aligned16_width + (mb_origin_x >> 4)];
+            for (int j = 0; j < sb_cols; j++) {
+                if (is_intra_mode(tpl_src_stats_buffer->best_mode) &&
+                    !av1_is_directional_mode(tpl_src_stats_buffer->best_mode)) {
+                    intra_count++;
+                }
+                tpl_src_stats_buffer++;
+            }
+        }
+
+        int total_count = sb_rows * sb_cols;
+        if (intra_count >= (total_count >> 1) + (total_count >> 2))
+            return 1;
+        else
+            return 0;
+    }
+    return 0;
+}
 /******************************************************
  * svt_aom_sb_qp_derivation_tpl_la
  * Calculates the QP per SB based on the tpl statistics
@@ -1666,7 +1711,9 @@ void svt_aom_sb_qp_derivation_tpl_la(PictureControlSet *pcs) {
             SuperBlock *sb_ptr = pcs->sb_ptr_array[sb_addr];
             double      beta   = ppcs_ptr->pa_me_data->tpl_beta[sb_addr];
             int         offset = svt_av1_get_deltaq_offset(
-                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE, scs->static_config.balancing_q_bias);
+                scs->static_config.encoder_bit_depth, sb_ptr->qindex, beta, pcs->ppcs->slice_type == I_SLICE,
+                scs->static_config.balancing_q_bias,
+                scs->static_config.balancing_q_bias && scs->static_config.balancing_tpl_intra_mode_beta_bias && does_sb_tpl_favour_intra_mode(pcs, sb_addr));
             offset = AOMMIN(offset, pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) - 1);
             offset = AOMMAX(offset, -pcs->ppcs->frm_hdr.delta_q_params.delta_q_res * 9 * ((pcs->ppcs->scs->static_config.tune == 3 || scs->static_config.balancing_q_bias) ? 8 : 4) + 1);
 
@@ -1718,7 +1765,8 @@ void normalize_sb_delta_q(PictureControlSet *pcs) {
         }
     }
     else { // `--balancing-q-bias 1 --enable-variance-boost 0`
-        if (pcs->temporal_layer_index <= pcs->ppcs->hierarchical_levels - (int32_t)scs->static_config.hierarchical_levels)
+        if ((pcs->ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
+            pcs->ppcs->slice_type == I_SLICE)
             if (qindex >= 60)
                 delta_q_res = 4;
             else
@@ -3444,11 +3492,11 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                                     av1_rc_init(scs);
                                 }
 
-                                new_qindex = noise_level_q_bias_core(pcs, scs, rc->active_worst_quality);
+                                new_qindex = balancing_noise_level_q_bias_core(pcs, scs, rc->active_worst_quality);
 
                                 new_qindex = crf_qindex_calc(pcs, rc, new_qindex);
                             } else { // if CQP
-                                new_qindex = noise_level_q_bias_core(pcs, scs, scs_qindex);
+                                new_qindex = balancing_noise_level_q_bias_core(pcs, scs, scs_qindex);
 
                                 new_qindex = cqp_qindex_calc(pcs, new_qindex);
                             }
@@ -3490,6 +3538,7 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                                                          (int32_t)scs->static_config.max_qp_allowed,
                                                          (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
                     }
+
                     int32_t chroma_qindex = frm_hdr->quantization_params.base_q_idx;
                     if (frame_is_intra_only(pcs->ppcs)) {
                         chroma_qindex += scs->static_config.key_frame_chroma_qindex_offset;
@@ -3497,7 +3546,7 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                         chroma_qindex += scs->static_config.chroma_qindex_offsets[pcs->temporal_layer_index];
                     }
 
-                    if (scs->static_config.chroma_qmc_bias)
+                    if (scs->static_config.lineart_psy_bias >= 2.0 || scs->static_config.texture_psy_bias >= 4.0)
                         chroma_qindex -= chroma_qindex >> 2;
 
                     uint8_t chroma_qindex_adjustment = chroma_qindex;
@@ -3726,8 +3775,8 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                 // enable sb level qindex when tune 2
                 pcs->ppcs->frm_hdr.delta_q_params.delta_q_present = 1;
             }
-			
-            if (scs->static_config.rate_control_mode == SVT_AV1_RC_MODE_CQP_OR_CRF && scs->static_config.low_q_taper) 
+
+            if (scs->static_config.rate_control_mode == SVT_AV1_RC_MODE_CQP_OR_CRF && scs->static_config.low_q_taper)
             {
                 lowq_taper(pcs);
             }
@@ -3738,7 +3787,7 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                 // adjust delta q res and normalize superblock delta q values to reduce signaling overhead
                 normalize_sb_delta_q(pcs);
             }
-			
+
             if (scs->static_config.rate_control_mode && !is_superres_recode_task) {
                 svt_aom_update_rc_counts(pcs->ppcs);
             }

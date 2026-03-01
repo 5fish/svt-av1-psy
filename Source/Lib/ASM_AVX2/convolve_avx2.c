@@ -1767,6 +1767,55 @@ int svt_aom_satd_avx2(const TranLow *coeff, int length) {
     }
 }
 
+uint64_t qm_satd_no_rshift_avx2(const TranLow *input_coeffs, const TranLow *recon_coeffs,
+                                const QmVal *satd_bias_qmatrix, const uint16_t size) {
+    __m256i v_acc = _mm256_setzero_si256();
+    int     i;
+
+    if (satd_bias_qmatrix != NULL) {
+        for (i = 0; i < size; i += 8) {
+            const __m256i v_in = _mm256_loadu_si256((const __m256i *)(input_coeffs + i));
+            const __m256i v_re = _mm256_loadu_si256((const __m256i *)(recon_coeffs + i));
+    
+            const __m256i v_diff = _mm256_sub_epi32(v_in, v_re);
+            const __m256i v_abs = _mm256_abs_epi32(v_diff);
+            
+            const __m128i v_bias8 = _mm_loadl_epi64((const __m128i *)(satd_bias_qmatrix + i));
+            const __m256i v_bias = _mm256_cvtepu8_epi32(v_bias8);
+
+            const __m256i v_abs_lo = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(v_abs));
+            const __m256i v_bias_lo = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(v_bias));
+            const __m256i v_mul_lo = _mm256_mul_epu32(v_abs_lo, v_bias_lo);
+            v_acc = _mm256_add_epi64(v_acc, v_mul_lo);
+            const __m256i v_abs_hi = _mm256_cvtepu32_epi64(_mm256_extracti128_si256(v_abs, 1));
+            const __m256i v_bias_hi = _mm256_cvtepu32_epi64(_mm256_extracti128_si256(v_bias, 1));
+            const __m256i v_mul_hi = _mm256_mul_epu32(v_abs_hi, v_bias_hi);
+            v_acc = _mm256_add_epi64(v_acc, v_mul_hi);
+        }
+    }
+    else {
+        for (i = 0; i < size; i += 8) {
+            const __m256i v_in = _mm256_loadu_si256((const __m256i *)(input_coeffs + i));
+            const __m256i v_re = _mm256_loadu_si256((const __m256i *)(recon_coeffs + i));
+    
+            const __m256i v_diff = _mm256_sub_epi32(v_in, v_re);
+            const __m256i v_abs = _mm256_abs_epi32(v_diff);
+
+            const __m256i v_abs_lo = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(v_abs));
+            v_acc = _mm256_add_epi64(v_acc, _mm256_slli_epi64(v_abs_lo, 5));
+            const __m256i v_abs_hi = _mm256_cvtepu32_epi64(_mm256_extracti128_si256(v_abs, 1));
+            v_acc = _mm256_add_epi64(v_acc, _mm256_slli_epi64(v_abs_hi, 5));
+        }
+    }
+
+    const __m128i v_sum_fi = _mm_add_epi64(_mm256_castsi256_si128(v_acc),
+                                           _mm256_extracti128_si256(v_acc, 1));
+    const __m128i v_sum_s = _mm_unpackhi_epi64(v_sum_fi, v_sum_fi);
+    const __m128i v_sum = _mm_add_epi64(v_sum_fi, v_sum_s);
+
+    return (uint64_t)_mm_cvtsi128_si64(v_sum);
+}
+
 static INLINE void read_coeff(const TranLow *coeff, intptr_t offset, __m256i *c) {
     const TranLow *addr = coeff + offset;
 

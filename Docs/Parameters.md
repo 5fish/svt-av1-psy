@@ -26,7 +26,7 @@ The encoder parameters are listed in this table below along with their
 | **PredStructFile**                 | --pred-struct-file   | any string   | None          | Manual prediction structure file path                                                                             |
 | **Progress**                       | --progress           | [0-2]        | 1             | Verbosity of the output [0: no progress is printed, 1: default output, 2: detailed output]                        |
 | **NoProgress**                     | --no-progress        | [0-1]        | 0             | Do not print out progress [1: `--progress 0`, 0: `--progress 1`]                                                  |
-| **EncoderMode**                    | --preset             | [-3-13]      | 4             | Encoder preset, presets -3, -2, -1, & 13 are for debugging. Higher presets means faster encodes, but with a quality tradeoff |
+| **EncoderMode**                    | --preset             | [-3-13]      | 4             | Encoder preset, presets -3, -2 & 13 are for debugging. Higher presets means faster encodes, but with a quality tradeoff |
 | **SvtAv1Params**                   | --svtav1-params      | any string   | None          | Colon-separated list of `key=value` pairs of parameters with keys based on command line options without `--`      |
 |                                    | --nch                | [1-6]        | 1             | Number of channels (library instance) that will be instantiated                                                   |
 
@@ -47,8 +47,6 @@ SvtAv1EncApp \
 This will set `--preset` to 10 and `--crf` to 30 inside the API along with some other parameters.
 
 Do note however, that there is no error checking for duplicate keys and only for invalid keys or values.
-
-For more information on valid values for specific keys, refer to the [EbEncSettings](../Source/Lib/Encoder/Globals/EbEncSettings.c) file.
 
 ## Encoder Global Options
 
@@ -77,20 +75,52 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **PinnedExecution**              | --pin                       | [0-core count of the machine]  | 0           | Pin the execution to the first N cores. [0: no pinning, N: number of cores to pin to]. Refer to Appendix A.1  |
 | **TargetSocket**                 | --ss                        | [-1,1]                         | -1          | Specifies which socket to run on, assumes a max of two equally-sized sockets. Refer to Appendix A.1           |
 | **FastDecode**                   | --fast-decode               | [0,2]                          | 0           | Tune settings to output bitstreams that can be decoded faster, [0 = OFF, 1,2 = levels for decode-targeted optimization (2 yields faster decoder speed)]. Defaults to 5 temporal layers structure but may override with --hierarchical-levels |
-| **Tune**                         | --tune                      | [0-4]                          | 2           | Optimize the encoding process for different desired outcomes [0 = VQ, 1 = PSNR, 2 = SSIM, 3 = Subjective SSIM, 4 = Still Picture] |
-| **Sharpness**                    | --sharpness                 | [-7-7]                         | 1           | Bias towards block sharpness in rate-distortion optimization of transform coefficients                        |
+| **Tune**                         | --tune                      | [0-4]                          | 0           | Optimize the encoding process for different desired outcomes [0 = VQ, 1 = PSNR, 2 = SSIM, 3 = Subjective SSIM, 4 = Still Picture] |
+| **Sharpness**                    | --sharpness                 | [-14-14]                       | 2           | Bias towards block sharpness in rate-distortion optimization of transform coefficients                        |
 | **FrameLumaBias**                | --frame-luma-bias           | [0-100]                        | 0           | Adjusts frame-level QP based on average luminance across each frame                                           |
 | **AltSSIMTuning**                | --alt-ssim-tuning           | [0-1]                          | 0           | Enables the usage of VQ optimizations and an alternative SSIM calculation pathway (Only operates with tunes 2 & 4) |
 | **AdaptiveFilmGrain**            | --adaptive-film-grain       | [0,1]                          | 1           | Allows film grain synthesis to be sourced from different block sizes depending on resolution                  |
 | **TemporalFilteringStrength**    | --tf-strength               | [0-4]                          | 1           | Manually adjust temporal filtering strength. Higher values = stronger temporal filtering                      |
 | **KeyframeTemporalFilteringStrength** | --kf-tf-strength       | [0-4]                          | 1           | Manually adjust temporal filtering strength for keyframes. Higher values = stronger temporal filtering        |
-| **NoiseNormStrength**            | --noise-norm-strength       | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
+| **FilteringNoiseDetection**      | --filtering-noise-detection | [0-4]                          | 0           | Controls noise detection which disables CDEF/restoration when noise level is high enough, enabled by default on tunes 0 and 3 [0: default tune behavior, 1: on, 2: off, 3: on (CDEF only), 4: on (restoration only)] |
 | **NoiseLevelThr**                | --noise-level-thr           | [-2-`(2^31)-1`]                | -1          | Change encoder noise level threshold. Further explanations can be found below. [-1: default encoder behaviour, -2: print the noise level for each frame, >0: set the noise level threshold] |
+| **BalancingQBias**               | --balancing-q-bias          | [0-1]                          | 0           | Enable balancing Q bias. Balancing Q bias biases the TPL system on both per frame and per Super Block level for better detail retention.             |
+| **BalancingLuminanceQBias**      | --balancing-luminance-q-bias | [0.0-25.0]                    | 0.0         | Enable balancing luminance Q bias. Boost Super Block with low luminance via beta. Recommended to be used with `--balancing-q-bias` but can be used without. [0: disabled, 8.0: default with `--balancing-q-bias 1`] |
+| **BalancingNoiseLevelQBias**     | --balancing-noise-level-q-bias | [0.5-2.0]                   | 1.0         | Boost a frame's base qindex when noise level is below the threshold. Can be used without `--balancing-q-bias`. [1.0: disabled, >1: boost frames with low noise, <1: dampen frames with low noise, 0.91-1.10: recommended range] |
+| **BalancingLuminanceLambdaBias** | --balancing-luminance-lambda-bias | [0.0-0.999]              | 0.0         | Enable balancing luminance lambda bias. Bias lambda in mode decision in super block with low luminance. [0: default encoder behaviour] |
+| **BalancingTextureLambdaBias**   | --balancing-texture-lambda-bias | [0.0-0.999]                | 0.0         | Enable balancing texture lambda bias. Bias lambda in low variance regions. [0: default encoder behaviour]     |
+| **BalancingR0BasedLayer**        | --balancing-r0-based-layer  | [-5-0]                         | -3          | Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM. This affects a wide range of features and can be used without `--balancing-q-bias`. It's recommended not to change this parameter when using `--balancing-q-bias 1` [-3: default encoder behaviour, 0: default with `--balancing-q-bias 1`] |
+| **BalancingR0DampeningLayer**    | --balancing-r0-dampening-layer | [-5-1]                      | 1           | Dampen r0-based boosting in frames with temporal layer higher than or equal to hierarchical levels + `--balancing-r0-dampening-layer`. This affects a wide range of features and can be used without `--balancing-q-bias`. [1: disabled, -2: default with `--balancing-q-bias 1`] |
+| **BalancingTPLIntraModeBetaBias** | --balancing-tpl-intra-mode-beta-bias | [0-1]                | 1           | Boost a Super Block if TPL search result favours intra instead of inter prediction modes. Requires `--balancing-q-bias 1`. [0: disabled [Default]] |
+| **EnableQM**                     | --enable-qm                 | [0-1]                          | 1           | Enable quantisation matrices                                                                                  |
+| **MinQmLevel**                   | --qm-min                    | [0-15]                         | 8           | Min quant matrix flatness                                                                                     |
+| **MaxQmLevel**                   | --qm-max                    | [0-15]                         | 15          | Max quant matrix flatness                                                                                     |
+| **MinChromaQmLevel**             | --chroma-qm-min             | [0-15]                         | 10          | Min chroma quant matrix flatness                                                                              |
+| **MaxChromaQmLevel**             | --chroma-qm-max             | [0-15]                         | 15          | Max chroma quant matrix flatness                                                                              |
+| **NoiseNormStrength**            | --noise-norm-strength       | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
+| **AcBias**                       | --ac-bias                   | [0.0-8.0]                      | 1.0         | Sets the strength of the internal RD metric to bias toward high-frequency error (helps with texture preservation and film grain retention) |
+| **TextureAcBias**                | --texture-ac-bias           | [0.0-64.0]                     | same as `--ac-bias` | `--ac-bias` strength in low variance regions. Application based on `--texture-variance-thr`, and protection based on `--lineart-variance-thr`. |
+| **LineartEnergyBias**            | --lineart-energy-bias       | [0.667-1.5]                    | 1.0         | Prefer higher energy even if the encode will have higher energy than the source in high variance regions.     |
+| **TextureEnergyBias**            | --texture-energy-bias       | [0.667-1.5]                    | 1.0         | Prefer higher energy even if the encode will have higher energy than the source in low variance regions. Application based on `--texture-variance-thr`, and protection based on `--lineart-variance-thr`. |
+| **SATDBias**                     | --satd-bias                 | [0.0-16.0]                     | 0.0         | Add SATD calculation to distortion calculation.                                                               |
+| **TxBias**                       | --tx-bias                   | [0-3]                          | 0           | Transform size/type bias mode [0: disabled, 1: full, 2: transform size only, 3: interpolation filter only]    |
+| **HBDMDS**                       | --hbd-mds                   | [0-3]                          | 0           | Activation of high bit depth mode decision (0: default behavior, 1: full 10b MD, 2: hybrid 8/10b MD, 3: full 8b MD) |
+| **SharpTX**                      | --sharp-tx                  | [0-1]                          | 1           | Activation of sharp transform optimizations for higher fidelity encoding (cleaner output with slightly higher chances of artifacting) |
 | **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)       |
-| **VarianceMDBias**               | --variance-md-bias          | [0-1]                          | 0           | Bias prediction mode, transform type, skip, and block size based on variance                                  |
-| **VarianceMDBiasThr**            | --variance-md-bias-thr      | [0.0-16.0]                     | 6.5         | Threshold for `--variance-md-bias` and `--texture-preserving-qmc-bias`; Variance bigger than this value are treated as strong lineart, while variance smaller than this value are treated as weak lineart and texture |
-| **ChromaQMCBias**                | --chroma-qmc-bias           | [0-2]                          | 0           | Bias various features for better chroma retention [0: disabled, 1: full, 2: light]                            |
-| **TexturePreservingQMCBias**     | --texture-preserving-qmc-bias | [0-1]                        | 0           | Aggressively bias smaller block size, prediction mode, and CDEF in aid of texture retention. Slightly harmful to lineart |
+| **LineartPsyBias**               | --lineart-psy-bias          | [0-7,-2]                       | 0           | Improve lineart retention. Check below for more description. [0: disabled, -2: variance threshold testing]    |
+| **TexturePsyBias**               | --texture-psy-bias          | [0-7]                          | 0           | Improve texture retention. Check below for more description. [0: disabled]                                    |
+| **LineartVarianceThr**           | --lineart-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--lineart-psy-bias`. Check below for more description.                                         |
+| **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
+| **PsyBiasmds0SAD**               | --psy-bias-mds0-sad         | [0-1]                          | 0           | Use SAD in mds0                                                                                               |
+| **PsyBiasDisableWarpedMotion**   | --psy-bias-disable-warped-motion | [0-1]                     | 0           | Disable warped motion                                                                                         |
+| **PsyBiasDisableMe8x8**          | --psy-bias-disable-me-8x8   | [0-1]                          | 0           | Disable me 8x8 and tf 8x8 pred                                                                                |
+| **PsyBiasDisableSGRPROJ**        | --psy-bias-disable-sgrproj  | [0-1]                          | 0           | Disable SGRPROJ in restoration                                                                                |
+| **PsyBiasCoeffLvlOffset**        | --psy-bias-coeff-lvl-offset | [-3-3]                         | 0           | Offset `pcs->coeff_lvl`                                                                                       |
+| **PsyBiasmds0IntraInterModeBias** | --psy-bias-mds0-intra-inter-mode-bias | [0-1]               | 0           | Bias towards intra mode in base layers, and against intra mode in non base layers                             |
+| **PsyBiasInterModeBias**         | --psy-bias-inter-mode-bias  | [0-5]                          | 0           | Bias against intra mode in non base layers                                                                    |
+| **PsyBiasQMBias**                | --psy-bias-qm-bias          | [0-1]                          | 0           | Increase QM level in frames of higher temporal layer                                                          |
+| **HighQualityEncodePsyBias**     | --high-quality-encode-psy-bias | [0-1]                       | 0           | Bias various features for high quality encoding. Check below for more description. [Default to `1` when `--crf [<= 24.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
+| **HighFidelityEncodePsyBias**    | --high-fidelity-encode-psy-bias | [0-1]                      | 0           | Bias various features for high fidelity encoding. Check below for more description. [Default to `1` when `--crf [<= 16.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 
 ### Noise level threshold
 
@@ -99,50 +129,147 @@ In practice, sometimes this is overly conservative, and people have been talking
 Instead, you can use this parameter to control this threshold so that certain feature are available when you need it and still disabled in noisy materials.  
 
 To adjust the noise level, use `--noise-level-thr -2` to run a short test encode. This will print the detected noise level for each frame. You can then set the threshold between the frames you want features to be enabled and frames you want features to be disabled.
-Try not to deviate too much from the default threshold, which is `15000` as of late 2025. This noise level detection is connected to various features in mode decision and other parts of the encoder in addition to CDEF and restoration.  
+Try not to deviate too much from the default threshold, which is `16000` as of early 2026. This noise level detection is connected to various features in mode decision and other parts of the encoder in addition to CDEF and restoration.  
 
-### Variance bias threshold calculation
+### `--lineart-psy-bias`
+
+| `--lineart-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [me] `--psy-bias-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [me] `--psy-bias-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `8.0` | `10.0` | `10.0` | `12.0` | `12.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] alternative high freq dev thr | ◯ | ◯ | － | － | － | － | － | |
+| [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--noise-norm-strength 0` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
+| [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-inter-mode-bias` | ✕ | ✕ | `1` | `1` | `1` | `1` | `1` | Can be overridden |
+| [md] variance `bsize` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] variance 32x32 blk size bias | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
+| [md] variance 32x32 blk size taper | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [dlf] `--dlf-sharpness 7` | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | Can be overridden |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | | |
+| [cdef] chroma cdef distortion bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [rest] `--psy-bias-disable-sgrproj 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+
+<ins>To use `--lineart-psy-bias`</ins>, select a level based on how much effort you want to spend on lineart retention. Specifically:  
+* `--lineart-psy-bias 3` is generally good for all sources, especially sources without weak lineart and easier to handle.  
+* `--lineart-psy-bias 4` puts a little bit more focus on weak lineart retention than `--lineart-psy-bias 3`.  
+* `--lineart-psy-bias 5` and above is optimised for weak lineart retention. Some features here trade overall efficiency for better weak lineart retention, such as variance skip taper enabled at `--lineart-psy-bias 6` and variance 32x32 blk size taper enabled at `--lineart-psy-bias 7`.  
+
+A parameter worthy of attention is `--dlf-sharpness 7`. It is only enabled at a high `--lineart-psy-bias 6` level because it's highly clean source specific. Using this on texture heavy or noisy sources will result in a ton of blocking, but on the other hand, it's very, very good on clean source. You should enable this as well as `--noise-norm-strength 0` if you're encoding a clean source no matter what `--lineart-psy-bias` level you use.  
+
+Additionally, `--qm-min` and `--chroma-qm-min` can be adjusted as well for each sources for better quality. Lower `--dlf-bias-max-dlf` and `--cdef-bias-max-cdef` will be helpful on clean sources for better retention as well.  
+
+Other than the parameters listed here, you can also check out `--satd-bias 0.5`, `--lineart-energy-bias 0.98`, `--balancing-texture-lambda-bias 0.5` and see these parameters would be good for the source as well.  
+
+You should use `--lineart-variance-thr` to adjust the threshold above which a detail will be treated as lineart. On clean source, you want the `--lineart-variance-thr` to cover the weak lineart you want to protect. On noisy sources, weak lineart doesn't quite perform like lineart and performs more like texture, so it might not be needed to adjust the threshold. Regarding how to adjust the variance threshold, check [`--lineart-variance-thr` and `--texture-variance-thr` calculation](#--lineart-variance-thr-and---texture-variance-thr-calculation).  
+
+### `--texture-psy-bias`
+
+| `--texture-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `12.0` | `16.0` | `16.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] allow HVA/HVB at p2 or slower | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
+| [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-mds0-sad 1` | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | Can be overridden |
+| [md] disable mds0 unipred bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | |
+| [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `1.0` | `3.0` | `3.0` | `3.0` | Can be overridden |
+| [md] `--texture-ac-bias` | － | － | － | `3.0` | `8.0` | `8.0` | `8.0` | Can be overridden |
+| [md] `--texture-energy-bias` | `1.00` | `1.00` | `1.02` | `1.02` | `1.10` | `1.10` | `1.10` | Can be overridden |
+| [md] variance obmc decision | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `GLOBALMV` bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-inter-mode-bias` | ✕ | ✕ | `1` | `1` | `1` | `2` | `2` | Can be overridden |
+| [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [dlf] `--dlf-bias-max-dlf 6,2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [dlf] `--dlf-bias-min-dlf 0,0` | ✕ | ✕ | ◯ | ◯ | ✕ | ✕ | ◯ | Can be overridden |
+| [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [cdef] bias towards disabling CDEF | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
+| [cdef] `--cdef-bias-max-cdef -,0,-,0` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+
+<ins>To use `--texture-psy-bias`</ins>, select a level based on how much effort you want to spend on texture retention. Specifically:  
+* `--texture-psy-bias 2` is fine to use on sources with little texture.  
+* `--texture-psy-bias 3` puts a little bit of focus on texture, and can be used on sources with occasional texture.  
+* `--texture-psy-bias 4` is suitable for sources with detailed texture. At this level, it starts to harm especially weak lineart in clean sources a little bit, but should still generally be fine for most sources.  
+* `--texture-psy-bias 5` and above is suitabled for encodes where texture retention is a great priority, or when the source is very texture heavy.  
+
+There are a lot of `-psy-bias` features that're isolated into individually togglable parameters. For example, a properly set `--noise-norm-strength` to the source will help regardless which `--texture-psy-bias` levels you use. If noise in the source is very bad, and you can't perform filtering to stabilise the noise, you might want to increase `--psy-bias-inter-mode-bias`. If entire frame of the source is covered by a layer of texture, then features like `--psy-bias-mds0-intra-inter-mode-bias 1` and `--psy-bias-mds0-sad 1` might become very handy.  
+
+In addition to the parameters set here, you're recommended to use `--enable-cdef 0` whenever your source and your target filesize permits, which will help greatly with texture retention. You should also lower `--dlf-bias-max-dlf` and `--dlf-bias-min-dlf` as much as your source allows.  
+
+On noisy sources with dynamic details instead of static texture, individual parameters here might need to be adjusted, most importantly, `--balancing-r0-dampening-layer`, as well as all the biases related to intra / inter mode and `--texture-energy-bias`. `--dlf-bias` might need to be adjusted as well if the blocking becomes too bad.  
+
+### `--lineart-variance-thr` and `--texture-variance-thr` calculation
 
 Variance bias is based on internal `pcs->ppcs->variance` value calculated for each block. Sharp edges such as strong linearts will have high variance, while texture and weak linearts will have small variance.  
-To understand what `pcs->ppcs->variance` is like, you can use `--variance-md-bias` on a completely still scene, and observe in a frame that's not the keyframe, and see which blocks are allowed to skip or not. This should correspond to the the number displayed as `variance md skip taper threshold` in encoder prinout. Only blocks with variance below the `variance md skip taper threshold` printout are allowed to skip.  
+To understand what `pcs->ppcs->variance` is like, you can use `--lineart-psy-bias -2` on a completely still and clean scene. You can check any frame that's not a keyframe in [aomanalyzer](https://pengbins.github.io/aomanalyzer.io/), and by seeing which blocks are allowed to skip or not, you can know whether your currently set `--lineart-variance-thr` can cover the weak lineart you want.  
 
-The `--variance-md-bias-thr` commandline parameter specify the threshold that will be used in various variance based bias and tapers.  
-Note that this commandline parameter is not raw `pcs->ppcs->variance` value! Use `pow(2, variance-md-bias-thr) - 1` to convert `--variance-md-bias-thr` to `pcs->ppcs->variance` value. As an example, the default `--variance-md-bias-thr` commandline parameter is `6.5`. This is converted to `pcs->ppcs->variance` value via `pow(2, 6.5) - 1`, which is `89.51`, which gets cut off to integer to `89`.  
-Internally this value is converted several times to different thresholds for different bias.  
-In general, anything above `variance_md_bias_thr >> 1`-ish is treated as strong linearts, anything between `variance_md_bias_thr >> 1` and `variance_md_bias_thr >> 3` is the inbetween area, and anything below `variance_md_bias_thr >> 3`-ish is treated as texture.  
-You can search for `static_config.variance_md_bias_thr` variable in the code for how each individual threshold are calculated. Do note that these thresholds are still being tested out in encodes, and we might readjust individual thresholds in the future.  
+The `--lineart-variance-thr` and `--texture-variance-thr` commandline parameter specify the threshold that will be used in various variance based biases and tapers in the `-psy-bias` system.  
+Note that these commandline parameters are not using raw `pcs->ppcs->variance` value. You can use `pow(2, lineart_variance_thr) - 1` and `pow(2, texture_variance_thr) - 1` to convert commandline value to raw `pcs->ppcs->variance` value. These are displayed in encoder printout as `variance base thr`.  
+Based on these base threshold, internally, the encoder convert this value several times to get the different threshold for different biases and tapers. Commonly anything that's above `"variance base thr" >> 1` is treated as strong lineart, the region between `"variance base thr" >> 1` and `"variance base thr" >> 2` is considered the inbetween area, while anything below `"variance base thr" >> 2` is treated as texture. These two thresholds are also displayed in the encoder printout as `variance common thr`. Specifically when you're using `--lineart-psy-bias -2` to test skip taper, or if you're actually using skip taper in encode with `--lineart-psy-bias [>= 6]`, the actual threshold used in the skip taper decision is lineart's `variance common thr`.  
 
-### Chroma QMC Bias
+### `--high-quality-encode-psy-bias` and `--high-fidelity-encode-psy-bias`
 
-`--chroma-qmc-bias 1` (full) is aggressive and only recommended if you actually see chroma issues that you want to address, while `--chroma-qmc-bias 2` (light) can be applied in all encodes.  
+When either `--lineart-psy-bias` or `--texture-psy-bias` are selected, `--high-quality-encode-psy-bias` is enabled by default with `--crf [<= 24.00]`, and `--high-fidelity-encode-psy-bias` is enabled by default with `--crf [<= 16.00]`.  
+About the difference between high quality and high fidelity encode, let's say we have a region full of texture: The target of high quality encode is to make encode full of texture as well. SVT-AV1's hierarchical structure is very powerful at recovering information from other frames. Sometimes even when the texture is lost in the source, SVT-AV1 can recover the lost information from nearby frames. However, in high fidelity encode, our target has changed. Instead, we want our encode to be exactly the same as the source, retaining all the peaks and grooves of the original texture at every frame. This is the main difference between the two.  
+However, apart from this, both parameters have various features such as boosting darker areas, boosting chroma retention that are suitable for higher quality encodes in general.  
 
-You should enable CDEF with `--enable-cdef 1` when using `--chroma-qmc-bias`. CDEF is the most effective tool at preventing distortion in weak chroma lineart. These parameters are set for you:
-* `--cdef-bias 1`.  
+#### `--high-quality-encode-psy-bias` Features
 
-If you want an even stronger dose using `--chroma-qmc-bias 1` (full), `--max-32-tx-size 1` is highly recommended.  
+* `--balancing-luminance-q-bias`: Add an additional `2.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
+* disable `bypass_md_stage_2` in `--preset 2` and `1`.  
+* variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
+* `--lineart-energy-bias`: Default changed from `1.00` to `0.98`. Can be overridden.  
+* `--dlf-bias-min-dlf`: Default changed to `0,0`. Can be overridden.  
 
-#### Features
+Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful.  
 
-| `--chroma-qmc-bias` level | `1` (full) | `2` (light) |
-| :-- | :--: | :--: |
-| [rc] `--startup-mg-size` | ◯ | ✕ |
-| [rc] `chroma_qindex` bias | ◯ | ◯ |
-| [md] chroma complex hvs | ◯ | ◯ |
-| [md] `pred_mode` bias | ◯ | ✕ |
-| [md] `bsize` bias | ◯ | ✕ |
-| [cdef] `--cdef-bias 1` | ◯ | ◯ |
-| [cdef] distortion bias | ◯ | △ |
+##### `--high-fidelity-encode-psy-bias` Features
 
-### Texture Preserving QMC Bias
+Setting `--high-fidelity-encode-psy-bias 1` sets `--high-quality-encode-psy-bias 1` as well, and cannot be overridden.  
+In additional to features in `--high-quality-encode-psy-bias 1`:  
 
-In addition to internal adjustments, `--texture-preserving-qmc-bias` also sets these parameters for you:  
-* `--balancing-q-bias 1`. Please note that `--balancing-q-bias 1` is not intended to be used with `--qp-scale-compress-strength`, so make sure you either don't set `--qp-scale-compress-strength`, or set `--qp-scale-compress-strength` to `0.0`. If you want to use `--qp-scale-compress-strength` instead, you can disable this by setting `--balancing-q-bias 0` explicitly.
-* `--balancing-r0-based-layer -3`. Can be overwritten.
-* `--balancing-r0-dampening-layer 1`. Can be overwritten.
+* `--hierarchical-levels`: Default changed from `5` to `3`. Can be overridden.  
+* `--balancing-luminance-q-bias`: Add an additional `4.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
+* `--balancing-luminance-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
+* `--balancing-texture-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
+* variance cand elimination (`--texture-psy-bias [>= 3]`): Raise variance threshold from `lineart_variance_thr >> 2` to `lineart_variance_thr >> 1`.  
+* `--psy-bias-disable-me-8x8`: Revert `--lineart-psy-bias [>= 2]` settings back to `0`. Can be overridden.  
+* `--sharpness`: Default changed from `2` to `4`. Can be overridden.  
+* `--ac-bias` and `--texture-ac-bias`: Boost `--texture-psy-bias`'s default for `--ac-bias` and `--texture-ac-bias` by 1.5 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--ac-bias` or `--texture-ac-bias` value.  
+* `--texture-energy-bias`: Boost `--texture-psy-bias`'s default by 2 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--texture-energy-bias` value.  
+* `--satd-bias`: Default changed from `0.00` to `1.00`. Can be overridden.  
+* `--texture-cdef-bias-max-cdef`: Default changed from inheriting `--cdef-bias-max-cdef` to `1,0,0,0`. Can be overridden.  
+* `--texture-cdef-bias-min-cdef`: Default changed from inheriting `--cdef-bias-min-cdef` to `0,0,0,0`. Can be overridden.  
 
-You're recommended to disable CDEF with `--enable-cdef 0` when texture preservation is your top priority, but in case you want to still have it enabled to clean up some ringing, it also has a special protective CDEF mode. In additional to internal CDEF adjustments, these parameters are set for you:  
-* `--cdef-bias 1`.  
-* `--cdef-bias-max-cdef -,0,-,0 --cdef-bias-min-cdef -,0,-,0`: The secondary CDEF filtering is disabled. You may still set primary CDEF filtering to any value you prefer.  
+Additionally, `--balancing-noise-level-q-bias 1.10` or `1.15` which can balance the quality between noisy and static scenes could be beneficial.  
 
 ## Rate Control Options
 
@@ -162,18 +289,8 @@ You're recommended to disable CDEF with `--enable-cdef 0` when texture preservat
 | **VarianceOctile**               | --variance-octile                | [1-8]      | 5           | Set variance algorithm 8x8 block selectivity level [1: 1st octile, 4: median, 5: 5th octile [Default], 8: maximum]                                   |
 | **AdaptiveQuantization**         | --aq-mode                        | [0-2]      | 2           | Set adaptive QP level [0: off, 1: variance base using AV1 segments, 2: deltaq pred efficiency]                                                       |
 | **EnableAltCurve**               | --enable-alt-curve               | [0-1]      | 0           | Enable alternative variance boost curve                                                                                                              |
-| **AcBias**                       | --ac-bias                        | [0.0-8.0]  | 1.0         | Sets the strength of the internal RD metric to bias toward high-frequency error (helps with texture preservation and film grain retention)           |
-| **TxBias**                       | --tx-bias                        | [0-3]      | 0           | Transform size/type bias mode [0: disabled, 1: full, 2: transform size only, 3: interpolation filter only]                                           |
-| **SharpTX**                      | --sharp-tx                       | [0-1]      | 1           | Activation of sharp transform optimizations for higher fidelity encoding (cleaner output with slightly higher chances of artifacting)                |
-| **HBDMDS**                       | --hbd-mds                        | [0-3]      | 0           | Activation of high bit depth mode decision (0: default behavior, 1: full 10b MD, 2: hybrid 8/10b MD, 3: full 8b MD)                                  |
-| **COMPLEXHVS**                   | --complex-hvs                    | [-1-1]     | 0           | Activation of highest complexity HVS model (0: default behavior, 1: enable highest complexity HVS model, -1: disable highest complexity HVS model even at `--preset -1`) |
 | **LowQTaper**                    | --low-q-taper                    | [0-1]      | 0           | Avoid boosting macroblocks to extremely low q levels.                                                                                                |
 | **QpScaleCompressStrength**      | --qp-scale-compress-strength     | [0.0-8.0]  | 1.0         | Sets the strength the QP scale algorithm compresses values across all temporal layers, which results in more consistent video quality (less quality variation across frames in a mini-gop) [0.0: SVT-AV1 default, 1.0: SVT-AV1-PSY default, 0.0-3.0: recommended range, 0.0: default when `--balancing-q-bias 1` is selected] |
-| **BalancingQBias**               | --balancing-q-bias               | [0-1]      | 0           | Enable balancing Q bias. Balancing Q bias biases the TPL system on both per frame and per Super Block level for better detail retention.             |
-| **BalancingLuminanceQBias**      | --balancing-luminance-q-bias     | [0.0-25.0] | 0.0         | Enable balancing luminance Q bias. Boost Super Block with low luminance via beta. Recommended to be used with `--balancing-q-bias` but can be used without. [0: disabled, 8.0: default with `--balancing-q-bias 1`] |
-| **BalancingR0BasedLayer**        | --balancing-r0-based-layer       | [-5-0]     | -3          | Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM. This affects a wide range of features and can be used without `--balancing-q-bias`. [-3: default encoder behaviour, 0: default with `--balancing-q-bias 1`] |
-| **BalancingR0DampeningLayer**    | --balancing-r0-dampening-layer   | [-5-1]     | 1           | Dampen r0-based boosting in frames with temporal layer higher than or equal to hierarchical levels + `--balancing-r0-dampening-layer`. This affects a wide range of features and can be used without `--balancing-q-bias`. [1: disabled, -2: default with `--balancing-q-bias 1`] |
-| **NoiseLevelQBias**              | --noise-level-q-bias             | [0.67-1.50] | 1.0        | Boost a frame's base qindex when noise level is below the threshold [1.0: disabled, >1: boost frames with low noise, <1: dampen frames with low noise, 0.91-1.10: recommended range] |
 | **FilteringNoiseDetection**      | --filtering-noise-detection      | [0-4]      | 0           | Controls noise detection which disables CDEF/restoration when noise level is high enough, enabled by default on tunes 0 and 3 [0: default tune behavior, 1: on, 2: off, 3: on (CDEF only), 4: on (restoration only)] |
 | **AutoTiling**                   | --auto-tiling                    | [0-1]      | 0           | Automatically sets tiles appropriate for the source input resolution [0: off (manual), 1: on (automatic)]                                            |
 | **UseFixedQIndexOffsets**        | --use-fixed-qindex-offsets       | [0-2]      | 0           | Overwrite the encoder default hierarchical layer based QP assignment and use fixed Q index offsets                                                   |
@@ -196,11 +313,6 @@ You're recommended to disable CDEF with `--enable-cdef 0` when texture preservat
 | **MinSectionPct**                | --minsection-pct                 | [0-100]    | 0           | GOP min bitrate (expressed as a percentage of the target rate)                                                                                       |
 | **MaxSectionPct**                | --maxsection-pct                 | [0-10000]  | 2000        | GOP max bitrate (expressed as a percentage of the target rate)                                                                                       |
 | **GopConstraintRc**              | --gop-constraint-rc              | [0-1]      | 0           | Constrains the rate control to match the target rate for each GoP [0 = OFF, 1 = ON]                                                                  |
-| **EnableQM**                     | --enable-qm                      | [0-1]      | 1           | Enable quantisation matrices                                                                                                                         |
-| **MinQmLevel**                   | --qm-min                         | [0-15]     | 2           | Min quant matrix flatness                                                                                                                            |
-| **MaxQmLevel**                   | --qm-max                         | [0-15]     | 15          | Max quant matrix flatness                                                                                                                            |
-| **MinChromaQmLevel**             | --chroma-qm-min                  | [0-15]     | 8           | Min chroma quant matrix flatness                                                                                                                     |
-| **MaxChromaQmLevel**             | --chroma-qm-max                  | [0-15]     | 15          | Max chroma quant matrix flatness                                                                                                                     |
 | **LambdaScaleFactors**           | --lambda-scale-factors           | [0- ]      | '128,.,128' | list of scale factors for lambda values used for different SvtAv1FrameUpdateType, separated by `,` divide by 128 is the actual scale factor in float |
 | **RoiMapFile**                   | --roi-map-file                   | any string | Null        | Path to a file containing picture based QP offset map                                                                                                |
 
@@ -367,15 +479,18 @@ SvtAv1EncApp -i in.y4m -b out.ivf --roi-map-file roi_map.txt
 | **ResizeFrameEvents**              | --frame-resz-events    | any string       | None          | Frame scale events, in a list separated by ',', scaling process starts from the given frame number (0 based) with new denominators, only applicable for mode == 4       |
 | **ResizeFrameKfDenoms**            | --frame-resz-kf-denoms | [8-16]           | 8             | Frame scale denominator for key frames in event, in a list separated by ',', only applicable for mode == 4                                                              |
 | **ResizeFrameDenoms**              | --frame-resz-denoms    | [8-16]           | 8             | Frame scale denominator in event, in a list separated by ',', only applicable for mode == 4                                                                             |
+| **DLFBias**                        | --dlf-bias             | [0-1]            | 0             | Enable DLF bias, which comes with a new DLF search algorithm, DLF `--ac-bias`, and a limit on maxmimum and minimum DLF strength.                                        |
+| **DLFSharpness**                   | --dlf-sharpness        | [0-7]            | 1             | Use a different sharpness for DLF. This can be used without `--dlf-bias`.                                                                                               |
+| **DLFBiasMaxDLF**                  | --dlf-bias-max-dlf     | any string       | `8,2`         | Max DLF strength for luma and chroma. DLF strength can be between 0 and 63.                                                                                             |
+| **DLFBiasMinDLF**                  | --dlf-bias-min-dlf     | any string       | `2,0`         | Min DLF strength for luma and chroma. DLF strength can be between 0 and 63. DLF strength 0 will not be considered if this is set higher than 0.                         |
 | **CDEFBias**                       | --cdef-bias            | [0-1]            | 0             | Enable CDEF bias, which comes with a fix on CDEF signalling bits, SAD & MSE based distortion calculation, CDEF strength taper, and various other improvements.          |
 | **CDEFBiasMaxCDEF**                | --cdef-bias-max-cdef   | any string       | `4,1,2,0`     | Max CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`. |
 | **CDEFBiasMinCDEF**                | --cdef-bias-min-cdef   | any string       | `0,0,0,0`     | Min CDEF strength in the order of primary strength for Y, secondary strength for Y, primary strength for chroma, secondary strength for chroma. Primary strengths can be any value betwen `0` and `15`, and secondary strengths can be either `0`, `1`, `2`, or `4`. CDEF strength of 0 will always be evaluated. |
 | **CDEFBiasMaxSecCDEFRel**          | --cdef-bias-max-sec-cdef-rel | [-12-4]    | 0             | Secondary CDEF strength of every filtering block should be smaller than or equal to primary CDEF strength plus this value.                                              |
+| **TextureCDEFBiasMaxCDEF**         | --texture-cdef-bias-max-cdef | any string | same as `--cdef-bias-max-cdef` | Max CDEF strength in low variance region. Using `--lineart-variance-thr`.                                                                              |
+| **TextureCDEFBiasMinCDEF**         | --texture-cdef-bias-min-cdef | any string | same as `--cdef-bias-min-cdef` | Min CDEF strength in low variance region. CDEF strength of 0 will always be evaluated. Using `--lineart-variance-thr`.                                 |
+| **TextureCDEFBiasMaxSecCDEFRel**   | --texture-cdef-bias-max-sec-cdef-rel | [-12-4] | same as `--cdef-bias-max-sec-cdef-rel` | Secondary CDEF strength of every filtering block should be smaller than or equal to primary CDEF strength plus this value in low variance region. Using `--lineart-variance-thr`. |
 | **CDEFBiasDampingOffset**          | --cdef-bias-damping-offset | [-4-8]       | 0             | Use bigger or smaller CDEF damping. CDEF damping is a CDEF feature (not a `--cdef-bias` feature), normally derived from each frame's `base_q_idx`.                      |
-| **DLFBias**                        | --dlf-bias             | [0-1]            | 0             | Enable DLF bias, which comes with a new DLF search algorithm, DLF `--ac-bias`, and a limit on maximum and minimum DLF strength.                                         |
-| **DLFSharpness**                   | --dlf-sharpness        | [0-7]            | `--sharpness` | Use a different sharpness for DLF. This can be used without `--dlf-bias`. [default: same as `--sharpness`]                                                              |
-| **DLFBiasMaxDLF**                  | --dlf-bias-max-dlf     | any string       | `8,2`         | Max DLF strength for luma and chroma. DLF strength can be between 0 and 63.                                                                                             |
-| **DLFBiasMinDLF**                  | --dlf-bias-min-dlf     | any string       | `2,0`         | Min DLF strength for luma and chroma. DLF strength can be between 0 and 63. DLF strength 0 will not be considered if this is set higher than 0.                         |
 
 #### **Super-Resolution**
 

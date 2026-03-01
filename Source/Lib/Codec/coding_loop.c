@@ -1190,7 +1190,7 @@ static void perform_intra_coding_loop(PictureControlSet *pcs, SuperBlock *sb_ptr
         }
     } // Transform Loop
     assert(IMPLIES(!ed_ctx->blk_geom->has_uv, blk_ptr->u_has_coeff == 0 && blk_ptr->v_has_coeff == 0));
-    if (!blk_ptr->variance_md_skip_taper_active)
+    if (!blk_ptr->forced_skip_taper_active)
         blk_ptr->block_has_coeff = (blk_ptr->y_has_coeff || blk_ptr->u_has_coeff || blk_ptr->v_has_coeff);
     else
         blk_ptr->block_has_coeff = TRUE;
@@ -1536,7 +1536,7 @@ static void perform_inter_coding_loop(SequenceControlSet *scs, PictureControlSet
     } // Transform Loop
 
     assert(IMPLIES(!blk_geom->has_uv, blk_ptr->u_has_coeff == 0 && blk_ptr->v_has_coeff == 0));
-    if (!blk_ptr->variance_md_skip_taper_active)
+    if (!blk_ptr->forced_skip_taper_active)
         blk_ptr->block_has_coeff = (blk_ptr->y_has_coeff || blk_ptr->u_has_coeff || blk_ptr->v_has_coeff);
     else
         blk_ptr->block_has_coeff = TRUE;

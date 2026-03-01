@@ -47,7 +47,9 @@ void     svt_aom_apply_segmentation_based_quantization(const BlockGeom *blk_geom
                                                        SuperBlock *sb_ptr, BlkStruct *blk_ptr);
 uint64_t svt_spatial_full_distortion_ssim_kernel(uint8_t *input, uint32_t input_offset, uint32_t input_stride,
                                                  uint8_t *recon, int32_t recon_offset, uint32_t recon_stride,
-                                                 uint32_t area_width, uint32_t area_height, bool hbd, double ac_bias);
+                                                 uint32_t area_width, uint32_t area_height, bool hbd, double effective_ac_bias,
+                                                 double effective_energy_bias, double effective_satd_bias,
+                                                 const QmVal *satd_bias_qmatrix);
 void     aom_av1_set_ssim_rdmult(struct ModeDecisionContext *ctx, PictureControlSet *pcs, const int mi_row,
                                  const int mi_col);
 
@@ -997,8 +999,9 @@ static void fast_loop_core_light_pd0(ModeDecisionCandidateBuffer *cand_bf, Pictu
             uint8_t                *src_y  = input_pic->buffer_y + input_origin_index;
             *(cand_bf->fast_cost)          = fn_ptr->vf(pred_y, ref_pic->stride_y, src_y, input_pic->stride_y, &sse);
         } else {
-            const double effective_ac_bias = get_effective_ac_bias(
-                pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+            const double effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
+            const double effective_energy_bias = get_psy_bias_effective_energy_bias(pcs, ctx);
+            const double effective_satd_bias = get_effective_satd_bias(pcs, ctx);
             *(cand_bf->fast_cost) = svt_spatial_full_distortion_kernel_facade(
                                         input_pic->buffer_y,
                                         input_origin_index,
@@ -1028,7 +1031,10 @@ static void fast_loop_core_light_pd0(ModeDecisionCandidateBuffer *cand_bf, Pictu
                                                                ctx->blk_geom->bwidth,
                                                                ctx->blk_geom->bheight >> 1,
                                                                ctx->hbd_md,
-                                                               effective_ac_bias)
+                                                               effective_ac_bias,
+                                                               effective_energy_bias,
+                                                               effective_satd_bias,
+                                                               pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL)
                     << 1;
             }
         }
@@ -1302,46 +1308,6 @@ static void obmc_trans_face_off(ModeDecisionCandidateBuffer *cand_bf, PictureCon
         }
     }
 }
-// Core for `--variance-md-bias` and `--texture-preserving-qmc-bias`
-static void variance_md_bias_core(PictureControlSet *pcs, ModeDecisionContext *ctx, struct ModeDecisionCandidateBuffer *cand_bf) {
-    const uint16_t variance = get_variance_for_cu(ctx->blk_geom, pcs->ppcs->variance[ctx->sb_index]);
-    const uint16_t main_thr = pcs->scs->static_config.variance_md_bias_thr;
-
-    // Skip taper
-    if (pcs->scs->static_config.variance_md_bias && // Protected.
-        variance >= main_thr >> 1)
-        cand_bf->variance_md_skip_taper_active = true;
-    else
-        cand_bf->variance_md_skip_taper_active = false;
-
-    // Not protected. Must check `if (pcs->scs->static_config.variance_md_bias)`!
-    // This series of else if prevents the issue of variance right shifting to 0
-    if (variance >= main_thr && variance >= 20)
-        cand_bf->variance_md_mode_bias = 2;
-    else if (variance >= main_thr >> 1 && variance >= 16)
-        cand_bf->variance_md_mode_bias = 1;
-    else if (variance >= main_thr >> 2 && variance >= 8)
-        cand_bf->variance_md_mode_bias = 0;
-    else if (variance >= main_thr >> 3)
-        cand_bf->variance_md_mode_bias = -1;
-    else
-        cand_bf->variance_md_mode_bias = -2;
-
-    // Not protected. Must check `if (pcs->scs->static_config.variance_md_bias)`!
-    if (variance >= main_thr >> 3)
-        cand_bf->variance_md_32_blk_size_bias = 2;
-    else if (variance >= main_thr >> 4)
-        cand_bf->variance_md_32_blk_size_bias = 1;
-    else
-        cand_bf->variance_md_32_blk_size_bias = 0;
-
-    // Treat it as not protected. Must check `if (pcs->scs->static_config.texture_preserving_qmc_bias)`!
-    if (pcs->scs->static_config.texture_preserving_qmc_bias == 1 &&
-        variance <= AOMMAX((pcs->scs->static_config.variance_md_bias_thr >> 2) + (pcs->scs->static_config.variance_md_bias_thr >> 3), 22))
-        cand_bf->texture_preserving_qmc_bias = 1;
-    else
-        cand_bf->texture_preserving_qmc_bias = 0;
-}
 void fast_loop_core(ModeDecisionCandidateBuffer *cand_bf, PictureControlSet *pcs, ModeDecisionContext *ctx,
                     EbPictureBufferDesc *input_pic, BlockLocation *loc) {
     const uint32_t input_origin_index       = loc->input_origin_index;
@@ -1357,8 +1323,6 @@ void fast_loop_core(ModeDecisionCandidateBuffer *cand_bf, PictureControlSet *pcs
     ModeDecisionCandidate *cand = cand_bf->cand;
     EbPictureBufferDesc   *pred = cand_bf->pred;
     ctx->pu_itr                 = 0;
-
-    variance_md_bias_core(pcs, ctx, cand_bf);
 
     // Prediction
     ctx->uv_intra_comp_only = FALSE;
@@ -1436,7 +1400,7 @@ void fast_loop_core(ModeDecisionCandidateBuffer *cand_bf, PictureControlSet *pcs
                                                                           ctx->blk_geom->bheight_uv);
             chroma_fast_distortion += (uint32_t)spatial_full_dist_type_fun(input_pic->buffer_cr,
                                                                            input_cr_origin_in_index,
-                                                                           input_pic->stride_cb,
+                                                                           input_pic->stride_cr,
                                                                            cand_bf->pred->buffer_cr,
                                                                            (int32_t)cu_chroma_origin_index,
                                                                            pred->stride_cr,
@@ -4388,8 +4352,7 @@ static void perform_tx_light_pd0(PictureControlSet *pcs, ModeDecisionContext *ct
     ctx->three_quad_energy = 0;
 
     TxSize       tx_size           = ctx->blk_geom->txsize[0];
-    const double effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
 
     if (ctx->mds_subres_step == 2) {
         if (tx_size == TX_64X64)
@@ -4561,8 +4524,9 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
     // Do not turn ON TXT search beyond this point
     const uint8_t only_dct_dct = search_dct_dct_only(pcs, ctx, cand_bf, ctx->tx_depth, is_inter) || tx_search_skip_flag;
     const TxSetType tx_set_type       = get_ext_tx_set_type(tx_size, is_inter, pcs->ppcs->frm_hdr.reduced_tx_set);
-    const double    effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double    effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
+    const double    effective_energy_bias = get_psy_bias_effective_energy_bias(pcs, ctx);
+    const double    effective_satd_bias = get_effective_satd_bias(pcs, ctx);
 
     // resize after checks on allowable TX types
     if (ctx->mds_subres_step == 2) {
@@ -4675,10 +4639,19 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
     for (int tx_type_group_idx = 0; tx_type_group_idx < tx_type_tot_group; ++tx_type_group_idx) {
         uint32_t best_tx_non_coeff = 64 * 64;
         for (int tx_type_idx = 0; tx_type_idx < TX_TYPES; ++tx_type_idx) {
-            if (pcs->ppcs->sc_class1)
-                tx_type = tx_type_group_sc[tx_type_group_idx][tx_type_idx];
-            else
-                tx_type = tx_type_group[tx_type_group_idx][tx_type_idx];
+            if (pcs->scs->static_config.lineart_psy_bias >= 2.0 ||
+                pcs->scs->static_config.texture_psy_bias >= 2.0) {
+                if (pcs->ppcs->sc_class1)
+                    tx_type = tx_type_group_sc_psy_bias[tx_type_group_idx][tx_type_idx];
+                else
+                    tx_type = tx_type_group_psy_bias[tx_type_group_idx][tx_type_idx];
+            }
+            else {
+                if (pcs->ppcs->sc_class1)
+                    tx_type = tx_type_group_sc[tx_type_group_idx][tx_type_idx];
+                else
+                    tx_type = tx_type_group[tx_type_group_idx][tx_type_idx];
+            }
 
             if (tx_type == INVALID_TX_TYPE)
                 break;
@@ -4817,7 +4790,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                         cropped_tx_width,
                         cropped_tx_height,
                         ctx->hbd_md,
-                        effective_ac_bias);
+                        effective_ac_bias,
+                        effective_energy_bias,
+                        effective_satd_bias,
+                        pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
                 }
                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] =
                     svt_spatial_full_distortion_kernel_facade(input_pic->buffer_y,
@@ -4848,7 +4824,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                         cropped_tx_width,
                         cropped_tx_height,
                         ctx->hbd_md,
-                        effective_ac_bias);
+                        effective_ac_bias,
+                        effective_energy_bias,
+                        effective_satd_bias,
+                        pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
                 }
                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_PREDICTION] <<= 4;
                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] <<= 4;
@@ -4929,38 +4908,38 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
             tx_type_candidate[candidate_num] = tx_type; // tx types which will compute ssim
             ++candidate_num;
 
-            if (pcs->scs->static_config.variance_md_bias) {
-                if (cand_bf->variance_md_mode_bias >= 1) {
-                    switch (tx_type) {
-                        case ADST_DCT: case DCT_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.18; break;
-                        case ADST_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.15; break;
-                        case V_ADST: case H_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.09; break;
-                        case ADST_FLIPADST: case FLIPADST_ADST: case DCT_FLIPADST: case FLIPADST_DCT:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.03; break;
-                        case DCT_DCT:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 0.97; break;
-                        default: break;
-                    }
-                }
-                else {
-                    switch (tx_type) {
-                        case ADST_DCT: case DCT_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.15; break;
-                        case ADST_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.10; break;
-                        case V_ADST: case H_ADST:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.06; break;
-                        case ADST_FLIPADST: case FLIPADST_ADST: case DCT_FLIPADST: case FLIPADST_DCT:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.02; break;
-                        case DCT_DCT:
-                            txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 0.98; break;
-                        default: break;
-                    }
-                }
-            }
+            // if (pcs->scs->static_config.variance_md_bias) {
+            //     if (cand_bf->variance_md_mode_bias >= 1) {
+            //         switch (tx_type) {
+            //             case ADST_DCT: case DCT_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.18; break;
+            //             case ADST_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.15; break;
+            //             case V_ADST: case H_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.09; break;
+            //             case ADST_FLIPADST: case FLIPADST_ADST: case DCT_FLIPADST: case FLIPADST_DCT:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.03; break;
+            //             case DCT_DCT:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 0.97; break;
+            //             default: break;
+            //         }
+            //     }
+            //     else {
+            //         switch (tx_type) {
+            //             case ADST_DCT: case DCT_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.15; break;
+            //             case ADST_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.10; break;
+            //             case V_ADST: case H_ADST:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.06; break;
+            //             case ADST_FLIPADST: case FLIPADST_ADST: case DCT_FLIPADST: case FLIPADST_DCT:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 1.02; break;
+            //             case DCT_DCT:
+            //                 txb_full_distortion_txt[DIST_SSD][tx_type][DIST_CALC_RESIDUAL] *= 0.98; break;
+            //             default: break;
+            //         }
+            //     }
+            // }
 
             uint64_t cost = RDCOST(full_lambda,
                                    y_txb_coeff_bits_txt[tx_type],
@@ -5015,7 +4994,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                 cropped_tx_width,
                 cropped_tx_height,
                 ctx->hbd_md,
-                effective_ac_bias);
+                effective_ac_bias,
+                effective_energy_bias,
+                effective_satd_bias,
+                pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
 
             txb_full_distortion_txt[DIST_SSIM][tx_type][DIST_CALC_RESIDUAL] <<= 4;
 
@@ -5057,7 +5039,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                                                                           cropped_tx_width,
                                                                           cropped_tx_height,
                                                                           ctx->hbd_md,
-                                                                          effective_ac_bias);
+                                                                          effective_ac_bias,
+                                                                          effective_energy_bias,
+                                                                          effective_satd_bias,
+                                                                          pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
         uint64_t             ssim_residual_dist = svt_spatial_full_distortion_ssim_kernel(input_pic->buffer_y,
                                                                               input_txb_origin_index,
                                                                               input_pic->stride_y,
@@ -5067,7 +5052,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                                                                               cropped_tx_width,
                                                                               cropped_tx_height,
                                                                               ctx->hbd_md,
-                                                                              effective_ac_bias);
+                                                                              effective_ac_bias,
+                                                                              effective_energy_bias,
+                                                                              effective_satd_bias,
+                                                                              pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
         ssim_pred_dist <<= (4 + ctx->mds_subres_step);
         ssim_residual_dist <<= (4 + ctx->mds_subres_step);
 
@@ -5083,7 +5071,10 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
                                                                           cropped_tx_width,
                                                                           cropped_tx_height,
                                                                           ctx->hbd_md,
-                                                                          effective_ac_bias);
+                                                                          effective_ac_bias,
+                                                                          effective_energy_bias,
+                                                                          effective_satd_bias,
+                                                                          pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
         ssim_pred_dist <<= (4 + ctx->mds_subres_step);
 
         y_full_distortion[DIST_SSIM][DIST_CALC_RESIDUAL] +=
@@ -5449,8 +5440,7 @@ static void perform_dct_dct_tx_light_pd1(PictureControlSet *pcs, ModeDecisionCon
     uint32_t full_lambda           = ctx->hbd_md ? ctx->full_lambda_md[EB_10_BIT_MD] : ctx->full_lambda_md[EB_8_BIT_MD];
     EbPictureBufferDesc *input_pic = ctx->hbd_md ? pcs->input_frame16bit : pcs->ppcs->enhanced_pic;
     const Bool           is_inter  = is_inter_mode(cand_bf->cand->pred_mode) ? TRUE : FALSE;
-    const double         effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double         effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
         
     ctx->three_quad_energy         = 0;
     svt_aom_residual_kernel(input_pic->buffer_y,
@@ -5616,8 +5606,9 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
     const uint32_t input_txb_origin_index = (ctx->sb_origin_x + tx_org_x + input_pic->org_x) +
         ((ctx->sb_origin_y + tx_org_y + input_pic->org_y) * input_pic->stride_y);
 
-    const double effective_ac_bias = get_effective_ac_bias(
-        pcs->scs->static_config.ac_bias, pcs->slice_type == I_SLICE, pcs->temporal_layer_index);
+    const double effective_ac_bias = get_psy_bias_effective_ac_bias(pcs, ctx);
+    const double effective_energy_bias = get_psy_bias_effective_energy_bias(pcs, ctx);
+    const double effective_satd_bias = get_effective_satd_bias(pcs, ctx);
 
     // Y Residual
     if (!is_inter) {
@@ -5783,7 +5774,10 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 cropped_tx_width,
                 cropped_tx_height,
                 ctx->hbd_md,
-                effective_ac_bias);
+                effective_ac_bias,
+                effective_energy_bias,
+                effective_satd_bias,
+                pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
             y_full_distortion[DIST_SSIM][DIST_CALC_RESIDUAL] = svt_spatial_full_distortion_ssim_kernel(
                 input_pic->buffer_y,
                 input_txb_origin_index,
@@ -5794,7 +5788,10 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 cropped_tx_width,
                 cropped_tx_height,
                 ctx->hbd_md,
-                effective_ac_bias);
+                effective_ac_bias,
+                effective_energy_bias,
+                effective_satd_bias,
+                pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
             y_full_distortion[DIST_SSIM][DIST_CALC_PREDICTION] <<= 4;
             y_full_distortion[DIST_SSIM][DIST_CALC_RESIDUAL] <<= 4;
         }
@@ -5826,7 +5823,10 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
                                                                                        cropped_tx_width,
                                                                                        cropped_tx_height,
                                                                                        ctx->hbd_md,
-                                                                                       effective_ac_bias);
+                                                                                       effective_ac_bias,
+                                                                                       effective_energy_bias,
+                                                                                       effective_satd_bias,
+                                                                                       pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
         }
 
         y_full_distortion[DIST_SSD][DIST_CALC_RESIDUAL] = svt_spatial_full_distortion_kernel_facade(
@@ -5857,7 +5857,10 @@ static void perform_dct_dct_tx(PictureControlSet *pcs, ModeDecisionContext *ctx,
                                                                                      cropped_tx_width,
                                                                                      cropped_tx_height,
                                                                                      ctx->hbd_md,
-                                                                                     effective_ac_bias);
+                                                                                     effective_ac_bias,
+                                                                                     effective_energy_bias,
+                                                                                     effective_satd_bias,
+                                                                                     pcs->ppcs->frm_hdr.quantization_params.using_qmatrix ? pcs->satd_bias_qmatrix : NULL);
         }
         y_full_distortion[DIST_SSD][DIST_CALC_PREDICTION] <<= 4;
         y_full_distortion[DIST_SSD][DIST_CALC_RESIDUAL] <<= 4;
@@ -6434,8 +6437,6 @@ static void full_loop_core_light_pd1(PictureControlSet *pcs, ModeDecisionContext
     uint64_t cr_coeff_bits;
     cand->skip_mode            = FALSE;
 
-    variance_md_bias_core(pcs, ctx, cand_bf);
-
     Bool          perform_tx   = get_perform_tx_flag(pcs, ctx, cand_bf, cand);
     const uint8_t recon_needed = do_md_recon(pcs->ppcs, ctx);
 
@@ -6466,7 +6467,7 @@ static void full_loop_core_light_pd1(PictureControlSet *pcs, ModeDecisionContext
             cand_bf->cand->transform_type_uv = DCT_DCT;
     }
     // Update coeff info based on luma TX so that chroma can take advantage of most accurate info
-    if (!cand_bf->variance_md_skip_taper_active)
+    if (!cand_bf->cand->cand_skip_taper_active)
         cand_bf->block_has_coeff    = (cand_bf->y_has_coeff) ? 1 : 0;
     else
         cand_bf->block_has_coeff    = TRUE;
@@ -6531,7 +6532,7 @@ static void full_loop_core_light_pd1(PictureControlSet *pcs, ModeDecisionContext
                                            cr_full_distortion[DIST_SSD],
                                            &cb_coeff_bits,
                                            &cr_coeff_bits);
-        if (!cand_bf->variance_md_skip_taper_active)
+        if (!cand_bf->cand->cand_skip_taper_active)
             cand_bf->block_has_coeff = (cand_bf->y_has_coeff || cand_bf->u_has_coeff || cand_bf->v_has_coeff) ? TRUE
                                                                                                               : FALSE;
         else
@@ -6553,7 +6554,7 @@ static void full_loop_core_light_pd1(PictureControlSet *pcs, ModeDecisionContext
             svt_product_prediction_fun_table_light_pd1[is_inter_mode(cand->pred_mode)](ctx->hbd_md, ctx, pcs, cand_bf);
         }
         cand_bf->u_has_coeff = cand_bf->v_has_coeff = 0;
-        if (cand->skip_mode_allowed && !cand_bf->variance_md_skip_taper_active)
+        if (cand->skip_mode_allowed)
             cand->skip_mode = TRUE;
     }
 }
@@ -6712,8 +6713,6 @@ static void full_loop_core(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
     // Set Skip Flag
     cand->skip_mode = FALSE;
 
-    variance_md_bias_core(pcs, ctx, cand_bf);
-
     if (is_inter_mode(cand->pred_mode)) {
         opt_non_translation_motion_mode(pcs, ctx, cand_bf, cand);
         if (ctx->mds_do_inter_pred || cand_bf->valid_pred == 0) {
@@ -6822,7 +6821,7 @@ static void full_loop_core(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
         perform_tx_partitioning(
             cand_bf, ctx, pcs, start_tx_depth, end_tx_depth, ctx->blk_ptr->qindex, &y_coeff_bits, y_full_distortion);
     // Update coeff info based on luma TX so that chroma can take advantage of most accurate info
-    if (!cand_bf->variance_md_skip_taper_active)
+    if (!cand_bf->cand->cand_skip_taper_active)
         cand_bf->block_has_coeff = (cand_bf->y_has_coeff) ? 1 : 0;
     else
         cand_bf->block_has_coeff = TRUE;
@@ -6931,7 +6930,7 @@ static void full_loop_core(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
             }
         }
     }
-    if (!cand_bf->variance_md_skip_taper_active)
+    if (!cand_bf->cand->cand_skip_taper_active)
         cand_bf->block_has_coeff = (cand_bf->y_has_coeff || cand_bf->u_has_coeff || cand_bf->v_has_coeff) ? TRUE : FALSE;
     else
         cand_bf->block_has_coeff = TRUE;
@@ -7252,18 +7251,18 @@ static void move_blk_data_redund(PictureControlSet *pcs, ModeDecisionContext *ct
     dst->angle_delta[PLANE_TYPE_UV] = src->angle_delta[PLANE_TYPE_UV];
     dst->intra_chroma_mode          = src->intra_chroma_mode;
     // Inter Mode
-    dst->ref_frame_type         = src->ref_frame_type;
-    dst->motion_mode            = src->motion_mode;
-    dst->num_proj_ref           = src->num_proj_ref;
-    dst->overlappable_neighbors = src->overlappable_neighbors;
-    dst->cfl_alpha_idx          = src->cfl_alpha_idx; // Index of the alpha Cb and alpha Cr combination
-    dst->cfl_alpha_signs        = src->cfl_alpha_signs; // Joint sign of alpha Cb and alpha Cr
-    dst->prediction_mode_flag   = src->prediction_mode_flag;
-    dst->block_has_coeff        = src->block_has_coeff;
-    dst->variance_md_skip_taper_active = src->variance_md_skip_taper_active;
-    dst->qindex                 = src->qindex;
-    dst->skip_mode              = src->skip_mode;
-    dst->tx_depth               = src->tx_depth;
+    dst->ref_frame_type           = src->ref_frame_type;
+    dst->motion_mode              = src->motion_mode;
+    dst->num_proj_ref             = src->num_proj_ref;
+    dst->overlappable_neighbors   = src->overlappable_neighbors;
+    dst->cfl_alpha_idx            = src->cfl_alpha_idx; // Index of the alpha Cb and alpha Cr combination
+    dst->cfl_alpha_signs          = src->cfl_alpha_signs; // Joint sign of alpha Cb and alpha Cr
+    dst->prediction_mode_flag     = src->prediction_mode_flag;
+    dst->block_has_coeff          = src->block_has_coeff;
+    dst->forced_skip_taper_active = src->forced_skip_taper_active;
+    dst->qindex                   = src->qindex;
+    dst->skip_mode                = src->skip_mode;
+    dst->tx_depth                 = src->tx_depth;
     svt_memcpy(dst->av1xd, src->av1xd, sizeof(MacroBlockD));
 
     dst->inter_mode_ctx = src->inter_mode_ctx;
@@ -7853,8 +7852,30 @@ static void post_mds0_nic_pruning(PictureControlSet *pcs, ModeDecisionContext *c
     uint64_t                      mds1_class_th            = (pruning_ctrls.mds1_class_th * q_weight) / 1000;
     uint8_t                       mds1_band_cnt            = pruning_ctrls.mds1_band_cnt;
     uint16_t                      mds1_cand_th_rank_factor = pruning_ctrls.mds1_cand_th_rank_factor;
-    uint64_t                      mds1_cand_base_th_intra  = (pruning_ctrls.mds1_cand_base_th_intra * q_weight) / 1000;
-    uint64_t                      mds1_cand_base_th_inter  = (pruning_ctrls.mds1_cand_base_th_inter * q_weight) / 1000;
+    uint64_t                      mds1_cand_base_th_intra  = pruning_ctrls.mds1_cand_base_th_intra;
+    uint64_t                      mds1_cand_base_th_inter  = pruning_ctrls.mds1_cand_base_th_inter;
+    if (pcs->scs->static_config.psy_bias_mds0_intra_inter_mode_bias) {
+        const uint8_t             is_base                  = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
+                                                             pcs->ppcs->slice_type == I_SLICE;
+        const uint8_t             is_layer1                = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 1;
+        if (mds1_cand_base_th_intra >= (mds1_cand_base_th_inter << 1) + mds1_cand_base_th_inter) {
+            if (is_base)          mds1_cand_base_th_intra += mds1_cand_base_th_inter;
+            else if (is_layer1)   ;
+            else                  mds1_cand_base_th_intra -= mds1_cand_base_th_inter;
+        }
+        else if (mds1_cand_base_th_intra >= mds1_cand_base_th_inter + (mds1_cand_base_th_inter >> 1)) {
+            if (is_base)          mds1_cand_base_th_intra += mds1_cand_base_th_inter >> 1;
+            else if (is_layer1)   ;
+            else                  mds1_cand_base_th_intra -= mds1_cand_base_th_inter >> 1;
+        }
+        else {
+            if (is_base)          mds1_cand_base_th_intra += mds1_cand_base_th_inter >> 2;
+            else if (is_layer1)   ;
+            else                  mds1_cand_base_th_intra -= mds1_cand_base_th_inter >> 2;
+        }
+    }
+                                  mds1_cand_base_th_intra  = (mds1_cand_base_th_intra * q_weight) / 1000;
+                                  mds1_cand_base_th_inter  = (mds1_cand_base_th_inter * q_weight) / 1000;
     ModeDecisionCandidateBuffer **cand_bf_arr              = ctx->cand_bf_ptr_array;
     for (CandClass cidx = CAND_CLASS_0; cidx < CAND_CLASS_TOTAL; cidx++) {
         const uint64_t mds1_cand_th = is_intra_class(cidx) ? mds1_cand_base_th_intra : mds1_cand_base_th_inter;
@@ -7929,30 +7950,33 @@ static void post_mds1_nic_pruning(PictureControlSet *pcs, ModeDecisionContext *c
                       ((5 * pcs->ppcs->scs->static_config.qp) - 50)));
 
     const uint64_t                mds2_cand_th         = (pruning_ctrls.mds2_cand_base_th * q_weight) / 1000;
-    const uint64_t                mds2_class_th        = (pruning_ctrls.mds2_class_th * q_weight) / 1000;
+    uint64_t                      mds2_class_th[4];
+    mds2_class_th[0] = mds2_class_th[1] = mds2_class_th[2] = mds2_class_th[3] = (pruning_ctrls.mds2_class_th * q_weight) / 1000;
+    if (pcs->scs->static_config.texture_psy_bias >= 4.0 && pcs->enc_mode <= ENC_M6)
+        mds2_class_th[1]                               = (uint64_t)~0;
     const uint8_t                 mds2_band_cnt        = pruning_ctrls.mds2_band_cnt;
     const uint16_t                mds2_relative_dev_th = pruning_ctrls.mds2_relative_dev_th;
     ModeDecisionCandidateBuffer **cand_bf_arr          = ctx->cand_bf_ptr_array;
     for (CandClass cidx = CAND_CLASS_0; cidx < CAND_CLASS_TOTAL; cidx++) {
-        if ((mds2_cand_th != (uint64_t)~0 || mds2_class_th != (uint64_t)~0) && ctx->md_stage_1_count[cidx] > 0 &&
+        if ((mds2_cand_th != (uint64_t)~0 || mds2_class_th[cidx] != (uint64_t)~0) && ctx->md_stage_1_count[cidx] > 0 &&
             ctx->md_stage_2_count[cidx] > 0 && ctx->bypass_md_stage_1 == FALSE) {
             const uint32_t *cand_buff = ctx->cand_buff_indices[cidx];
             const uint64_t  best_cost = *cand_bf_arr[cand_buff[0]]->full_cost;
 
             // class pruning
             if (best_cost && best_md_stage_cost && best_cost != best_md_stage_cost) {
-                if (mds2_class_th == 0) {
+                if (mds2_class_th[cidx] == 0) {
                     ctx->md_stage_2_count[cidx] = 0;
                     continue;
                 }
                 uint64_t dev = ((best_cost - best_md_stage_cost) * 100) / best_md_stage_cost;
                 if (dev) {
-                    if (dev >= mds2_class_th) {
+                    if (dev >= mds2_class_th[cidx]) {
                         ctx->md_stage_2_count[cidx] = 0;
                         continue;
                     }
                     if (mds2_band_cnt >= 3 && ctx->md_stage_2_count[cidx] > 1) {
-                        uint8_t band_idx            = (uint8_t)(dev * (mds2_band_cnt - 1) / mds2_class_th);
+                        uint8_t band_idx            = (uint8_t)(dev * (mds2_band_cnt - 1) / mds2_class_th[cidx]);
                         ctx->md_stage_2_count[cidx] = DIVIDE_AND_ROUND(ctx->md_stage_2_count[cidx], band_idx + 1);
                     }
                 }
@@ -8008,30 +8032,33 @@ static void post_mds2_nic_pruning(PictureControlSet *pcs, ModeDecisionContext *c
                       ((5 * pcs->ppcs->scs->static_config.qp) - 50)));
 
     const uint64_t                mds3_cand_th  = (pruning_ctrls.mds3_cand_base_th * q_weight) / 1000;
-    const uint64_t                mds3_class_th = (pruning_ctrls.mds3_class_th * q_weight) / 1000;
+    uint64_t                      mds3_class_th[4];
+    mds3_class_th[0] = mds3_class_th[1] = mds3_class_th[2] = mds3_class_th[3] = (pruning_ctrls.mds3_class_th * q_weight) / 1000;
+    if (pcs->scs->static_config.texture_psy_bias >= 4.0 && pcs->enc_mode <= ENC_M6)
+        mds3_class_th[1]                        = (uint64_t)~0;
     const uint8_t                 mds3_band_cnt = pruning_ctrls.mds3_band_cnt;
     ModeDecisionCandidateBuffer **cand_bf_arr   = ctx->cand_bf_ptr_array;
     ctx->md_stage_3_total_count                 = 0;
     for (CandClass cidx = CAND_CLASS_0; cidx < CAND_CLASS_TOTAL; cidx++) {
-        if ((mds3_cand_th != (uint64_t)~0 || mds3_class_th != (uint64_t)~0) && ctx->md_stage_2_count[cidx] > 0 &&
+        if ((mds3_cand_th != (uint64_t)~0 || mds3_class_th[cidx] != (uint64_t)~0) && ctx->md_stage_2_count[cidx] > 0 &&
             ctx->md_stage_3_count[cidx] > 0 && ctx->bypass_md_stage_2 == FALSE) {
             const uint32_t *cand_buff = ctx->cand_buff_indices[cidx];
             const uint64_t  best_cost = *cand_bf_arr[cand_buff[0]]->full_cost;
 
             // inter class pruning
             if (best_cost && best_md_stage_cost && best_cost != best_md_stage_cost) {
-                if (mds3_class_th == 0) {
+                if (mds3_class_th[cidx] == 0) {
                     ctx->md_stage_3_count[cidx] = 0;
                     continue;
                 }
                 uint64_t dev = ((best_cost - best_md_stage_cost) * 100) / best_md_stage_cost;
                 if (dev) {
-                    if (dev >= mds3_class_th) {
+                    if (dev >= mds3_class_th[cidx]) {
                         ctx->md_stage_3_count[cidx] = 0;
                         continue;
                     }
                     if (mds3_band_cnt >= 3 && ctx->md_stage_3_count[cidx] > 1) {
-                        const uint8_t band_idx      = (uint8_t)(dev * (mds3_band_cnt - 1) / mds3_class_th);
+                        const uint8_t band_idx      = (uint8_t)(dev * (mds3_band_cnt - 1) / mds3_class_th[cidx]);
                         ctx->md_stage_3_count[cidx] = DIVIDE_AND_ROUND(ctx->md_stage_3_count[cidx], band_idx + 1);
                     }
                 }
@@ -10176,6 +10203,45 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
     ctx->sb64_sq_no4xn_geom  = 0;
     if (pcs->ppcs->scs->super_block_size == 64 && blk_geom->bwidth == blk_geom->bheight && blk_geom->bsize > BLOCK_8X4)
         ctx->sb64_sq_no4xn_geom = 1;
+
+    const uint16_t blk_variance = get_variance_for_cu(blk_geom, pcs->ppcs->variance[ctx->sb_index]);
+
+    ctx->blk_skip_taper_active = 0;
+    if (pcs->scs->static_config.lineart_psy_bias >= 6.0 &&
+        blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+        ctx->blk_skip_taper_active = 1;
+    else if (pcs->scs->static_config.lineart_psy_bias == -2.0 &&
+             blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+        ctx->blk_skip_taper_active = 2;
+
+    ctx->bsize_bias_mode = 0;
+    if (pcs->scs->static_config.lineart_psy_bias >= 4.0) {
+        if (blk_variance >= pcs->scs->static_config.lineart_variance_thr)
+            ctx->bsize_bias_mode = 2;
+        else if (blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+            ctx->bsize_bias_mode = 1;
+    }
+
+    ctx->above_32_blk_size_bias_mode = 0;
+    if (pcs->scs->static_config.lineart_psy_bias >= 5.0 &&
+        (blk_geom->bwidth >= 32 || blk_geom->bheight >= 32)) {
+        const uint16_t blks_variance = get_variance_for_cu_max_32x32_min(blk_geom, pcs->ppcs->variance[ctx->sb_index]);
+
+        if (blks_variance >= pcs->scs->static_config.lineart_variance_thr >> 2)
+            ctx->above_32_blk_size_bias_mode = 2;
+        else if (blks_variance >= pcs->scs->static_config.lineart_variance_thr >> 3)
+            ctx->above_32_blk_size_bias_mode = 1;
+    }
+
+    ctx->cand_elimination_acceptable = 1;
+    if (pcs->scs->static_config.high_fidelity_encode_psy_bias) {
+        if (blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+            ctx->cand_elimination_acceptable = 0;
+    }
+    else {
+        if (blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 2)
+            ctx->cand_elimination_acceptable = 0;
+    }
 }
 static void check_curr_to_parent_cost_light_pd0(SequenceControlSet *scs, PictureControlSet *pcs,
                                                 ModeDecisionContext *ctx, uint32_t *next_non_skip_blk_idx_mds,
