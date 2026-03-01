@@ -11,7 +11,6 @@ The primary branch is [main](https://github.com/5fish/svt-av1-psy/tree/main); ex
 # 
 
 ### Feature Additions
-=======
 
 - `--photon-noise` *0 to 100000*
 
