@@ -822,9 +822,9 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
 				channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-	
+
     if (config->photon_noise_iso > 100000) {
-        SVT_ERROR("Instance %u: Photon noise ISO value should be in range [0-100000]",
+        SVT_ERROR("Instance %u: Photon noise ISO value should be in range [0-100000]\n",
 				channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -2289,7 +2289,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"tune", &config_struct->tune},
         {"film-grain-denoise", &config_struct->film_grain_denoise_apply},
         {"photon-noise-chroma", &config_struct->enable_photon_noise_chroma},
-        {"enable-hdr", &config_struct->high_dynamic_range_input},		
+        {"enable-hdr", &config_struct->high_dynamic_range_input},
         {"enable-dlf", &config_struct->enable_dlf_flag},
         {"resize-mode", &config_struct->resize_mode},
         {"resize-denom", &config_struct->resize_denom},

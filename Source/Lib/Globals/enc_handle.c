@@ -4069,9 +4069,9 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         SVT_WARN("Fwd key frame is only supported for hierarchical levels 4 at this point. Hierarchical levels are set to 4\n");
     }
     if (scs->static_config.photon_noise_iso > 0) {
-        // Check if film-grain-denoise is also enabled (should be disabled if fgs_table is present)
+        // Check if film-grain (internally film-grain-denoise-strength) is also enabled (should be disabled if fgs_table is present)
         if (scs->static_config.film_grain_denoise_strength > 0) {
-            SVT_WARN("Both film-grain-denoise and photon-noise were specified; film-grain-denoise will be disabled\n");
+            SVT_WARN("Both film-grain and photon-noise were specified; film-grain will be disabled\n");
             scs->static_config.film_grain_denoise_strength = 0;
         }
         // Check if fgs_table is present

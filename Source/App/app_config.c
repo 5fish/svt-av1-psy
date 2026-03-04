@@ -1150,10 +1150,14 @@ ConfigEntry config_entry_specific[] = {
 
     {SINGLE_INPUT, FGS_TABLE_TOKEN, "Set the film grain model table path", set_cfg_fgs_table_path},
 
-    {SINGLE_INPUT, PHOTON_NOISE_TOKEN, "Generate photon noise table for film grain, default is 0 [0: off, 1-100000: ISO value]",
+    {SINGLE_INPUT,
+     PHOTON_NOISE_TOKEN,
+     "Generate photon noise table for film grain, default is 0 [0: off, 1-100000: ISO value]",
      set_cfg_generic_token},
 
-    {SINGLE_INPUT, PHOTON_NOISE_CHROMA_TOKEN, "Enable chroma noise, default is 0 [0: off, 1: on]",
+    {SINGLE_INPUT,
+     PHOTON_NOISE_CHROMA_TOKEN,
+     "Enable chroma noise, default is 0 [0: off, 1: on]",
      set_cfg_generic_token},
 
     // --- start: SUPER-RESOLUTION SUPPORT
