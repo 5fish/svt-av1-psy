@@ -1146,7 +1146,7 @@ typedef struct EbSvtAv1EncConfiguration {
     uint32_t photon_noise_iso;
 
     /**
-     * @brief Enable chroma noise, which will is scaled based on luma values for generated film grain table.
+     * @brief Enable chroma photon noise, which is scaled based on generated luma values.
      *
      * 0: disable chroma scaling
      * 1: enable chroma scaling

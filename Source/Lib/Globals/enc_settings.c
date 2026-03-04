@@ -1307,6 +1307,7 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->photon_noise_iso,
                      config->enable_photon_noise_chroma ? "on" : "off");
         }
+
         SVT_INFO("SVT [config]: sharpness / QP scale compress strength / frame low-luma bias \t: %d / %.2f / %d\n",
                  config->sharpness,
                  config->qp_scale_compress_strength,
