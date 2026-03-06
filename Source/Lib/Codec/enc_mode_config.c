@@ -5,6 +5,7 @@
 #include "aom_dsp_rtcd.h"
 #include "mode_decision.h"
 #include "coding_loop.h"
+#include "segmentation.h"
 
 #define LOW_8x8_DIST_VAR_TH 25000
 #define HIGH_8x8_DIST_VAR_TH 50000
@@ -73,7 +74,7 @@ static void get_sb128_me_data(PictureControlSet *pcs, ModeDecisionContext *ctx, 
 }
 
 // use this function to set the enable_me_8x8 level
-uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution) {
+uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolution input_resolution, uint8_t psy_bias_disable_me_8x8) {
     uint8_t enable_me_8x8 = 0;
     if (rtc_tune) {
         if (enc_mode <= ENC_M9)
@@ -91,6 +92,9 @@ uint8_t svt_aom_get_enable_me_8x8(EncMode enc_mode, bool rtc_tune, EbInputResolu
         else
             enable_me_8x8 = 0;
     }
+
+    if (psy_bias_disable_me_8x8)
+        enable_me_8x8 = 0;
 
     return enable_me_8x8;
 }
@@ -696,7 +700,12 @@ void svt_aom_sig_deriv_me(SequenceControlSet *scs, PictureParentControlSet *pcs,
     const uint8_t     sc_class1        = pcs->sc_class1;
     EbInputResolution input_resolution = scs->input_resolution;
     const bool        rtc_tune         = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
-    const bool        is_base          = pcs->temporal_layer_index == 0;
+    bool              is_base;
+    if (!scs->static_config.balancing_q_bias)
+                      is_base          = pcs->temporal_layer_index == 0;
+    else
+                      is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0 ||
+                                         pcs->slice_type == I_SLICE;
     // Set ME search area
     set_me_search_params(scs, pcs, me_ctx, input_resolution);
 
@@ -1486,7 +1495,7 @@ static uint8_t svt_aom_get_wn_filter_level(EncMode enc_mode, uint8_t input_resol
 }
 
 // Returns the level for self-guided restoration filter
-static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode) {
+static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     uint8_t sg_filter_lvl = 0;
     if (enc_mode <= ENC_M0)
         sg_filter_lvl = 1;
@@ -1497,6 +1506,9 @@ static uint8_t svt_aom_get_sg_filter_level(EncMode enc_mode, uint8_t input_resol
 
     // higher resolutions will shut restoration to save memory
     if (input_resolution >= INPUT_SIZE_8K_RANGE || (fast_decode && !(input_resolution <= INPUT_SIZE_360p_RANGE)))
+        sg_filter_lvl = 0;
+
+    if (psy_bias_disable_sgrproj)
         sg_filter_lvl = 0;
 
     return sg_filter_lvl;
@@ -1690,8 +1702,14 @@ static void svt_aom_set_dlf_controls(PictureParentControlSet *pcs, uint8_t dlf_l
     set controls for intra block copy
 */
 static void set_intrabc_level(PictureParentControlSet *pcs, SequenceControlSet *scs, uint8_t ibc_level) {
+    uint8_t       is_base;
+    if (!scs->static_config.balancing_q_bias)
+                  is_base          = pcs->temporal_layer_index == 0;
+    else
+                  is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0 ||
+                                     pcs->slice_type == I_SLICE;
     IntraBCCtrls *intraBC_ctrls    = &pcs->intraBC_ctrls;
-    uint8_t       allow_4x4_blocks = !svt_aom_get_disallow_4x4(pcs->enc_mode, pcs->temporal_layer_index == 0);
+    uint8_t       allow_4x4_blocks = !svt_aom_get_disallow_4x4(pcs->enc_mode, is_base);
 
     switch (ibc_level) {
     case 0: intraBC_ctrls->enabled = 0; break;
@@ -1806,7 +1824,12 @@ void svt_aom_sig_deriv_multi_processes(SequenceControlSet *scs, PictureParentCon
     FrameHeader            *frm_hdr          = &pcs->frm_hdr;
     EncMode                 enc_mode         = pcs->enc_mode;
     const uint8_t           is_islice        = pcs->slice_type == I_SLICE;
-    const uint8_t           is_base          = pcs->temporal_layer_index == 0;
+    uint8_t                 is_base;
+    if (!scs->static_config.balancing_q_bias)
+                            is_base          = pcs->temporal_layer_index == 0;
+    else
+                            is_base          = (pcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->hierarchical_levels) == 0 ||
+                                               pcs->slice_type == I_SLICE;
     const EbInputResolution input_resolution = pcs->input_resolution;
     const uint8_t           fast_decode      = scs->static_config.fast_decode;
     const bool              rtc_tune  = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
@@ -1945,7 +1968,7 @@ void svt_aom_sig_deriv_multi_processes(SequenceControlSet *scs, PictureParentCon
         svt_aom_derive_input_resolution(&init_input_resolution,
                                         scs->max_initial_input_luma_width * scs->max_initial_input_luma_height);
         wn = svt_aom_get_wn_filter_level(enc_mode, init_input_resolution, is_not_last_layer, is_base);
-        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode);
+        sg = svt_aom_get_sg_filter_level(enc_mode, init_input_resolution, fast_decode, scs->static_config.psy_bias_disable_sgrproj);
     }
 
     Av1Common *cm = pcs->av1_cm;
@@ -2286,9 +2309,9 @@ static void set_inter_comp_controls(ModeDecisionContext *ctx, uint8_t inter_comp
     default: assert(0); break;
     }
 }
-uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode) {
+uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     uint8_t sg = 0;
-    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode);
+    sg         = svt_aom_get_sg_filter_level(enc_mode, input_resolution, fast_decode, psy_bias_disable_sgrproj);
 
     return (sg > 0);
 }
@@ -2297,7 +2320,7 @@ uint8_t svt_aom_get_enable_sg(EncMode enc_mode, uint8_t input_resolution, uint8_
   Used by signal_derivation_pre_analysis_oq and memory allocation
 */
 uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_restoration, uint8_t input_resolution,
-                                       uint8_t fast_decode) {
+                                       uint8_t fast_decode, uint8_t psy_bias_disable_sgrproj) {
     if (config_enable_restoration != DEFAULT)
         return config_enable_restoration;
 
@@ -2309,7 +2332,7 @@ uint8_t svt_aom_get_enable_restoration(EncMode enc_mode, int8_t config_enable_re
                 break;
         }
     }
-    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode);
+    uint8_t sg = svt_aom_get_enable_sg(enc_mode, input_resolution, fast_decode, psy_bias_disable_sgrproj);
     return (sg > 0 || wn > 0);
 }
 
@@ -2388,7 +2411,8 @@ void svt_aom_sig_deriv_pre_analysis_scs(SequenceControlSet *scs) {
             scs->static_config.enc_mode,
             scs->static_config.enable_restoration_filtering,
             init_input_resolution,
-            scs->static_config.fast_decode);
+            scs->static_config.fast_decode,
+            scs->static_config.psy_bias_disable_sgrproj);
     } else
         scs->seq_header.enable_restoration = (uint8_t)scs->static_config.enable_restoration_filtering;
 
@@ -4014,6 +4038,20 @@ static void set_cand_reduction_ctrls(PictureControlSet *pcs, ModeDecisionContext
     CandReductionCtrls *cand_reduction_ctrls = &ctx->cand_reduction_ctrls;
     const bool          rtc_tune = (pcs->scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
 
+    uint8_t       is_base_layer1;
+    if (!pcs->scs->static_config.balancing_q_bias)
+                  is_base_layer1 = pcs->temporal_layer_index <= 1;
+    else
+                  is_base_layer1 = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) <= 1 ||
+                                   pcs->ppcs->slice_type == I_SLICE;
+    uint8_t       psy_bias_cand_elimination = 0;
+    if (pcs->scs->static_config.texture_psy_bias >= 3.0) {
+        if (pcs->scs->static_config.high_quality_encode_psy_bias)
+                  psy_bias_cand_elimination = 1;
+        else
+                  psy_bias_cand_elimination = !is_base_layer1;
+    }
+
     switch (cand_reduction_level) {
     case 0:
 
@@ -4034,7 +4072,12 @@ static void set_cand_reduction_ctrls(PictureControlSet *pcs, ModeDecisionContext
         cand_reduction_ctrls->lpd1_mvp_best_me_list = 0;
 
         // cand_elimination_ctrls
-        cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        if (!psy_bias_cand_elimination)
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        else {
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 2;
+            cand_reduction_ctrls->cand_elimination_ctrls.dc_only = 1;
+        }
 
         // reduce_unipred_candidates
         cand_reduction_ctrls->reduce_unipred_candidates = 0;
@@ -4060,7 +4103,12 @@ static void set_cand_reduction_ctrls(PictureControlSet *pcs, ModeDecisionContext
         cand_reduction_ctrls->lpd1_mvp_best_me_list = 0;
 
         // cand_elimination_ctrls
-        cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        if (!psy_bias_cand_elimination)
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 0;
+        else {
+            cand_reduction_ctrls->cand_elimination_ctrls.enabled = 2;
+            cand_reduction_ctrls->cand_elimination_ctrls.dc_only = 1;
+        }
 
         // reduce_unipred_candidates
         cand_reduction_ctrls->reduce_unipred_candidates = 0;
@@ -4405,10 +4453,13 @@ uint8_t svt_aom_get_nic_level(EncMode enc_mode, uint8_t is_base, uint32_t qp, ui
 * When called at memory allocation, there is no context (it is passed as NULL) so the signals
 * are not set.
 */
-uint8_t svt_aom_set_nic_controls(ModeDecisionContext *ctx, uint8_t nic_level) {
+uint8_t svt_aom_set_nic_controls(ModeDecisionContext *ctx, uint8_t nic_level, double high_quality_encode_psy_bias) {
     NicPruningCtrls *nic_pruning_ctrls = ctx ? &ctx->nic_ctrls.pruning_ctrls : NULL;
     uint8_t          nic_scaling_level = 0;
     uint8_t          md_staging_mode   = MD_STAGING_MODE_0;
+    uint8_t          psy_bias_disable_bypass_md_stage_2 = 0;
+    if (high_quality_encode_psy_bias)
+        psy_bias_disable_bypass_md_stage_2 = 1;
 
     switch (nic_level) {
     case 0: // MAX NIC scaling; no pruning
@@ -4806,7 +4857,10 @@ uint8_t svt_aom_set_nic_controls(ModeDecisionContext *ctx, uint8_t nic_level) {
             nic_pruning_ctrls->mds3_q_weight          = 3;
             nic_pruning_ctrls->merge_inter_cands_mult = (uint8_t)~0;
         }
-        md_staging_mode = MD_STAGING_MODE_1;
+        if (psy_bias_disable_bypass_md_stage_2)
+            md_staging_mode = MD_STAGING_MODE_2;
+        else
+            md_staging_mode = MD_STAGING_MODE_1;
         break;
     case 12:
         // NIC scaling level
@@ -5120,10 +5174,20 @@ uint8_t svt_aom_set_nic_controls(ModeDecisionContext *ctx, uint8_t nic_level) {
     // return NIC scaling level that can be used for memory allocation
     return nic_scaling_level;
 }
-void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level, uint8_t *allow_HVA_HVB,
-                                uint8_t *allow_HV4, uint8_t *min_nsq_bsize) {
+void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level,
+                                double lineart_psy_bias, double texture_psy_bias, EncMode enc_mode,
+                                uint8_t *allow_HVA_HVB, uint8_t *allow_HV4, uint8_t *min_nsq_bsize) {
     NsqGeomCtrls  nsq_geom_ctrls_struct;
     NsqGeomCtrls *nsq_geom_ctrls = &nsq_geom_ctrls_struct;
+
+    uint8_t psy_bias_disallow_HV4 = false;
+    if ((lineart_psy_bias >= 3.0 || texture_psy_bias >= 3.0) &&
+        enc_mode >= ENC_MR)
+        psy_bias_disallow_HV4 = true;
+    uint8_t psy_bias_allow_HVA_HVB = false;
+    if (texture_psy_bias >= 4.0 && enc_mode <= ENC_M2)
+        psy_bias_allow_HVA_HVB = true;
+
     switch (nsq_geom_level) {
     case 0:
         nsq_geom_ctrls->enabled            = 0;
@@ -5135,28 +5199,28 @@ void svt_aom_set_nsq_geom_ctrls(ModeDecisionContext *ctx, uint8_t nsq_geom_level
     case 1:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = 1;
+        nsq_geom_ctrls->allow_HV4          = !psy_bias_disallow_HV4;
         nsq_geom_ctrls->allow_HVA_HVB      = 1;
         break;
 
     case 2:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 0;
-        nsq_geom_ctrls->allow_HV4          = 1;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HV4          = !psy_bias_disallow_HV4;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
     case 3:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 8;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
 
     case 4:
         nsq_geom_ctrls->enabled            = 1;
         nsq_geom_ctrls->min_nsq_block_size = 16;
         nsq_geom_ctrls->allow_HV4          = 0;
-        nsq_geom_ctrls->allow_HVA_HVB      = 0;
+        nsq_geom_ctrls->allow_HVA_HVB      = psy_bias_allow_HVA_HVB;
         break;
     default: assert(0); break;
     }
@@ -6118,27 +6182,34 @@ static void set_lpd1_ctrls(ModeDecisionContext *ctx, uint8_t lpd1_lvl) {
     }
 }
 
-static void set_detect_high_freq_ctrls(ModeDecisionContext *ctx, uint8_t detect_high_freq_lvl) {
+static void set_detect_high_freq_ctrls(ModeDecisionContext *ctx, uint8_t detect_high_freq_lvl, double lineart_psy_bias) {
+    uint8_t lineart_bias_dev_thr = lineart_psy_bias >= 1.0;
     DetectHighFreqCtrls *ctrls = &ctx->detect_high_freq_ctrls;
     switch (detect_high_freq_lvl) {
     case 0: ctrls->enabled = 0; break;
     case 1:
-        ctrls->enabled            = 1;
-        ctrls->high_satd_th       = 10000;
-        ctrls->satd_to_sad_dev_th = 500;
-        ctrls->me_8x8_sad_var_th  = 2500;
-        ctrls->max_pic_lpd0_lvl   = 3;
-        ctrls->max_pic_lpd1_lvl   = 3;
-        ctrls->max_pd1_txt_lvl    = 8;
+        ctrls->enabled                = 1;
+        ctrls->high_satd_th           = 10000;
+        if (!lineart_bias_dev_thr)
+            ctrls->satd_to_sad_dev_th = 500;
+        else
+            ctrls->satd_to_sad_dev_th = 50;
+        ctrls->me_8x8_sad_var_th      = 2500;
+        ctrls->max_pic_lpd0_lvl       = 3;
+        ctrls->max_pic_lpd1_lvl       = 3;
+        ctrls->max_pd1_txt_lvl        = 8;
         break;
     case 2:
-        ctrls->enabled            = 1;
-        ctrls->high_satd_th       = 15000;
-        ctrls->satd_to_sad_dev_th = 600;
-        ctrls->me_8x8_sad_var_th  = 7500;
-        ctrls->max_pic_lpd0_lvl   = 3;
-        ctrls->max_pic_lpd1_lvl   = 3;
-        ctrls->max_pd1_txt_lvl    = 8;
+        ctrls->enabled                = 1;
+        ctrls->high_satd_th           = 15000;
+        if (!lineart_bias_dev_thr)
+            ctrls->satd_to_sad_dev_th = 600;
+        else
+            ctrls->satd_to_sad_dev_th = 60;
+        ctrls->me_8x8_sad_var_th      = 7500;
+        ctrls->max_pic_lpd0_lvl       = 3;
+        ctrls->max_pic_lpd1_lvl       = 3;
+        ctrls->max_pd1_txt_lvl        = 8;
         break;
     default: assert(0); break;
     }
@@ -7004,42 +7075,62 @@ static void set_tx_shortcut_ctrls(PictureControlSet *pcs, ModeDecisionContext *c
                "artifacts.");
 }
 
-static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level, uint8_t chroma_qmc_bias) {
+// The levels of mds0_level has been changed in 5fish/SVT-AV1-PSY compared to mainline.
+// Be careful when backporting.
+static void set_mds0_controls(ModeDecisionContext *ctx, uint8_t mds0_level, double psy_bias_mds0_sad) {
     Mds0Ctrls *ctrls = &ctx->mds0_ctrls;
 
     switch (mds0_level) {
     case 0:
         ctrls->mds0_dist_type               = SAD;
+        ctrls->mds0_dist_type_uv            = SAD;
         ctrls->enable_cost_based_early_exit = 1;
         ctrls->mds0_distortion_th           = 0;
         break;
     case 1:
         ctrls->mds0_dist_type               = SSD;
+        ctrls->mds0_dist_type_uv            = SSD;
         ctrls->enable_cost_based_early_exit = 0;
         ctrls->mds0_distortion_th           = 0;
         break;
     case 2:
-        ctrls->mds0_dist_type               = VAR;
+        if (psy_bias_mds0_sad)
+            ctrls->mds0_dist_type           = SAD;
+        else
+            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type_uv            = SSD;
         ctrls->enable_cost_based_early_exit = 0;
         ctrls->mds0_distortion_th           = 0;
         break;
     case 3:
-        ctrls->mds0_dist_type               = VAR;
-        ctrls->enable_cost_based_early_exit = 1;
-        ctrls->mds0_distortion_th           = 50;
+        if (psy_bias_mds0_sad)
+            ctrls->mds0_dist_type           = SAD;
+        else
+            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type_uv            = VAR;
+        ctrls->enable_cost_based_early_exit = 0;
+        ctrls->mds0_distortion_th           = 0;
         break;
     case 4:
-        ctrls->mds0_dist_type               = VAR;
+        if (psy_bias_mds0_sad)
+            ctrls->mds0_dist_type           = SAD;
+        else
+            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type_uv            = VAR;
         ctrls->enable_cost_based_early_exit = 1;
         ctrls->mds0_distortion_th           = 0;
         break;
+    case 5:
+        if (psy_bias_mds0_sad)
+            ctrls->mds0_dist_type           = SAD;
+        else
+            ctrls->mds0_dist_type           = VAR;
+        ctrls->mds0_dist_type_uv            = VAR;
+        ctrls->enable_cost_based_early_exit = 1;
+        ctrls->mds0_distortion_th           = 50;
+        break;
     default: assert(0); break;
     }
-
-    if (!chroma_qmc_bias)
-        ctrls->mds0_dist_type_uv            = ctrls->mds0_dist_type;
-    else
-        ctrls->mds0_dist_type_uv            = SSD;
 }
 static void set_skip_sub_depth_ctrls(SkipSubDepthCtrls *skip_sub_depth_ctrls, uint8_t skip_sub_depth_lvl) {
     switch (skip_sub_depth_lvl) {
@@ -7073,7 +7164,7 @@ void svt_aom_sig_deriv_enc_dec_common(SequenceControlSet *scs, PictureControlSet
     const bool is_islice = pcs->slice_type == I_SLICE;
 
     SuperBlock *sb_ptr = pcs->sb_ptr_array[ctx->sb_index];
-    set_detect_high_freq_ctrls(ctx, pcs->vq_ctrls.detect_high_freq_lvl);
+    set_detect_high_freq_ctrls(ctx, pcs->vq_ctrls.detect_high_freq_lvl, pcs->scs->static_config.lineart_psy_bias);
     ctx->high_freq_present    = 0;
     ctx->high_freq_satd_to_me = (uint32_t)~0;
     const bool rtc_tune       = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
@@ -7289,12 +7380,30 @@ that use 8x8 blocks will lose significant BD-Rate as the parent 16x16 me data wi
         ctx->pd1_lvl_refinement = 1;
     else
         ctx->pd1_lvl_refinement = 2;
-    svt_aom_set_nsq_geom_ctrls(ctx, pcs->nsq_geom_level, NULL, NULL, NULL);
+    svt_aom_set_nsq_geom_ctrls(ctx, pcs->nsq_geom_level,
+                               scs->static_config.lineart_psy_bias, scs->static_config.texture_psy_bias, enc_mode,
+                               NULL, NULL, NULL);
+
+    const uint16_t blks_variance = get_variance_for_cu_max_32x32_min(NULL, pcs->ppcs->variance[ctx->sb_index]);
+    if (pcs->scs->static_config.lineart_psy_bias >= 7.0 &&
+        blks_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+        ctx->max_32_blk_size = true;
+    else if (scs->static_config.max_32_tx_size)
+        ctx->max_32_blk_size = true;
+    else
+        ctx->max_32_blk_size = false;
 
     if (ctx->max_32_blk_size) {
         // Ensure we allow at least 32x32 transforms
         ctx->depth_removal_ctrls.disallow_below_64x64 = FALSE;
     }
+
+    // The use of qstep table here is completely arbitrary. It needs
+    // something in the range of a few hundred to a few thousand, and it
+    // needs something that corresponds with quality, and the qstep table
+    // just happenes to fit both of these two points.
+    ctx->psy_bias_const = svt_aom_dc_quant_qtx(pcs->ppcs->frm_hdr.quantization_params.base_q_idx, 0,
+                                               ctx->encoder_bit_depth);
 }
 static void set_depth_early_exit_ctrls(ModeDecisionContext *ctx, uint8_t early_exit_level) {
     DepthEarlyExitCtrls *ctrls = &ctx->depth_early_exit_ctrls;
@@ -7371,7 +7480,7 @@ void svt_aom_sig_deriv_enc_dec_light_pd0(SequenceControlSet *scs, PictureControl
     }
 
     ctx->d2_parent_bias = 1000;
-    set_mds0_controls(ctx, 4, 0);
+    set_mds0_controls(ctx, 4, scs->static_config.psy_bias_mds0_sad);
     if (pd0_level == VERY_LIGHT_PD0)
         return;
     svt_aom_set_chroma_controls(ctx, 0 /*chroma off*/);
@@ -7536,6 +7645,7 @@ void svt_aom_sig_deriv_enc_dec_light_pd1(PictureControlSet *pcs, ModeDecisionCon
             ctx->md_subpel_me_level = 0;
     }
     md_subpel_me_controls(pcs, ctx, ctx->md_subpel_me_level, rtc_tune);
+
     uint8_t mds0_level = 0;
     if (lpd1_level <= LPD1_LVL_4)
         mds0_level = 4;
@@ -7545,8 +7655,7 @@ void svt_aom_sig_deriv_enc_dec_light_pd1(PictureControlSet *pcs, ModeDecisionCon
              (me_8x8_cost_variance < (250 * picture_qp) && me_64x64_distortion < (250 * picture_qp))))
             mds0_level = 0;
     }
-
-    set_mds0_controls(ctx, mds0_level, 0);
+    set_mds0_controls(ctx, mds0_level, pcs->scs->static_config.psy_bias_mds0_sad);
 
     uint8_t lpd1_tx_level = 0;
     if (lpd1_level <= LPD1_LVL_2)
@@ -7684,7 +7793,12 @@ void svt_aom_sig_deriv_enc_dec(SequenceControlSet *scs, PictureControlSet *pcs, 
     EncMode                  enc_mode             = pcs->enc_mode;
     uint8_t                  pd_pass              = ctx->pd_pass;
     PictureParentControlSet *ppcs                 = pcs->ppcs;
-    const uint8_t            is_base              = ppcs->temporal_layer_index == 0;
+    uint8_t                  is_base;
+    if (!scs->static_config.balancing_q_bias)
+                             is_base              = ppcs->temporal_layer_index == 0;
+    else
+                             is_base              = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0 ||
+                                                    ppcs->slice_type == I_SLICE;
     const EbInputResolution  input_resolution     = ppcs->input_resolution;
     const uint8_t            is_islice            = pcs->slice_type == I_SLICE;
     const uint8_t            sc_class1            = ppcs->sc_class1;
@@ -7695,7 +7809,7 @@ void svt_aom_sig_deriv_enc_dec(SequenceControlSet *scs, PictureControlSet *pcs, 
     uint8_t                  ref_skip_perc = pcs->ref_skip_percentage;
     const bool               rtc_tune = (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) ? true : false;
     svt_aom_set_nsq_search_ctrls(pcs, ctx, pcs->nsq_search_level, input_resolution);
-    svt_aom_set_nic_controls(ctx, ctx->pd_pass == PD_PASS_0 ? 20 : pcs->nic_level);
+    svt_aom_set_nic_controls(ctx, ctx->pd_pass == PD_PASS_0 ? 20 : pcs->nic_level, scs->static_config.high_quality_encode_psy_bias);
     set_cand_reduction_ctrls(pcs,
                              ctx,
                              pd_pass == PD_PASS_0 ? 0 : pcs->cand_reduction_level,
@@ -7873,7 +7987,14 @@ void svt_aom_sig_deriv_enc_dec(SequenceControlSet *scs, PictureControlSet *pcs, 
         intra_level = 6;
     set_intra_ctrls(pcs, ctx, intra_level);
 
-    set_mds0_controls(ctx, pd_pass == PD_PASS_0 ? 2 : pcs->mds0_level, scs->static_config.chroma_qmc_bias);
+    uint8_t mds0_level = pcs->mds0_level;
+    if (pd_pass == PD_PASS_0) {
+        if (!rtc_tune && enc_mode <= ENC_M4)
+            mds0_level = 2;
+        else
+            mds0_level = 3;
+    }
+    set_mds0_controls(ctx, mds0_level, scs->static_config.psy_bias_mds0_sad);
 
     set_subres_controls(ctx, 0);
     ctx->inter_depth_bias = 0;
@@ -8135,7 +8256,12 @@ set lpd0_level
 static void set_pic_lpd0_lvl(PictureControlSet *pcs, EncMode enc_mode) {
     PictureParentControlSet *ppcs = pcs->ppcs;
 
-    const uint8_t is_base            = ppcs->temporal_layer_index == 0;
+    uint8_t       is_base;
+    if (!pcs->scs->static_config.balancing_q_bias)
+                  is_base            = pcs->temporal_layer_index == 0;
+    else
+                  is_base            = (ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0 ||
+                                       ppcs->slice_type == I_SLICE;
     const uint8_t is_islice          = pcs->slice_type == I_SLICE;
     const Bool    transition_present = (ppcs->transition_present == 1);
     const uint8_t sc_class1          = ppcs->sc_class1;
@@ -8383,11 +8509,15 @@ uint8_t svt_aom_get_inter_intra_level(EncMode enc_mode, uint8_t is_base, uint8_t
     return inter_intra_level;
 }
 
-uint8_t svt_aom_get_obmc_level(EncMode enc_mode, uint32_t qp, uint8_t is_base, uint8_t seq_qp_mod) {
+uint8_t svt_aom_get_obmc_level(EncMode enc_mode, uint32_t qp, uint8_t is_base, uint8_t seq_qp_mod, double lineart_psy_bias) {
     uint8_t obmc_level = 0;
-    if (enc_mode <= ENC_M0)
+    if (enc_mode <= ENC_M0 ||
+        (lineart_psy_bias >= 3.0 && enc_mode <= ENC_M2))
         obmc_level = 1;
-    else if (enc_mode <= ENC_M4)
+    else if (lineart_psy_bias >= 3.0 && enc_mode <= ENC_M4)
+        obmc_level = 2;
+    else if (enc_mode <= ENC_M4 ||
+             (lineart_psy_bias >= 3.0 && enc_mode <= ENC_M6))
         obmc_level = 3;
     else if (enc_mode <= ENC_M7)
         obmc_level = 4;
@@ -8426,8 +8556,17 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     PictureParentControlSet *ppcs                = pcs->ppcs;
     EncMode                  enc_mode            = pcs->enc_mode;
     const uint8_t            is_ref              = ppcs->is_ref;
-    const uint8_t            is_base             = ppcs->temporal_layer_index == 0;
-    const uint8_t            is_layer1           = ppcs->temporal_layer_index == 1;
+    uint8_t                  is_base;
+    uint8_t                  is_layer1;
+    if (!scs->static_config.balancing_q_bias) {
+                             is_base             = pcs->temporal_layer_index == 0;
+                             is_layer1           = pcs->temporal_layer_index == 1;
+    }
+    else {
+                             is_base             = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 0 ||
+                                                   ppcs->slice_type == I_SLICE;
+                             is_layer1           = (ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - ppcs->hierarchical_levels) == 1;
+    }
     const EbInputResolution  input_resolution    = ppcs->input_resolution;
     const uint8_t            is_islice           = pcs->slice_type == I_SLICE;
     const uint8_t            sc_class1           = ppcs->sc_class1;
@@ -8502,7 +8641,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     // Set Warped Motion level and enabled flag
     pcs->wm_level = 0;
     if (frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME || frm_hdr->error_resilient_mode ||
-        pcs->ppcs->frame_superres_enabled || pcs->ppcs->frame_resize_enabled) {
+        pcs->ppcs->frame_superres_enabled || pcs->ppcs->frame_resize_enabled ||
+        scs->static_config.psy_bias_disable_warped_motion) {
         pcs->wm_level = 0;
     } else {
         if (enc_mode <= ENC_M1) {
@@ -8546,10 +8686,11 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     frm_hdr->allow_warped_motion = enable_wm &&
         !(frm_hdr->frame_type == KEY_FRAME || frm_hdr->frame_type == INTRA_ONLY_FRAME) &&
         !frm_hdr->error_resilient_mode && !pcs->ppcs->frame_superres_enabled &&
-        scs->static_config.resize_mode == RESIZE_NONE;
+        scs->static_config.resize_mode == RESIZE_NONE &&
+        !scs->static_config.psy_bias_disable_warped_motion;
 
     frm_hdr->is_motion_mode_switchable = frm_hdr->allow_warped_motion;
-    ppcs->pic_obmc_level               = svt_aom_get_obmc_level(enc_mode, sq_qp, is_base, scs->seq_qp_mod);
+    ppcs->pic_obmc_level               = svt_aom_get_obmc_level(enc_mode, sq_qp, is_base, scs->seq_qp_mod, scs->static_config.lineart_psy_bias);
     // Switchable Motion Mode
     frm_hdr->is_motion_mode_switchable = frm_hdr->is_motion_mode_switchable || ppcs->pic_obmc_level;
 
@@ -8814,22 +8955,18 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
         pcs->md_pme_level = 5;
     // Set the level for mds0
     pcs->mds0_level = 0;
-    if (pcs->scs->static_config.complex_hvs == 1) {
-        pcs->mds0_level = 1;
-    } else if (rtc_tune) {
+    if (rtc_tune) {
         if (enc_mode <= ENC_M10)
-            pcs->mds0_level = 2;
+            pcs->mds0_level = 3;
         else
-            pcs->mds0_level = is_islice ? 2 : 4;
+            pcs->mds0_level = is_islice ? 3 : 4;
     } else {
-        if (pcs->scs->static_config.complex_hvs == -1 && enc_mode == ENC_MR)
+        if (enc_mode <= ENC_M4)
             pcs->mds0_level = 2;
-        else if (enc_mode <= ENC_MR)
-            pcs->mds0_level = 1;
-        else if (enc_mode <= ENC_M6)
-             pcs->mds0_level = 2;
+        if (enc_mode <= ENC_M6)
+            pcs->mds0_level = 3;
         else
-            pcs->mds0_level = is_islice ? 2 : 4;
+            pcs->mds0_level = is_islice ? 3 : 4;
     }
     /*
        disallow_4x4
@@ -9120,7 +9257,8 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
     // An SB is tagged as problematic when the deviation is higher than the normal (i.e. when me-sad and satd are not correlated)
     // For the detected SB(s), apply a better level for Depth-removal, LPD0, LPD1, and TXT of regular PD1.
     // Not applicable for I_SLICE and for SB 128x128
-    if (pcs->slice_type == I_SLICE || scs->super_block_size == 128) {
+    if (pcs->slice_type == I_SLICE || scs->super_block_size == 128 ||
+        scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0) {
         pcs->vq_ctrls.detect_high_freq_lvl = 0;
     } else {
         if (rtc_tune) {
@@ -9172,7 +9310,7 @@ void svt_aom_sig_deriv_mode_decision_config(SequenceControlSet *scs, PictureCont
                                   input_resolution,
                                   rtc_tune,
                                   sc_class1,
-                                  (pcs->temporal_layer_index == 0));
+                                  is_base);
     }
     svt_aom_set_dlf_controls(pcs->ppcs, dlf_level);
 }
