@@ -52,9 +52,10 @@ A new tune based on Tune 2 (SSIM) called SSIM with Subjective Quality Tuning. Ge
 
 Another new tune based on Tune 2 (SSIM) called Still Picture. Optimized for still images based on SSIMULACRA2 performance on the CID22 Validation test set. Not recommended for use outside of all-intra encoding.
 
-- `--sharpness` *-7 to 7* (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/merge_requests/2346)**)
+- `--sharpness` *-14 to 14* (**Modified Implementation**)
 
-A parameter for modifying loopfilter deblock sharpness and rate distortion to improve visual fidelity. The default is 1.
+A parameter for modifying rate distortion to improve visual fidelity. The default is 2.
+Deblocking loopfilter sharpness is decoupled in 5fish/SVT-AV1-PSY and controllable with `--dlf-sharpness` *(-7 to 7)*, with a default of 1.
 
 - `--dolby-vision-rpu` *path to file*
 
@@ -160,12 +161,11 @@ Automatically sets tiles appropriate for the source input resolution, which in t
 - `--preset 4` by default.
 - Default 10-bit color depth when given a 10-bit input.
 - Disable film grain denoising by default, as it often harms visual fidelity. (**[Merged to Mainline](https://gitlab.com/AOMediaCodec/SVT-AV1/-/commit/8b39b41df9e07bbcdbd19ea618762c5db3353c03)**)
-- Default to Tune 2 (SSIM) instead of Tune 1 (PSNR), as it reliably outperforms Tune 1 perceptually & throughout trusted metrics.
 - Enable quantization matrices by default.
 - `--chroma-qm-min 10` by default to prevent the encoder from picking suboptimal chroma QMs.
 - `--enable-variance-boost` enabled by default.
 - `--keyint -2` (the default) uses a ~10s GOP size (up to 305 frames) instead of ~5s.
-- `--sharpness 1` by default to prioritize encoder sharpness.
+- `--sharpness 2` by default to prioritize encoder sharpness.
 - `--ac-bias 1.0` by default.
 - Sharp transform optimizations (`--sharp-tx 1`) are enabled by default to supercharge AC bias optimizations. It is recommended to disable it if you don't use `--ac-bias`.
 - `--tf-strength 1` by default for much lower alt-ref temporal filtering to decrease blur for cleaner encoding.

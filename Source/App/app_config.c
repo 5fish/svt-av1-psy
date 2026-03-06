@@ -1026,7 +1026,7 @@ ConfigEntry config_entry_rc[] = {
      "GOP max bitrate (expressed as a percentage of the target rate), default is 2000 [0-10000]",
      set_cfg_generic_token},
     {SINGLE_INPUT, ENABLE_QM_TOKEN, "Enable quantisation matrices, default is 1 [0-1]", set_cfg_generic_token},
-    {SINGLE_INPUT, MIN_QM_LEVEL_TOKEN, "Min quant matrix flatness, default is 2 [0-15]", set_cfg_generic_token},
+    {SINGLE_INPUT, MIN_QM_LEVEL_TOKEN, "Min quant matrix flatness, default is 8 [0-15]", set_cfg_generic_token},
     {SINGLE_INPUT, MAX_QM_LEVEL_TOKEN, "Max quant matrix flatness, default is 15 [0-15]", set_cfg_generic_token},
     {SINGLE_INPUT,
      ROI_MAP_FILE_TOKEN,
@@ -1159,7 +1159,7 @@ ConfigEntry config_entry_specific[] = {
     {SINGLE_INPUT,
      TUNE_TOKEN,
      "Optimize the encoding process for different desired outcomes [0 = VQ, 1 = PSNR, 2 = SSIM, 3 = Subjective SSIM, 4 = Still Picture], "
-     "default is 2 "
+     "default is 0 "
      "[0-4]",
      set_cfg_generic_token},
     // MD Parameters
@@ -1368,7 +1368,7 @@ ConfigEntry config_entry_psy[] = {
     // Min/max chroma qm
     {SINGLE_INPUT,
      MIN_CHROMA_QM_LEVEL_TOKEN,
-     "[PSY] Min chroma quant matrix flatness, default is 8 [0-15]",
+     "[PSY] Min chroma quant matrix flatness, default is 10 [0-15]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      MAX_CHROMA_QM_LEVEL_TOKEN,

@@ -863,15 +863,14 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint8_t max_qm_level;
     /**
-     * @brief Min quant matrix flatness. Applicable when enable_qm is true.
+     * @brief Min chroma quant matrix flatness. Applicable when enable_qm is true.
      * Min value is 0.
      * Max value is 15.
      * Default is 10.
      */
     uint8_t min_chroma_qm_level;
-
     /**
-     * @brief Max quant matrix flatness. Applicable when enable_qm is true.
+     * @brief Max chroma quant matrix flatness. Applicable when enable_qm is true.
      * Min value is 0.
      * Max value is 15.
      * Default is 15.
