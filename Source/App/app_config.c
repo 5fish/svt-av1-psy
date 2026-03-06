@@ -1328,7 +1328,7 @@ ConfigEntry config_entry_psy[] = {
     // Sharpness
     {SINGLE_INPUT,
      SHARPNESS_TOKEN,
-     "[PSY] Affects loopfilter deblock sharpness and rate distortion, default is 2 [-14 to 14]",
+     "[PSY] Bias towards block sharpness in rate distortion, default is 2 [-14 to 14]",
      set_cfg_generic_token},
     // QP scale compress
     {SINGLE_INPUT,

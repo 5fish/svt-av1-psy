@@ -973,7 +973,7 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool enable_alt_curve;
 
     /**
-     * @brief Affects loopfilter deblock sharpness and rate distortion
+     * @brief Bias towards block sharpness in rate distortion
      * Min value is -14.
      * Max is 14.
      * Default is 2.
