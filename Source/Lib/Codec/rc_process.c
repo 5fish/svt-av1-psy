@@ -887,7 +887,7 @@ static int crf_qindex_calc(PictureControlSet *pcs, RATE_CONTROL *rc, int qindex)
         if (scs->lad_mg && (pcs->scs->static_config.tune == 3 ? !svt_aom_frame_is_kf_gf_arf(ppcs) : !frame_is_intra_only(ppcs)) &&
             (ppcs->tpl_group_size < (uint32_t)(2 << pcs->ppcs->hierarchical_levels)))
             weight = MIN(weight + 0.1, 1);
-        if (scs->static_config.high_fidelity_encode_psy_bias && scs->static_config.balancing_q_bias && scs->static_config.hierarchical_levels <= 3)
+        if (scs->static_config.balancing_q_bias && scs->static_config.hierarchical_levels <= 2)
             weight = 1.0;
 
         double qstep_ratio;
@@ -1767,12 +1767,13 @@ void normalize_sb_delta_q(PictureControlSet *pcs) {
         }
     }
     else { // `--balancing-q-bias 1 --enable-variance-boost 0`
-        if ((pcs->ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
-            pcs->ppcs->slice_type == I_SLICE)
-            if (qindex >= 60)
+        if (!scs->static_config.high_quality_encode_psy_bias) {
+            if ((pcs->ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
+                 pcs->ppcs->slice_type == I_SLICE)
                 delta_q_res = 4;
             else
-                delta_q_res = 2;
+                return;
+        }
         else
             return;
     }

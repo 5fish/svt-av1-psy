@@ -243,7 +243,8 @@ However, apart from this, both parameters have various features such as boosting
 #### `--high-quality-encode-psy-bias` Features
 
 * `--balancing-luminance-q-bias`: Add an additional `2.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
-* disable `bypass_md_stage_2` in `--preset 2` and `1`.  
+* `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` in frames of lowest temporal layer to always `1`.  
+* `bypass_md_stage_2`: Disabled in `--preset 2` and `1`.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
 * `--lineart-energy-bias`: Default changed from `1.00` to `0.98`. Can be overridden.  
 * `--dlf-bias-min-dlf`: Default changed to `0,0` when `--texture-psy-bias [<= 4]`. Can be overridden.  
@@ -257,7 +258,6 @@ Setting `--high-fidelity-encode-psy-bias 1` sets `--high-quality-encode-psy-bias
 In additional to features in `--high-quality-encode-psy-bias 1`:  
 
 * `--hierarchical-levels`: Default changed from `5` to `2`. Can be overridden.  
-* r0 weighting: Disabled when `--hierarchical-levels [<= 3]` and `--balancing-q-bias 1`.  
 * `--balancing-luminance-q-bias`: Add an additional `4.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
 * `--balancing-luminance-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
 * `--balancing-texture-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
