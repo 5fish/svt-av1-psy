@@ -85,6 +85,7 @@ For more information on valid values for specific keys, refer to the [EbEncSetti
 | **AdaptiveFilmGrain**            | --adaptive-film-grain       | [0,1]                          | 1           | Allows film grain synthesis to be sourced from different block sizes depending on resolution                  |
 | **TemporalFilteringStrength**    |  --tf-strength              | [0-4]                          | 1           | Manually adjust temporal filtering strength. Higher values = stronger temporal filtering                      |
 | **KeyframeTemporalFilteringStrength** |  --kf-tf-strength      | [0-4]                          | 1           | Manually adjust temporal filtering strength for keyframes. Higher values = stronger temporal filtering        |
+| **AltTFDecay**                   |  --alt-tf-decay             | [0-1]                          | 0           | Apply Tune 0/3 alt-ref TF decay tweak to any tune, default is 0 [0: off (follows tune defaults), 1: on]       |
 | **NoiseNormStrength**            |  --noise-norm-strength      | [0-4]                          | 1           | Selectively boost AC coefficients to improve fine detail retention in certain circumstances                   |
 
 ## Rate Control Options
