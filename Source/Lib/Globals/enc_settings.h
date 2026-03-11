@@ -25,6 +25,9 @@
 
 void svt_av1_print_lib_params(SequenceControlSet* scs);
 
+EbErrorType svt_av1_verify_dlf_bias_max_min_dlf(EbSvtAv1EncConfiguration *source_config, EbSvtAv1EncConfiguration *target_config);
+EbErrorType svt_av1_verify_cdef_bias_max_min_cdef(EbSvtAv1EncConfiguration *source_config, EbSvtAv1EncConfiguration *target_config);
+
 EbErrorType svt_av1_verify_settings(struct SequenceControlSet* scs);
 
 EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration* config_ptr);

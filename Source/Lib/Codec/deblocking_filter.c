@@ -759,7 +759,10 @@ static uint64_t picture_sse_calculations(PictureControlSet *pcs, EbPictureBuffer
                                                         input_align_width,
                                                         input_align_height,
                                                         0,
-                                                        dlf_ac_bias)
+                                                        dlf_ac_bias,
+                                                        1.0,
+                                                        0.0,
+                                                        NULL)
                                 : 0);
         } else if (plane == 1) {
             recon_coeff_buffer = (uint8_t *)&(
@@ -817,7 +820,10 @@ static uint64_t picture_sse_calculations(PictureControlSet *pcs, EbPictureBuffer
                                                         input_align_width,
                                                         input_align_height,
                                                         1,
-                                                        dlf_ac_bias)
+                                                        dlf_ac_bias,
+                                                        1.0,
+                                                        0.0,
+                                                        NULL)
                                 : 0);
         } else if (plane == 1) {
             recon_coeff_buffer = (uint8_t *)&(
@@ -1017,6 +1023,11 @@ static int32_t search_filter_level_dlf_bias(//const Yv12BufferConfig *sd, Av1Com
                                             EbPictureBufferDesc *temp_lf_recon_buffer, PictureControlSet *pcs, int32_t partial_frame,
                                             const int32_t *last_frame_filter_level, double *best_cost_ret, int32_t plane, int32_t dir,
                                             uint8_t max_dlf, uint8_t min_dlf) {
+    UNUSED(last_frame_filter_level);
+
+    if (min_dlf == max_dlf)
+        return min_dlf;
+
     Bool                 is_16bit = pcs->ppcs->scs->is_16bit_pipeline;
     EbPictureBufferDesc *recon_buffer;
     svt_aom_get_recon_pic(pcs, &recon_buffer, is_16bit);
@@ -1077,8 +1088,16 @@ EbErrorType qp_based_dlf_param(PictureControlSet *pcs, int32_t *filter_level_y, 
     SequenceControlSet *scs     = pcs->scs;
     FrameHeader        *frm_hdr = &pcs->ppcs->frm_hdr;
 
-    const int32_t min_filter_level = 0;
-    const int32_t max_filter_level = MAX_LOOP_FILTER;
+    int32_t min_filter_level;
+    int32_t max_filter_level;
+    if (!pcs->scs->static_config.dlf_bias) {
+        min_filter_level = 0;
+        max_filter_level = MAX_LOOP_FILTER;
+    }
+    else {
+        min_filter_level = pcs->scs->static_config.dlf_bias_min_dlf[1];
+        max_filter_level = pcs->scs->static_config.dlf_bias_max_dlf[1];
+    }
     const int32_t q                = svt_aom_ac_quant_qtx(
         frm_hdr->quantization_params.base_q_idx, 0, (EbBitDepth)scs->static_config.encoder_bit_depth);
     // These values were determined by linear fitting the result of the
