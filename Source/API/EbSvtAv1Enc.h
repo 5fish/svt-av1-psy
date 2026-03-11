@@ -1160,8 +1160,16 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     Bool color_range_provided;
 
+    /**
+     * @brief Control whether chroma grain is applied when using film grain
+     * 0: off
+     * 1: on
+     * Default is 1.
+     */
+    Bool chroma_grain;
+
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
-    uint8_t padding[128 - 9 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(int32_t) - 2 * sizeof(double)];
+    uint8_t padding[128 - 10 * sizeof(Bool) - 15 * sizeof(uint8_t) - sizeof(int8_t) - 2 * sizeof(int32_t) - 2 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 
