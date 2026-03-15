@@ -1427,6 +1427,10 @@ void init_fn_ptr(void);
 void svt_av1_init_wedge_masks(void);
 
 static ONCE_ROUTINE(init_global_tables) {
+    UNUSED(InitOnce);
+    UNUSED(Parameter);
+    UNUSED(lpContext);
+
     svt_aom_asm_set_convolve_asm_table();
     svt_aom_init_intra_dc_predictors_c_internal();
     svt_aom_asm_set_convolve_hbd_asm_table();
