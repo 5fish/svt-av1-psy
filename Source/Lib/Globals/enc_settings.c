@@ -1711,12 +1711,6 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                              config->balancing_r0_dampening_layer);
             }
         }
-        if (config->photon_noise_iso > 0) {
-            SVT_INFO("SVT [config]: photon noise synth / ISO / chroma \t\t\t\t: %d / %d / %s\n",
-                     1,
-                     config->photon_noise_iso,
-                     config->enable_photon_noise_chroma ? "on" : "off");
-        }
 
         // Film grain
         if (config->film_grain_denoise_strength != 0)
@@ -1726,6 +1720,14 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->adaptive_film_grain ? "true" : "false");
         if (!config->chroma_grain)
             SVT_INFO("SVT [config]: film grain synth - chroma grain \t\t\t\t: disabled\n");
+        if (config->photon_noise_iso > 0) {
+            if (config->enable_photon_noise_chroma)
+                SVT_INFO("SVT [config]: photon noise synth - ISO / chroma noise \t\t\t: %d / on\n",
+                         config->photon_noise_iso);
+            else
+                SVT_INFO("SVT [config]: photon noise synth ISO \t\t\t\t\t: %d\n",
+                         config->photon_noise_iso);
+        }
 
         // Global
         if (config->high_fidelity_encode_psy_bias) {
