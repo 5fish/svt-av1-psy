@@ -142,7 +142,13 @@ EbErrorType svt_create_cond_var(CondVar *cond_var);
 #ifdef _WIN32
 typedef INIT_ONCE OnceType;
 #define ONCE_INIT INIT_ONCE_STATIC_INIT
+
+#if defined(__clang__) || defined(__GNUC__)
+#define ONCE_ROUTINE(name) BOOL CALLBACK name(PINIT_ONCE InitOnce __attribute__((unused)), PVOID Parameter __attribute__((unused)), PVOID *lpContext __attribute__((unused)))
+#else
 #define ONCE_ROUTINE(name) BOOL CALLBACK name(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext)
+#endif
+
 #define ONCE_ROUTINE_EPILOG \
     do { return TRUE; } while (0)
 typedef PINIT_ONCE_FN OnceFn;
