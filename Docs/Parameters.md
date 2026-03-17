@@ -265,6 +265,7 @@ In additional to features in `--high-quality-encode-psy-bias 1`:
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Raise variance threshold from `lineart_variance_thr >> 2` to `lineart_variance_thr >> 1`.  
 * `--psy-bias-disable-me-8x8`: Revert `--lineart-psy-bias [>= 2]` settings back to `0`. Can be overridden.  
 * `--sharpness`: Default changed from `2` to `4`. Can be overridden.  
+* `svt_av1_optimize_b` & `svt_fast_optimize_b`: Disabled.  
 * `--ac-bias` and `--texture-ac-bias`: Boost `--texture-psy-bias`'s default for `--ac-bias` and `--texture-ac-bias` by 1.5 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--ac-bias` or `--texture-ac-bias` value.  
 * `--texture-energy-bias`: Boost `--texture-psy-bias`'s default by 2 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--texture-energy-bias` value.  
 * `--satd-bias`: Default changed from `0.00` to `1.00`. Can be overridden.  
