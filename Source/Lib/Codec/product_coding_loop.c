@@ -4639,8 +4639,14 @@ static void tx_type_search(PictureControlSet *pcs, ModeDecisionContext *ctx, Mod
     for (int tx_type_group_idx = 0; tx_type_group_idx < tx_type_tot_group; ++tx_type_group_idx) {
         uint32_t best_tx_non_coeff = 64 * 64;
         for (int tx_type_idx = 0; tx_type_idx < TX_TYPES; ++tx_type_idx) {
-            if (pcs->scs->static_config.lineart_psy_bias >= 2.0 ||
-                pcs->scs->static_config.texture_psy_bias >= 2.0) {
+            if (pcs->scs->static_config.noise_psy_bias >= 3.0) {
+                if (pcs->ppcs->sc_class1)
+                    tx_type = tx_type_group_sc_noise_psy_bias[tx_type_group_idx][tx_type_idx];
+                else
+                    tx_type = tx_type_group_noise_psy_bias[tx_type_group_idx][tx_type_idx];
+            }
+            else if (pcs->scs->static_config.lineart_psy_bias >= 2.0 ||
+                     pcs->scs->static_config.texture_psy_bias >= 2.0) {
                 if (pcs->ppcs->sc_class1)
                     tx_type = tx_type_group_sc_psy_bias[tx_type_group_idx][tx_type_idx];
                 else
@@ -10230,12 +10236,14 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
     const uint16_t blk_variance = get_variance_for_cu(blk_geom, pcs->ppcs->variance[ctx->sb_index]);
 
     ctx->blk_skip_taper_active = 0;
-    if (pcs->scs->static_config.lineart_psy_bias >= 6.0 &&
+    if (pcs->scs->static_config.lineart_psy_bias == -2.0 &&
         blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
-        ctx->blk_skip_taper_active = 1;
-    else if (pcs->scs->static_config.lineart_psy_bias == -2.0 &&
-             blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
         ctx->blk_skip_taper_active = 2;
+    else if (pcs->scs->static_config.noise_psy_bias >= 5.0)
+        ctx->blk_skip_taper_active = 1;
+    else if (pcs->scs->static_config.lineart_psy_bias >= 6.0 &&
+             blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+        ctx->blk_skip_taper_active = 1;
 
     ctx->bsize_bias_mode = 0;
     if (pcs->scs->static_config.lineart_psy_bias >= 4.0) {

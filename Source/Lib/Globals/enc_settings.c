@@ -1161,8 +1161,11 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: texture-psy-bias must be between 0 and 7\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if ((config->lineart_psy_bias || config->texture_psy_bias) && config->tx_bias)
-        SVT_WARN("Instance %u: tx-bias is replaced by lineart-psy-bias and texture-psy-bias and they are not intended to be used in conjunction with each other\n", channel_number + 1);
+    if (!(config->noise_psy_bias >= 0.0 && config->noise_psy_bias <= 7.0) &&
+        config->noise_psy_bias != DEFAULT) {
+        SVT_ERROR("Instance %u: noise-psy-bias must be between 0 and 7\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
 
     if (config->psy_bias_mds0_sad > 1 && config->psy_bias_mds0_sad != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: psy-bias-mds0-sad must be between 0 and 1\n", channel_number + 1);
@@ -1195,6 +1198,11 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
     }
     if (config->psy_bias_qm_bias > 1 && config->psy_bias_qm_bias != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: psy-bias-qm-bias must be between 0 and 1\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+    if (!(config->psy_bias_sharpness_rounding >= 1 && config->psy_bias_sharpness_rounding <= 256) &&
+        config->psy_bias_sharpness_rounding != DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-sharpness-rounding must be between 1 and 256\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1463,6 +1471,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->noise_level_thr                   = -1;
     config_ptr->lineart_psy_bias                  = 0.0;
     config_ptr->texture_psy_bias                  = 0.0;
+    config_ptr->noise_psy_bias                    = DEFAULT;
     config_ptr->lineart_psy_bias_easter_egg       = 0;
     config_ptr->texture_psy_bias_easter_egg       = 0;
     config_ptr->lineart_variance_thr              = 44;
@@ -1475,6 +1484,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->psy_bias_mds0_intra_inter_mode_bias = UINT8_DEFAULT;
     config_ptr->psy_bias_inter_mode_bias          = UINT8_DEFAULT;
     config_ptr->psy_bias_qm_bias                  = UINT8_DEFAULT;
+    config_ptr->psy_bias_sharpness_rounding       = DEFAULT;
     config_ptr->high_quality_encode_psy_bias      = DEFAULT;
     config_ptr->high_fidelity_encode_psy_bias     = DEFAULT;
     config_ptr->dlf_bias                          = 0;
@@ -1771,12 +1781,21 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      floor(config->texture_psy_bias),
                      config->texture_variance_thr,
                      config->texture_variance_thr >> 2);
+            if (config->noise_psy_bias >= 1.0)
+                SVT_INFO("SVT [config]: \x1b[30m\x1b[1mnoise PSY bias \t\t\t\t\t\t: %.0f\x1b[0m\n",
+                         floor(config->noise_psy_bias));
+            else
+                SVT_INFO("SVT [config]: noise PSY bias \t\t\t\t\t\t: %.0f\n",
+                         floor(config->noise_psy_bias));
         }
         else if (config->texture_psy_bias >= 1.0)
             SVT_INFO("SVT [config]: texture PSY bias / variance base / common thr \t\t\t: %.0f / %d / %d\n",
                      floor(config->texture_psy_bias),
                      config->texture_variance_thr,
                      config->texture_variance_thr >> 2);
+        if (config->noise_psy_bias >= 1.0)
+            SVT_INFO("SVT [config]: noise PSY bias \t\t\t\t\t\t: %.0f\n",
+                     floor(config->noise_psy_bias));
 
         // Motion Estimation
         if (config->enable_tf) {
@@ -3136,6 +3155,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"lineart-energy-bias", &config_struct->lineart_energy_bias},
         {"texture-energy-bias", &config_struct->texture_energy_bias},
         {"satd-bias", &config_struct->satd_bias},
+        {"noise-psy-bias", &config_struct->noise_psy_bias},
         {"high-quality-encode-psy-bias", &config_struct->high_quality_encode_psy_bias},
         {"high-fidelity-encode-psy-bias", &config_struct->high_fidelity_encode_psy_bias}
     };
@@ -3163,6 +3183,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"enable-cdef", &config_struct->cdef_level},
         {"enable-restoration", &config_struct->enable_restoration_filtering},
         {"enable-mfmv", &config_struct->enable_mfmv},
+        {"psy-bias-sharpness-rounding", &config_struct->psy_bias_sharpness_rounding},
         {"intra-period", &config_struct->intra_period_length},
         {"min-keyint", &config_struct->min_intra_period_length},
         {"tile-rows", &config_struct->tile_rows},

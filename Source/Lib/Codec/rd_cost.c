@@ -1653,15 +1653,9 @@ static void psy_bias_apply(PictureControlSet *pcs, ModeDecisionContext *ctx, str
         *ssim_dist = (*ssim_dist * 9) >> 3;
     }
 
-    uint8_t is_base;
-    if (!pcs->scs->static_config.balancing_q_bias)
-        is_base = pcs->temporal_layer_index == 0;
-    else
-        is_base = (pcs->ppcs->temporal_layer_index + pcs->scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
-                  pcs->ppcs->slice_type == I_SLICE;
     // inter mode bias
     if (pcs->scs->static_config.psy_bias_inter_mode_bias &&
-        !is_base && is_intra_mode(cand_bf->cand->pred_mode)) {
+        pcs->ppcs->slice_type != I_SLICE && is_intra_mode(cand_bf->cand->pred_mode)) {
         *dist = (*dist * (8 + (1 << (pcs->scs->static_config.psy_bias_inter_mode_bias - 1)))) >> 3;
         *ssim_dist = (*ssim_dist * (8 + (1 << (pcs->scs->static_config.psy_bias_inter_mode_bias - 1)))) >> 3;
     }

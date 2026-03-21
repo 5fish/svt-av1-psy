@@ -110,6 +110,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **Max32TxSize**                  | --max-32-tx-size            | [0,1]                          | 0           | Restricts use of block transform sizes to a maximum of 32x32 pixels (disabled: use max of 64x64 pixels)       |
 | **LineartPsyBias**               | --lineart-psy-bias          | [0-7,-2]                       | 0           | Improve lineart retention. Check below for more description. [0: disabled, -2: variance threshold testing]    |
 | **TexturePsyBias**               | --texture-psy-bias          | [0-7]                          | 0           | Improve texture retention. Check below for more description. [0: disabled]                                    |
+| **NoisePsyBias**                 | --noise-psy-bias            | [0-7]                          | 0           | Improve noise retention. Check below for more description. [0: disabled]                                      |
 | **LineartVarianceThr**           | --lineart-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--lineart-psy-bias`. Check below for more description.                                         |
 | **TextureVarianceThr**           | --texture-variance-thr      | [0.0-16.0]                     | 5.5         | Threshold for `--texture-psy-bias`. Check below for more description.                                         |
 | **PsyBiasmds0SAD**               | --psy-bias-mds0-sad         | [0-1]                          | 0           | Use SAD in mds0                                                                                               |
@@ -120,6 +121,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **PsyBiasmds0IntraInterModeBias** | --psy-bias-mds0-intra-inter-mode-bias | [0-1]               | 0           | Bias towards intra mode in base layers, and against intra mode in non base layers                             |
 | **PsyBiasInterModeBias**         | --psy-bias-inter-mode-bias  | [0-5]                          | 0           | Bias against intra mode in non base layers                                                                    |
 | **PsyBiasQMBias**                | --psy-bias-qm-bias          | [0-1]                          | 0           | Increase QM level in frames of higher temporal layer                                                          |
+| **PsyBiasSharpnessRounding**     | --psy-bias-sharpness-rounding | [1-256]                      | -1          | Quantization rounding [-1: `64` in every `--tune` but `--tune 3`, which is `48`]  |
 | **HighQualityEncodePsyBias**     | --high-quality-encode-psy-bias | [0-1]                       | 0           | Bias various features for high quality encoding. Check below for more description. [Default to `1` when `--crf [<= 24.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 | **HighFidelityEncodePsyBias**    | --high-fidelity-encode-psy-bias | [0-1]                      | 0           | Bias various features for high fidelity encoding. Check below for more description. [Default to `1` when `--crf [<= 16.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 
@@ -180,11 +182,11 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 
 | `--texture-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
+| [global] `--noise-psy-bias` | ✕ | ✕ | ✕ | ✕ | `2` | `4` | `6` | Can be overridden |
 | [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `12.0` | `12.0` | `14.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `12.0` | `12.0` | `12.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
 | [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overridden |
-| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
@@ -195,9 +197,7 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
 | [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--psy-bias-mds0-sad 1` | ✕ | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | Can be overridden |
 | [md] disable mds0 unipred bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
 | [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `1.0` | `3.0` | `3.0` | `3.0` | Can be overridden |
 | [md] `--texture-ac-bias` | － | － | － | `3.0` | `8.0` | `8.0` | `8.0` | Can be overridden |
@@ -206,7 +206,7 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `GLOBALMV` bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--psy-bias-inter-mode-bias` | ✕ | ✕ | `1` | `1` | `1` | `2` | `2` | Can be overridden |
+| [md] `--psy-bias-inter-mode-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | (◯) | Can be overridden |
 | [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [dlf] `--dlf-bias-max-dlf 6,2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
@@ -217,7 +217,7 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 * `--texture-psy-bias 2` is fine to use on sources with little texture.  
 * `--texture-psy-bias 3` puts a little bit of focus on texture, and can be used on sources with occasional texture.  
 * `--texture-psy-bias 4` is suitable for sources with detailed texture. At this level, it starts to harm especially weak lineart in clean sources a little bit, but should still generally be fine for most sources.  
-* `--texture-psy-bias 5` and above is suitabled for encodes where texture retention is a great priority, or when the source is very texture heavy.  
+* `--texture-psy-bias 5` and above is suitable for encodes where texture retention is a great priority, or when the source is very texture heavy.  
   Additionally, `--texture-psy-bias 6` and above contains more settings to accommodate noisy sources.  
 
 There are a lot of `-psy-bias` features that're isolated into individually togglable parameters. For example, a properly set `--noise-norm-strength` to the source will help regardless which `--texture-psy-bias` levels you use. If noise in the source is very bad, and you can't perform filtering to stabilise the noise, you might want to increase `--psy-bias-inter-mode-bias`. If entire frame of the source is covered by a layer of texture, then features like `--psy-bias-mds0-intra-inter-mode-bias 1` and `--psy-bias-mds0-sad 1` might become very handy.  
@@ -225,6 +225,19 @@ There are a lot of `-psy-bias` features that're isolated into individually toggl
 In addition to the parameters set here, you're recommended to use `--enable-cdef 0` whenever your source and your target filesize permits, which will help greatly with texture retention. You should also lower `--dlf-bias-max-dlf` and `--dlf-bias-min-dlf` as much as your source allows.  
 
 On noisy sources with dynamic details instead of static texture, individual parameters here might need to be adjusted, most importantly, `--balancing-r0-dampening-layer`, as well as all the biases related to intra / inter mode and `--texture-energy-bias`. `--dlf-bias` might need to be adjusted as well if the blocking becomes too bad.  
+
+### `--noise-psy-bias`
+
+| `--noise-psy-bias` level | `1` ~ `2` | `3` ~ `4` | `5` ~ `7` | Note |
+| :-- | :--: | :--: | :--: | :-- |
+| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ◯ | ◯ | ◯ | Can be overridden |
+| [md] full skip taper | ✕ | ✕ | ◯ | |
+| [md] limit tx types | ✕ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-inter-mode-bias` | `1` | `1` | `2` | Can be overridden |
+
+`--psy-bias-sharpness-rounding 128` should be very beneficial in keeping weak noise and texture and is an important part of `--noise-psy-bias`, but because of its high cost, it's only enabled when `--high-quality-encode-psy-bias 1`, which is by default selected at `--crf [<= 24.00]`.  
 
 ### `--lineart-variance-thr` and `--texture-variance-thr` calculation
 
@@ -245,6 +258,7 @@ However, apart from this, both parameters have various features such as boosting
 
 * `--balancing-luminance-q-bias`: Add an additional `2.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
 * `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` in frames of lowest temporal layer to always `1`.  
+* `--psy-bias-sharpness-rounding`: Default changed to `128` when `--noise-psy-bias [>= 1]`. Can be overridden.  
 * `bypass_md_stage_2`: Disabled in `--preset 2` and `1`.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
 * `--lineart-energy-bias`: Default changed from `1.00` to `0.98`. Can be overridden.  
@@ -258,6 +272,7 @@ Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep 
 Setting `--high-fidelity-encode-psy-bias 1` sets `--high-quality-encode-psy-bias 1` as well, and cannot be overridden.  
 In additional to features in `--high-quality-encode-psy-bias 1`:  
 
+* `--noise-psy-bias`: Default changed to `4`. Can be overridden.  
 * `--hierarchical-levels`: Default changed from `5` to `2`. Can be overridden.  
 * `--balancing-luminance-q-bias`: Add an additional `4.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
 * `--balancing-luminance-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  

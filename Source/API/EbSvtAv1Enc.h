@@ -1130,6 +1130,12 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     double texture_psy_bias;
     /**
+     * @brief Improve noise retention.
+     * Min value is 0
+     * Max value is 7
+     */
+    double noise_psy_bias;
+    /**
      * @brief Easter egg for `--lineart-psy-bias Kumiko`
      */
     int8_t lineart_psy_bias_easter_egg;
@@ -1157,6 +1163,7 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t psy_bias_mds0_intra_inter_mode_bias;
     uint8_t psy_bias_inter_mode_bias;
     uint8_t psy_bias_qm_bias;
+    int32_t psy_bias_sharpness_rounding;
 
     /**
      * @brief Bias various features for high quality encoding.
@@ -1368,7 +1375,7 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     // uint8_t padding[128 - 8 * sizeof(Bool) - 15 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(uint32_t) - sizeof(int32_t) - 2 * sizeof(double)
-                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 9 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 11 * sizeof(double)];
+                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 9 * sizeof(int8_t) - 2 * sizeof(uint16_t) - 2 * sizeof(int32_t) - 12 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

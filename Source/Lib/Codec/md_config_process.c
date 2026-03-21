@@ -88,6 +88,8 @@ void svt_av1_build_quantizer(EbBitDepth bit_depth, int32_t y_dc_delta_q, int32_t
         int32_t qzbin_factor     = svt_aom_get_qzbin_factor(q, bit_depth);
         int32_t qrounding_factor = q == 0 ? 64 : 48;
         int32_t qrounding_factor_fp = pcs->scs->static_config.tune != 3 ? 64 : 48;
+        if (pcs->scs->static_config.psy_bias_sharpness_rounding != DEFAULT)
+            qrounding_factor_fp = pcs->scs->static_config.psy_bias_sharpness_rounding;
         int diff = q - pcs->frm_hdr.quantization_params.base_q_idx; // q-range diff based on current quantizer
         // Merged from mainline a1db947
         if ((pcs->scs->static_config.sharpness > 0 && diff < 0) || (pcs->scs->static_config.sharpness < 0 && diff > 0)) {
@@ -392,7 +394,8 @@ void mode_decision_configuration_init_qp_update(PictureControlSet *pcs) {
                                  pcs->ppcs->frm_hdr.allow_intrabc,
                                  &pcs->md_frame_context,
                                  pcs->scs->static_config.lineart_psy_bias,
-                                 pcs->scs->static_config.texture_psy_bias);
+                                 pcs->scs->static_config.texture_psy_bias,
+                                 pcs->scs->static_config.noise_psy_bias);
     // Initial Rate Estimation of the Motion vectors
     svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
     // Initial Rate Estimation of the quantized coefficients
@@ -826,7 +829,8 @@ void *svt_aom_mode_decision_configuration_kernel(void *input_ptr) {
                                      pcs->ppcs->frm_hdr.allow_intrabc,
                                      &pcs->md_frame_context,
                                      scs->static_config.lineart_psy_bias,
-                                     scs->static_config.texture_psy_bias);
+                                     scs->static_config.texture_psy_bias,
+                                     scs->static_config.noise_psy_bias);
         // Initial Rate Estimation of the Motion vectors
         svt_aom_estimate_mv_rate(pcs, md_rate_est_ctx, &pcs->md_frame_context);
         // Initial Rate Estimation of the quantized coefficients

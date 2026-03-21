@@ -71,7 +71,7 @@ void svt_aom_get_syntax_rate_from_cdf(int32_t *costs, const AomCdfProb *cdf, con
 void svt_aom_estimate_syntax_rate(MdRateEstimationContext *md_rate_est_ctx, Bool is_i_slice,
                                   uint8_t pic_filter_intra_level, uint8_t allow_screen_content_tools,
                                   uint8_t enable_restoration, uint8_t allow_intrabc, FRAME_CONTEXT *fc,
-                                  double lineart_psy_bias, double texture_psy_bias) {
+                                  double lineart_psy_bias, double texture_psy_bias, double noise_psy_bias) {
     int32_t i, j;
 
     md_rate_est_ctx->initialized = 1;
@@ -269,7 +269,7 @@ void svt_aom_estimate_syntax_rate(MdRateEstimationContext *md_rate_est_ctx, Bool
             svt_aom_get_syntax_rate_from_cdf(md_rate_est_ctx->zero_mv_mode_fac_bits[i], fc->zeromv_cdf[i], NULL);
         for (i = 0; i < REFMV_MODE_CONTEXTS; ++i) {
             svt_aom_get_syntax_rate_from_cdf(md_rate_est_ctx->ref_mv_mode_fac_bits[i], fc->refmv_cdf[i], NULL);
-            if (lineart_psy_bias >= 1.0 || texture_psy_bias >= 1.0)
+            if (lineart_psy_bias >= 1.0 || texture_psy_bias >= 1.0 || noise_psy_bias >= 1.0)
                 md_rate_est_ctx->ref_mv_mode_fac_bits[i][0] = md_rate_est_ctx->ref_mv_mode_fac_bits[i][1];
         }
         for (i = 0; i < DRL_MODE_CONTEXTS; ++i)
@@ -277,7 +277,7 @@ void svt_aom_estimate_syntax_rate(MdRateEstimationContext *md_rate_est_ctx, Bool
         for (i = 0; i < INTER_MODE_CONTEXTS; ++i) {
             svt_aom_get_syntax_rate_from_cdf(
                 md_rate_est_ctx->inter_compound_mode_fac_bits[i], fc->inter_compound_mode_cdf[i], NULL);
-            if (lineart_psy_bias >= 1.0 || texture_psy_bias >= 1.0) {
+            if (lineart_psy_bias >= 1.0 || texture_psy_bias >= 1.0 || noise_psy_bias >= 1.0) {
                 md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEAREST_NEARESTMV)] = md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEAR_NEARMV)];
                 md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEAREST_NEWMV)] = md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEAR_NEWMV)];
                 md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEW_NEARESTMV)] = md_rate_est_ctx->inter_compound_mode_fac_bits[i][INTER_COMPOUND_OFFSET(NEW_NEARMV)];

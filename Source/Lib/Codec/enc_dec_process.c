@@ -3310,7 +3310,8 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                  pcs->ppcs->frm_hdr.allow_intrabc,
                                                  &pcs->md_frame_context,
                                                  scs->static_config.lineart_psy_bias,
-                                                 scs->static_config.texture_psy_bias);
+                                                 scs->static_config.texture_psy_bias,
+                                                 scs->static_config.noise_psy_bias);
                 if (!pcs->cdf_ctrl.update_coef)
                     svt_aom_estimate_coefficients_rate(ed_ctx->md_ctx->rate_est_table, &pcs->md_frame_context);
             }
@@ -3409,7 +3410,8 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                              pcs->ppcs->frm_hdr.allow_intrabc,
                                                              &pcs->ec_ctx_array[sb_index],
                                                              scs->static_config.lineart_psy_bias,
-                                                             scs->static_config.texture_psy_bias);
+                                                             scs->static_config.texture_psy_bias,
+                                                             scs->static_config.noise_psy_bias);
                             // Initial Rate Estimation of the Motion vectors
                             if (pcs->cdf_ctrl.update_mv)
                                 svt_aom_estimate_mv_rate(

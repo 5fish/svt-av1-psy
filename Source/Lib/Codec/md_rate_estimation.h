@@ -199,7 +199,8 @@ extern "C" {
         uint8_t allow_intrabc,
         FRAME_CONTEXT                *fc,
         double                        lineart_psy_bias,
-        double                        texture_psy_bias);
+        double                        texture_psy_bias,
+        double                        noise_psy_bias);
     /**************************************************************************
     * Estimate the rate of the quantised coefficient
     * based on the frame CDF
