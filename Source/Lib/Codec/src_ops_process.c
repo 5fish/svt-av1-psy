@@ -1630,7 +1630,8 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
         pcs->r0 = ((double)(recrf_dist_base_sum << (RDDIV_BITS))) / mc_dep_cost_base;
         // If there are outlier blocks responsible for most of the propagation, set r0 to 1.0 to indicate
         // no error propagation, as the result may not be reliable.
-        if (max_dist > (mc_dep_delta_base_sum / count) * 100 && max_dist > (mc_dep_delta_base_sum * 9 / 10))
+        if (max_dist > (mc_dep_delta_base_sum / count) * 100 && max_dist > (mc_dep_delta_base_sum * 9 / 10) &&
+            !scs->static_config.balancing_q_bias)
             pcs->r0 = 1.0;
         pcs->tpl_is_valid = 1;
     } else {

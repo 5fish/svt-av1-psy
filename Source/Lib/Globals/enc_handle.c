@@ -3296,7 +3296,7 @@ static void derive_vq_params(SequenceControlSet* scs) {
     if (scs->static_config.texture_psy_bias >= 1.0)
         psy_bias_disable_unipred_bias = 1;
 
-    if (scs->static_config.tune == 0 || scs->static_config.tune == 3 || 
+    if (scs->static_config.tune == 0 || scs->static_config.tune == 3 ||
         (scs->static_config.alt_ssim_tuning && (scs->static_config.tune == 2 || scs->static_config.tune == 4))) {
 
         // Sharpness
@@ -3941,38 +3941,6 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         &scs->input_resolution,
         scs->max_input_luma_width *scs->max_input_luma_height);
 
-    scs->seq_qp_mod = 2;
-
-    // Set tune params
-    derive_vq_params(scs);
-
-    // Set TF level
-    derive_tf_params(scs);
-
-    //Future frames window in Scene Change Detection (SCD) / TemporalFiltering
-    scs->scd_delay = 0;
-
-    // Update the scd_delay based on the the number of future frames @ ISLICE
-    // This case is needed for non-delayed Intra (intra_period_length == 0)
-    uint32_t scd_delay_islice = 0;
-    if (scs->static_config.intra_period_length == 0)
-        if (scs->tf_params_per_type[0].enabled)
-            scd_delay_islice =
-            MIN(scs->tf_params_per_type[0].num_future_pics + (scs->tf_params_per_type[0].modulate_pics ? TF_MAX_EXTENSION : 0), // number of future picture(s) used for ISLICE + max picture(s) after noise-based adjustement (=6)
-                scs->tf_params_per_type[0].max_num_future_pics);
-
-
-    // Update the scd_delay based on the the number of future frames @ BASE
-    uint32_t scd_delay_base = 0;
-    if (scs->tf_params_per_type[1].enabled)
-        scd_delay_base =
-        MIN(scs->tf_params_per_type[1].num_future_pics + (scs->tf_params_per_type[1].modulate_pics ? TF_MAX_EXTENSION : 0), // number of future picture(s) used for BASE + max picture(s) after filtered adjustement (=3)
-            scs->tf_params_per_type[1].max_num_future_pics);
-    scs->scd_delay = MAX(scd_delay_islice, scd_delay_base);
-    // Update the scd_delay based on SCD, 1first pass
-    // Delay needed for SCD , 1first pass of (2pass and 1pass VBR)
-    if (scs->static_config.scene_change_detection || scs->vq_ctrls.sharpness_ctrls.scene_transition || scs->lap_rc)
-        scs->scd_delay = MAX(scs->scd_delay, 2);
 
     // `-psy-bias`s Global
     if ((scs->static_config.lineart_psy_bias >= 3.0 || scs->static_config.texture_psy_bias >= 3.0) &&
@@ -3997,7 +3965,7 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         else
             scs->static_config.screen_content_mode = 2;
     }
-        
+
     // `-psy-bias`s PD
     if (scs->static_config.startup_mg_size == 0) {
         if (scs->static_config.lineart_psy_bias >= 5.0)
@@ -4055,35 +4023,14 @@ static void set_param_based_on_input(SequenceControlSet *scs)
                 scs->static_config.balancing_luminance_q_bias = 100;
             else
                 scs->static_config.balancing_luminance_q_bias = 80;
-
-            if (scs->static_config.high_fidelity_encode_psy_bias)
-                scs->static_config.balancing_luminance_q_bias += 40;
-            else if (scs->static_config.high_quality_encode_psy_bias)
-                scs->static_config.balancing_luminance_q_bias += 20;
         }
         else
             scs->static_config.balancing_luminance_q_bias     = 0;
     }
-    if (scs->static_config.balancing_luminance_lambda_bias == DEFAULT) {
-        if (scs->static_config.balancing_q_bias) {
-            if (scs->static_config.high_fidelity_encode_psy_bias)
-                scs->static_config.balancing_luminance_lambda_bias = 0.9;
-            else
-                scs->static_config.balancing_luminance_lambda_bias = 0.0;
-        }
-        else
-            scs->static_config.balancing_luminance_lambda_bias = 0.0;
-    }
-    if (scs->static_config.balancing_texture_lambda_bias == DEFAULT) {
-        if (scs->static_config.balancing_q_bias) {
-            if (scs->static_config.high_fidelity_encode_psy_bias)
-                scs->static_config.balancing_texture_lambda_bias = 0.9;
-            else
-                scs->static_config.balancing_texture_lambda_bias = 0.0;
-        }
-        else
-            scs->static_config.balancing_texture_lambda_bias = 0.0;
-    }
+    if (scs->static_config.balancing_luminance_lambda_bias == DEFAULT)
+        scs->static_config.balancing_luminance_lambda_bias = 0.0;
+    if (scs->static_config.balancing_texture_lambda_bias == DEFAULT)
+        scs->static_config.balancing_texture_lambda_bias = 0.0;
 
     if (scs->static_config.balancing_tpl_intra_mode_beta_bias == UINT8_DEFAULT) {
         if (scs->static_config.noise_psy_bias >= 1.0)
@@ -4100,16 +4047,10 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     }
 
     // `-psy-bias`s MD
-    if (scs->static_config.sharpness == INT8_DEFAULT) {
-        if (scs->static_config.high_fidelity_encode_psy_bias)
-            scs->static_config.sharpness = 4;
-        else
-            scs->static_config.sharpness = 2;
-    }
-    if (scs->static_config.psy_bias_sharpness_rounding == DEFAULT) {
-        if (scs->static_config.high_quality_encode_psy_bias && scs->static_config.noise_psy_bias >= 1.0)
-            scs->static_config.psy_bias_sharpness_rounding = 128;
-    }
+    if (scs->static_config.sharpness == INT8_DEFAULT)
+        scs->static_config.sharpness = 2;
+    if (scs->static_config.psy_bias_sharpness_rounding == DEFAULT)
+        scs->static_config.psy_bias_sharpness_rounding = -2;
     if (scs->static_config.psy_bias_mds0_sad == UINT8_DEFAULT)
         scs->static_config.psy_bias_mds0_sad = 0;
     if (scs->static_config.psy_bias_disable_warped_motion == UINT8_DEFAULT) {
@@ -4172,7 +4113,7 @@ static void set_param_based_on_input(SequenceControlSet *scs)
 
     if (scs->static_config.ac_bias == DEFAULT) {
         if (scs->static_config.texture_psy_bias >= 5.0)
-            scs->static_config.ac_bias = 3.0;
+            scs->static_config.ac_bias = 2.5;
         else if (scs->static_config.texture_psy_bias >= 1.0) {
             if (scs->static_config.high_fidelity_encode_psy_bias)
                 scs->static_config.ac_bias = 1.5;
@@ -4184,12 +4125,12 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     }
     if (scs->static_config.texture_ac_bias == DEFAULT) {
         if (scs->static_config.texture_psy_bias >= 5.0)
-            scs->static_config.texture_ac_bias = 8.0;
+            scs->static_config.texture_ac_bias = 6.0;
         else if (scs->static_config.texture_psy_bias >= 4.0) {
             if (scs->static_config.high_fidelity_encode_psy_bias)
-                scs->static_config.texture_ac_bias = 4.5;
-            else
                 scs->static_config.texture_ac_bias = 3.0;
+            else
+                scs->static_config.texture_ac_bias = 2.0;
         }
         else
             scs->static_config.texture_ac_bias = scs->static_config.ac_bias;
@@ -4212,22 +4153,18 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         else
             scs->static_config.texture_energy_bias = 1.00;
     }
-    if (scs->static_config.satd_bias == DEFAULT) {
-        if (scs->static_config.high_fidelity_encode_psy_bias)
-            scs->static_config.satd_bias = 1.0;
-        else
-            scs->static_config.satd_bias = 0.0;
-    }
-    
+    if (scs->static_config.satd_bias == DEFAULT)
+        scs->static_config.satd_bias = 0.0;
+
     if (scs->static_config.psy_bias_mds0_intra_inter_mode_bias == UINT8_DEFAULT) {
-        if (scs->static_config.noise_psy_bias >= 3.0)
+        if (scs->static_config.noise_psy_bias >= 4.0)
             scs->static_config.psy_bias_mds0_intra_inter_mode_bias = 1;
         else
             scs->static_config.psy_bias_mds0_intra_inter_mode_bias = 0;
     }
 
     if (scs->static_config.psy_bias_inter_mode_bias == UINT8_DEFAULT) {
-        if (scs->static_config.noise_psy_bias >= 5.0)
+        if (scs->static_config.noise_psy_bias >= 6.0)
             scs->static_config.psy_bias_inter_mode_bias = 2;
         if (scs->static_config.lineart_psy_bias >= 3.0 ||
             scs->static_config.texture_psy_bias >= 3.0 ||
@@ -4262,6 +4199,41 @@ static void set_param_based_on_input(SequenceControlSet *scs)
         scs->static_config.cdef_level = 1;
     }
     svt_av1_verify_cdef_bias_max_min_cdef(&scs->static_config, &scs->static_config);
+
+
+    scs->seq_qp_mod = 2;
+
+    // Set tune params
+    derive_vq_params(scs);
+
+    // Set TF level
+    derive_tf_params(scs);
+
+    //Future frames window in Scene Change Detection (SCD) / TemporalFiltering
+    scs->scd_delay = 0;
+
+    // Update the scd_delay based on the the number of future frames @ ISLICE
+    // This case is needed for non-delayed Intra (intra_period_length == 0)
+    uint32_t scd_delay_islice = 0;
+    if (scs->static_config.intra_period_length == 0)
+        if (scs->tf_params_per_type[0].enabled)
+            scd_delay_islice =
+            MIN(scs->tf_params_per_type[0].num_future_pics + (scs->tf_params_per_type[0].modulate_pics ? TF_MAX_EXTENSION : 0), // number of future picture(s) used for ISLICE + max picture(s) after noise-based adjustement (=6)
+                scs->tf_params_per_type[0].max_num_future_pics);
+
+
+    // Update the scd_delay based on the the number of future frames @ BASE
+    uint32_t scd_delay_base = 0;
+    if (scs->tf_params_per_type[1].enabled)
+        scd_delay_base =
+        MIN(scs->tf_params_per_type[1].num_future_pics + (scs->tf_params_per_type[1].modulate_pics ? TF_MAX_EXTENSION : 0), // number of future picture(s) used for BASE + max picture(s) after filtered adjustement (=3)
+            scs->tf_params_per_type[1].max_num_future_pics);
+    scs->scd_delay = MAX(scd_delay_islice, scd_delay_base);
+    // Update the scd_delay based on SCD, 1first pass
+    // Delay needed for SCD , 1first pass of (2pass and 1pass VBR)
+    if (scs->static_config.scene_change_detection || scs->vq_ctrls.sharpness_ctrls.scene_transition || scs->lap_rc)
+        scs->scd_delay = MAX(scs->scd_delay, 2);
+
 
     // no future minigop is used for lowdelay prediction structure
     if (scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_P || scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) {
@@ -4883,7 +4855,7 @@ static void copy_api_from_app(
                 : 5;
 
         if (scs->static_config.high_fidelity_encode_psy_bias)
-            scs->static_config.hierarchical_levels = AOMMIN(scs->static_config.hierarchical_levels, 2);
+            scs->static_config.hierarchical_levels = AOMMIN(scs->static_config.hierarchical_levels, 3);
     }
     if (scs->static_config.pass == ENC_SINGLE_PASS && scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) {
         if (scs->static_config.hierarchical_levels != 2) {
@@ -5145,7 +5117,7 @@ static void copy_api_from_app(
 
     // Alternative SSIM tuning
     scs->static_config.alt_ssim_tuning = config_struct->alt_ssim_tuning;
-    
+
     // Filtering noise detection
     scs->static_config.filtering_noise_detection = config_struct->filtering_noise_detection;
 

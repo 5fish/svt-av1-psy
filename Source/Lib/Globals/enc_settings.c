@@ -1201,7 +1201,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
     if (!(config->psy_bias_sharpness_rounding >= 1 && config->psy_bias_sharpness_rounding <= 256) &&
-        config->psy_bias_sharpness_rounding != DEFAULT) {
+        config->psy_bias_sharpness_rounding != DEFAULT && config->psy_bias_sharpness_rounding != -2) {
         SVT_ERROR("Instance %u: psy-bias-sharpness-rounding must be between 1 and 256\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }

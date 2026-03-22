@@ -121,7 +121,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **PsyBiasmds0IntraInterModeBias** | --psy-bias-mds0-intra-inter-mode-bias | [0-1]               | 0           | Bias towards intra mode in base layers, and against intra mode in non base layers                             |
 | **PsyBiasInterModeBias**         | --psy-bias-inter-mode-bias  | [0-5]                          | 0           | Bias against intra mode in non base layers                                                                    |
 | **PsyBiasQMBias**                | --psy-bias-qm-bias          | [0-1]                          | 0           | Increase QM level in frames of higher temporal layer                                                          |
-| **PsyBiasSharpnessRounding**     | --psy-bias-sharpness-rounding | [1-256]                      | -1          | Quantization rounding [-1: `64` in every `--tune` but `--tune 3`, which is `48`]  |
+| **PsyBiasSharpnessRounding**     | --psy-bias-sharpness-rounding | [1-256]                      | -2          | Quantization rounding [-2: `64` in every `--tune` but `--tune 3`, which is `48`]                              |
 | **HighQualityEncodePsyBias**     | --high-quality-encode-psy-bias | [0-1]                       | 0           | Bias various features for high quality encoding. Check below for more description. [Default to `1` when `--crf [<= 24.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 | **HighFidelityEncodePsyBias**    | --high-fidelity-encode-psy-bias | [0-1]                      | 0           | Bias various features for high fidelity encoding. Check below for more description. [Default to `1` when `--crf [<= 16.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 
@@ -199,8 +199,8 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disable mds0 unipred bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `1.0` | `3.0` | `3.0` | `3.0` | Can be overridden |
-| [md] `--texture-ac-bias` | － | － | － | `3.0` | `8.0` | `8.0` | `8.0` | Can be overridden |
+| [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `1.0` | `2.5` | `2.5` | `2.5` | Can be overridden |
+| [md] `--texture-ac-bias` | － | － | － | `2.0` | `6.0` | `6.0` | `6.0` | Can be overridden |
 | [md] `--texture-energy-bias` | `1.00` | `1.00` | `1.02` | `1.02` | `1.10` | `1.10` | `1.10` | Can be overridden |
 | [md] variance obmc decision | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
@@ -228,16 +228,14 @@ On noisy sources with dynamic details instead of static texture, individual para
 
 ### `--noise-psy-bias`
 
-| `--noise-psy-bias` level | `1` ~ `2` | `3` ~ `4` | `5` ~ `7` | Note |
-| :-- | :--: | :--: | :--: | :-- |
-| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ◯ | ◯ | ◯ | Can be overridden |
-| [md] full skip taper | ✕ | ✕ | ◯ | |
-| [md] limit tx types | ✕ | ◯ | ◯ | |
-| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | |
-| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-inter-mode-bias` | `1` | `1` | `2` | Can be overridden |
-
-`--psy-bias-sharpness-rounding 128` should be very beneficial in keeping weak noise and texture and is an important part of `--noise-psy-bias`, but because of its high cost, it's only enabled when `--high-quality-encode-psy-bias 1`, which is by default selected at `--crf [<= 24.00]`.  
+| `--noise-psy-bias` level | `1` ~ `3` | `4` | `5` | `6` ~ `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :-- |
+| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] full skip taper | ✕ | ✕ | ◯ | ◯ | |
+| [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-inter-mode-bias` | `1` | `1` | `1` | `2` | Can be overridden |
 
 ### `--lineart-variance-thr` and `--texture-variance-thr` calculation
 
@@ -256,11 +254,10 @@ However, apart from this, both parameters have various features such as boosting
 
 #### `--high-quality-encode-psy-bias` Features
 
-* `--balancing-luminance-q-bias`: Add an additional `2.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
 * `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` in frames of lowest temporal layer to always `1`.  
-* `--psy-bias-sharpness-rounding`: Default changed to `128` when `--noise-psy-bias [>= 1]`. Can be overridden.  
 * `bypass_md_stage_2`: Disabled in `--preset 2` and `1`.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
+* variance cand elimination (`--texture-psy-bias [>= 3]`): Raise variance threshold from `lineart_variance_thr >> 2` to `lineart_variance_thr >> 1` when `--noise-psy-bias [>= 1]`.  
 * `--lineart-energy-bias`: Default changed from `1.00` to `0.98`. Can be overridden.  
 * `--dlf-bias-min-dlf`: Default changed to `0,0` when `--texture-psy-bias [<= 4]`. Can be overridden.  
 * `--filtering-noise-detection`: Revert `--lineart-psy-bias [>= 6.0]`'s setting it to `4`. Can be overridden.  
@@ -273,22 +270,15 @@ Setting `--high-fidelity-encode-psy-bias 1` sets `--high-quality-encode-psy-bias
 In additional to features in `--high-quality-encode-psy-bias 1`:  
 
 * `--noise-psy-bias`: Default changed to `4`. Can be overridden.  
-* `--hierarchical-levels`: Default changed from `5` to `2`. Can be overridden.  
-* `--balancing-luminance-q-bias`: Add an additional `4.0` to the default value of selected `--lineart-psy-bias`, `--texture-psy-bias` level or `--balancing-q-bias 1` default. Does not apply to manually specified `--balancing-luminance-q-bias` value.  
-* `--balancing-luminance-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
-* `--balancing-texture-lambda-bias`: Default changed from `0.0` to `0.9`. Can be overridden.  
-* variance cand elimination (`--texture-psy-bias [>= 3]`): Raise variance threshold from `lineart_variance_thr >> 2` to `lineart_variance_thr >> 1`.  
+* `--hierarchical-levels`: Default changed from `5` to `3`. Can be overridden.  
 * `--psy-bias-disable-me-8x8`: Revert `--lineart-psy-bias [>= 2]` settings back to `0`. Can be overridden.  
-* `--sharpness`: Default changed from `2` to `4`. Can be overridden.  
-* `svt_av1_optimize_b` & `svt_fast_optimize_b`: Disabled.  
 * `--ac-bias` and `--texture-ac-bias`: Boost `--texture-psy-bias`'s default for `--ac-bias` and `--texture-ac-bias` by 1.5 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--ac-bias` or `--texture-ac-bias` value.  
 * `--texture-energy-bias`: Boost `--texture-psy-bias`'s default by 2 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--texture-energy-bias` value.  
-* `--satd-bias`: Default changed from `0.00` to `1.00`. Can be overridden.  
 * `--dlf-bias-min-dlf`: Default changed to `0,0`. Can be overridden.  
 * `--texture-cdef-bias-max-cdef`: Default changed from inheriting `--cdef-bias-max-cdef` to `1,0,0,0`. Can be overridden.  
 * `--texture-cdef-bias-min-cdef`: Default changed from inheriting `--cdef-bias-min-cdef` to `0,0,0,0`. Can be overridden.  
 
-Additionally, `--balancing-noise-level-q-bias 1.10` or `1.15` which can balance the quality between noisy and static scenes could be beneficial.  
+Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful. `--balancing-noise-level-q-bias 1.10` or `1.15` which can balance the quality between noisy and static scenes could be beneficial.  
 
 ## Rate Control Options
 

@@ -1767,7 +1767,7 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
         if (eob_perc >= ctx->rdoq_ctrls.eob_th) {
             perform_rdoq = 0;
         }
-        if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th) && !pcs->scs->static_config.high_fidelity_encode_psy_bias) {
+        if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th)) {
             svt_fast_optimize_b(
                 (TranLow *)coeff, &candidate_plane, quant_coeff, (TranLow *)recon_coeff, eob, txsize, tx_type);
         }
@@ -1793,7 +1793,7 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
             }
         }
     }
-    if (perform_rdoq && *eob != 0 && !pcs->scs->static_config.high_fidelity_encode_psy_bias) {
+    if (perform_rdoq && *eob != 0) {
         // Perform rdoq
         svt_av1_optimize_b(ctx,
                            txb_skip_context,

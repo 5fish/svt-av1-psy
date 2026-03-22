@@ -88,7 +88,7 @@ void svt_av1_build_quantizer(EbBitDepth bit_depth, int32_t y_dc_delta_q, int32_t
         int32_t qzbin_factor     = svt_aom_get_qzbin_factor(q, bit_depth);
         int32_t qrounding_factor = q == 0 ? 64 : 48;
         int32_t qrounding_factor_fp = pcs->scs->static_config.tune != 3 ? 64 : 48;
-        if (pcs->scs->static_config.psy_bias_sharpness_rounding != DEFAULT)
+        if (pcs->scs->static_config.psy_bias_sharpness_rounding != -2)
             qrounding_factor_fp = pcs->scs->static_config.psy_bias_sharpness_rounding;
         int diff = q - pcs->frm_hdr.quantization_params.base_q_idx; // q-range diff based on current quantizer
         // Merged from mainline a1db947
