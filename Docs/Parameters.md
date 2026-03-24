@@ -278,7 +278,7 @@ In additional to features in `--high-quality-encode-psy-bias 1`:
 * `--texture-cdef-bias-max-cdef`: Default changed from inheriting `--cdef-bias-max-cdef` to `1,0,0,0`. Can be overridden.  
 * `--texture-cdef-bias-min-cdef`: Default changed from inheriting `--cdef-bias-min-cdef` to `0,0,0,0`. Can be overridden.  
 
-Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful. `--balancing-noise-level-q-bias 1.10` or `1.15` which can balance the quality between noisy and static scenes could be beneficial.  
+Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful. `--balancing-noise-level-q-bias 1.10` or `1.15` can balance the quality between noisy and static scenes and could be beneficial.  
 
 ## Rate Control Options
 

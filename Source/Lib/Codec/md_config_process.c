@@ -201,22 +201,19 @@ static INLINE int psy_still_get_qmlevel(int qindex, int min, int max) {
     return CLIP3(min, max, qm_level);
 }
 
-static double satd_bias_qmatrix_bias_8x8[64] = {
-1.0, 1.0, 1.0, 1.1, 1.2, 1.3, 1.4, 1.0,
-1.0, 1.0, 1.0, 1.0, 1.1, 1.1, 1.1, 1.1,
-1.0, 1.0, 1.0, 1.0, 0.9, 0.8, 0.6, 0.4,
-1.1, 1.0, 1.0, 0.9, 0.9, 0.6, 0.4, 0.2,
-1.2, 1.1, 0.9, 0.9, 0.6, 0.4, 0.2, 0.2,
-1.3, 1.1, 0.8, 0.6, 0.4, 0.2, 0.2, 0.2,
-1.4, 1.1, 0.6, 0.4, 0.2, 0.2, 0.2, 0.2,
-1.0, 0.9, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2,
-};
-
-static double satd_bias_qmatrix_bias_4x4[16] = {
-1,          1.02591423, 1.17792190, 1.15974135,
-1.02591423, 0.97596106, 0.80932070, 0.42426407,
-1.17792190, 0.80932070, 0.42426407, 0.2,
-1.11579568, 0.42426407, 0.2,        0.2,
+static QmVal satd_bias_qmatrix[80] = {
+    32, 30, 19, 11,
+    30, 23, 15, 10,
+    19, 15,  8,  6,
+    11, 10,  6,  4,
+    34, 32, 32, 28, 23, 15, 12,  8,
+    32, 32, 32, 28, 24, 17, 14,  9,
+    32, 32, 27, 24, 20, 16, 14, 10,
+    28, 28, 24, 19, 15, 12, 10,  8,
+    23, 24, 20, 15, 11,  9,  8,  6,
+    15, 17, 16, 12,  9,  7,  6,  5,
+    12, 14, 14, 10,  8,  6,  5,  4,
+     8,  9, 10,  8,  6,  5,  4,  3,
 };
 
 static void svt_av1_qm_init(PictureControlSet *pcs) {
@@ -306,30 +303,7 @@ static void svt_av1_qm_init(PictureControlSet *pcs) {
 #endif
     }
 
-    if (pcs->scs->static_config.satd_bias) {
-        if (ppcs->frm_hdr.quantization_params.using_qmatrix) {
-            memcpy(pcs->satd_bias_qmatrix, ppcs->gqmatrix[ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] >> 2][AOM_PLANE_Y][TX_4X4], 16);
-            memcpy(pcs->satd_bias_qmatrix + 16, ppcs->gqmatrix[ppcs->frm_hdr.quantization_params.qm[AOM_PLANE_Y] >> 2][AOM_PLANE_Y][TX_8X8], 64);
-        }
-        else {
-            memcpy(pcs->satd_bias_qmatrix, ppcs->gqmatrix[15 >> 2][AOM_PLANE_Y][TX_4X4], 16);
-            memcpy(pcs->satd_bias_qmatrix + 16, ppcs->gqmatrix[15 >> 2][AOM_PLANE_Y][TX_8X8], 64);
-        }
-
-        QmVal *head = pcs->satd_bias_qmatrix;
-        double *bias_head = satd_bias_qmatrix_bias_4x4;
-        for (uint8_t i = 0; i < 16; i++) {
-            *head = lrint(*head * *bias_head);
-            head++;
-            bias_head++;
-        }
-        bias_head = satd_bias_qmatrix_bias_8x8;
-        for (uint8_t i = 0; i < 64; i++) {
-            *head = lrint(*head * *bias_head);
-            head++;
-            bias_head++;
-        }
-    }
+    pcs->satd_bias_qmatrix = satd_bias_qmatrix;
 }
 
 /******************************************************
