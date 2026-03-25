@@ -222,20 +222,19 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 
 There are a lot of `-psy-bias` features that're isolated into individually togglable parameters. For example, a properly set `--noise-norm-strength` to the source will help regardless which `--texture-psy-bias` levels you use. If noise in the source is very bad, and you can't perform filtering to stabilise the noise, you might want to increase `--psy-bias-inter-mode-bias`. If entire frame of the source is covered by a layer of texture, then features like `--psy-bias-mds0-intra-inter-mode-bias 1` and `--psy-bias-mds0-sad 1` might become very handy.  
 
-In addition to the parameters set here, you're recommended to use `--enable-cdef 0` whenever your source and your target filesize permits, which will help greatly with texture retention. You should also lower `--dlf-bias-max-dlf` and `--dlf-bias-min-dlf` as much as your source allows.  
-
-On noisy sources with dynamic details instead of static texture, individual parameters here might need to be adjusted, most importantly, `--balancing-r0-dampening-layer`, as well as all the biases related to intra / inter mode and `--texture-energy-bias`. `--dlf-bias` might need to be adjusted as well if the blocking becomes too bad.  
+In addition to the parameters set here, you're recommended to use `--enable-cdef 0` whenever your source and your target filesize permits, which will help greatly with texture retention. You should also lower `--dlf-bias-max-dlf` and `--dlf-bias-min-dlf` as much as your source allows. But on the other hand, in noise heavy sources where blocking is out of control, you can increase `--dlf-bias-max-dlf` and `--dlf-bias-min-dlf`.  
 
 ### `--noise-psy-bias`
 
-| `--noise-psy-bias` level | `1` ~ `3` | `4` | `5` | `6` ~ `7` | Note |
-| :-- | :--: | :--: | :--: | :--: | :-- |
-| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] full skip taper | ✕ | ✕ | ◯ | ◯ | |
-| [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ◯ | ◯ | ◯ | ◯ | |
-| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | |
-| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-inter-mode-bias` | `1` | `1` | `1` | `2` | Can be overridden |
+| `--noise-psy-bias` level | `1` ~ `2` | `3` | `4` | `5` | `6` ~ `7` | Note |
+| :-- | :--: | :--: | :--: | :--: | :--: | :-- |
+| [rc] `--balancing-r0-dampening-layer -3` | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--balancing-tpl-intra-mode-beta-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] full skip taper | ✕ | ✕ | ✕ | ◯ | ◯ | |
+| [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] `--psy-bias-mds0-intra-inter-mode-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-inter-mode-bias` | `1` | `1` | `1` | `1` | `2` | Can be overridden |
 
 ### `--lineart-variance-thr` and `--texture-variance-thr` calculation
 
@@ -254,6 +253,7 @@ However, apart from this, both parameters have various features such as boosting
 
 #### `--high-quality-encode-psy-bias` Features
 
+* `--hierarchical-levels`: Default changed from `5` to `4`. Can be overridden.  
 * `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` in frames of lowest temporal layer to always `1`.  
 * `bypass_md_stage_2`: Disabled in `--preset 2` and `1`.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
@@ -262,7 +262,7 @@ However, apart from this, both parameters have various features such as boosting
 * `--dlf-bias-min-dlf`: Default changed to `0,0` when `--texture-psy-bias [<= 4]`. Can be overridden.  
 * `--filtering-noise-detection`: Revert `--lineart-psy-bias [>= 6.0]`'s setting it to `4`. Can be overridden.  
 
-Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful.  
+`--noise-psy-bias` is recommended when noise retention is a consideration. Additionally, `--satd-bias 0.5` could potentially encourage the encoder to keep certain type of texture and might be useful.  
 
 ##### `--high-fidelity-encode-psy-bias` Features
 
@@ -270,7 +270,6 @@ Setting `--high-fidelity-encode-psy-bias 1` sets `--high-quality-encode-psy-bias
 In additional to features in `--high-quality-encode-psy-bias 1`:  
 
 * `--noise-psy-bias`: Default changed to `4`. Can be overridden.  
-* `--hierarchical-levels`: Default changed from `5` to `3`. Can be overridden.  
 * `--psy-bias-disable-me-8x8`: Revert `--lineart-psy-bias [>= 2]` settings back to `0`. Can be overridden.  
 * `--ac-bias` and `--texture-ac-bias`: Boost `--texture-psy-bias`'s default for `--ac-bias` and `--texture-ac-bias` by 1.5 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--ac-bias` or `--texture-ac-bias` value.  
 * `--texture-energy-bias`: Boost `--texture-psy-bias`'s default by 2 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--texture-energy-bias` value.  

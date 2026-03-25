@@ -1036,18 +1036,6 @@ static const TxType tx_type_group_sc_psy_bias[MAX_TX_TYPE_GROUP][TX_TYPES] = {{D
                                                                               {ADST_DCT, DCT_ADST, INVALID_TX_TYPE},
                                                                               {ADST_FLIPADST, FLIPADST_ADST, INVALID_TX_TYPE},
                                                                               {FLIPADST_DCT, DCT_FLIPADST, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST, INVALID_TX_TYPE}};
-static const TxType tx_type_group_noise_psy_bias[MAX_TX_TYPE_GROUP][TX_TYPES]    = {{DCT_DCT, INVALID_TX_TYPE},
-                                                                                    {V_DCT, H_DCT, INVALID_TX_TYPE},
-                                                                                    {IDTX, INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE}};
-static const TxType tx_type_group_sc_noise_psy_bias[MAX_TX_TYPE_GROUP][TX_TYPES] = {{DCT_DCT, IDTX, INVALID_TX_TYPE},
-                                                                                    {V_DCT, H_DCT, INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE},
-                                                                                    {INVALID_TX_TYPE}};
 typedef enum ATTRIBUTE_PACKED {
     // DCT only
     EXT_TX_SET_DCTONLY,

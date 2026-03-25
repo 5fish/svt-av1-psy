@@ -4005,7 +4005,8 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     }
     if (scs->static_config.balancing_r0_dampening_layer == INT8_DEFAULT) {
         if (scs->static_config.balancing_q_bias)
-            if (scs->static_config.texture_psy_bias >= 5.0)
+            if (scs->static_config.texture_psy_bias >= 5.0 ||
+                scs->static_config.noise_psy_bias >= 3.0)
                 scs->static_config.balancing_r0_dampening_layer = -3;
             else
                 scs->static_config.balancing_r0_dampening_layer = -2;
@@ -4854,8 +4855,8 @@ static void copy_api_from_app(
                 ? 4
                 : 5;
 
-        if (scs->static_config.high_fidelity_encode_psy_bias)
-            scs->static_config.hierarchical_levels = AOMMIN(scs->static_config.hierarchical_levels, 3);
+        if (scs->static_config.high_quality_encode_psy_bias)
+            scs->static_config.hierarchical_levels = AOMMIN(scs->static_config.hierarchical_levels, 4);
     }
     if (scs->static_config.pass == ENC_SINGLE_PASS && scs->static_config.pred_structure == SVT_AV1_PRED_LOW_DELAY_B) {
         if (scs->static_config.hierarchical_levels != 2) {
