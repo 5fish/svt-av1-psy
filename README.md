@@ -46,13 +46,17 @@ Please note that this fork may not be a 1-to-1 copy of changes made in 3.x+, and
 
     Automatically sets tiles appropriate for the source input resolution, which in turn improves decoding performance with minimal effect on efficiency. The feature was tuned following a [testing round](https://wiki.x266.mov/blog/svt-av1-fourth-deep-dive-p2#tiles). The default is 0.
 
-- `--photon-noise` *0 to 100000* (**[From SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr/)**)
+- `--noise` *0 to 100*
 
-    Generates and adds photon noise table with specified ISO value to be used as fgs-table during the encode.
+Generates and adds noise table with specified strength value to be used as fgs-table during the encode. 50 is roughly equivalent to `--film-grain 50`.
 
-- `--photon-noise-chroma` *0 and 1* (**[From SVT-AV1-HDR](https://github.com/juliobbv-p/svt-av1-hdr/)**)
+- `--noise-chroma` *-2 to 100*
 
-    Enables chroma noise in the photon noise table.
+Adds chroma noise with strength based on `--noise` setting (-1) or sets a strength value independently (0-100), default is -1 (chroma strength based on `--noise`). -2 is a legacy option that enables chroma scaling from luma, which results in chroma noise that depends on the underlying frame's luma value instead of chroma.
+
+- `--noise-size` *-1 to 13*
+
+Set grain size for generated noise table, default is -1 (auto, based on input resolution). 
 
 - `--chroma-grain` *0 and 1*
 
