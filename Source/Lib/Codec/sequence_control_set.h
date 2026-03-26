@@ -238,6 +238,7 @@ typedef struct SequenceControlSet {
     uint8_t rc_stat_gen_pass_mode;
     int     cqp_base_q_tf;
     int     cqp_base_q;
+    double  double_cqp_base_qstep;
     // less than 200 frames or gop_constraint_rc is set, used in VBR and set in multipass encode
     uint8_t           is_short_clip;
     uint8_t           passes;

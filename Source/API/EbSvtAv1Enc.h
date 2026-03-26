@@ -986,6 +986,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 0 if CRF is an integer.
      */
     uint8_t extended_crf_qindex_offset;
+    double double_crf;
 
     /**
      * @brief compresses the QP hierarchical layer scale to improve temporal video consistency
@@ -1270,12 +1271,6 @@ typedef struct EbSvtAv1EncConfiguration {
     double balancing_texture_lambda_bias;
 
     /**
-     * @brief Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM.
-     * Min value is -5.
-     * Max value is 0.
-     */
-    int8_t balancing_r0_based_layer;
-    /**
      * @brief Dampen r0-based boosting in frames with temporal layer higher than or equal to hierarchical levels + `--balancing-r0-dampening-layer`.
      * Min value is -5.
      * Max value when enabled is 0.
@@ -1375,7 +1370,7 @@ typedef struct EbSvtAv1EncConfiguration {
 
     /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
     // uint8_t padding[128 - 8 * sizeof(Bool) - 15 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(uint32_t) - sizeof(int32_t) - 2 * sizeof(double)
-                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 9 * sizeof(int8_t) - 2 * sizeof(uint16_t) - 2 * sizeof(int32_t) - 12 * sizeof(double)];
+                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 8 * sizeof(int8_t) - 2 * sizeof(uint16_t) - 2 * sizeof(int32_t) - 13 * sizeof(double)];
 
 } EbSvtAv1EncConfiguration;
 

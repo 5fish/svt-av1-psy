@@ -1266,12 +1266,6 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: balancing-texture-lambda-bias must be between 0.0 and 0.999\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-
-    if ((config->balancing_r0_based_layer < -5 || config->balancing_r0_based_layer > 0) &&
-        config->balancing_r0_based_layer != INT8_MAX) {
-        SVT_ERROR("Instance %u: balancing-r0-based-layer must be between -5 and 0\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
     if ((config->balancing_r0_dampening_layer < -5 || config->balancing_r0_dampening_layer > 1) &&
         config->balancing_r0_dampening_layer != INT8_MAX) {
         SVT_ERROR("Instance %u: balancing-r0-dampening-layer must be between -5 and 1\n", channel_number + 1);
@@ -1453,6 +1447,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->enable_alt_curve                  = FALSE;
     config_ptr->sharpness                         = INT8_DEFAULT;
     config_ptr->extended_crf_qindex_offset        = 0;
+    config_ptr->double_crf                        = INVALID_DOUBLE_CRF;
     config_ptr->qp_scale_compress_strength        = DEFAULT;
     config_ptr->frame_luma_bias                   = 0;
     config_ptr->luminance_qp_bias                 = 0; // alias for frame luma bias
@@ -1518,7 +1513,6 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->balancing_noise_level_q_bias      = 1.0;
     config_ptr->balancing_luminance_lambda_bias   = DEFAULT;
     config_ptr->balancing_texture_lambda_bias     = DEFAULT;
-    config_ptr->balancing_r0_based_layer          = INT8_DEFAULT;
     config_ptr->balancing_r0_dampening_layer      = INT8_DEFAULT;
     config_ptr->balancing_tpl_intra_mode_beta_bias = UINT8_DEFAULT;
     config_ptr->sharp_tx                          = 1;
@@ -1546,8 +1540,11 @@ static const char *level_to_str(unsigned in) {
     return ret;
 }
 
-static double get_extended_crf(EbSvtAv1EncConfiguration *config_ptr) {
-    return (double)config_ptr->qp + (double)config_ptr->extended_crf_qindex_offset / 4;
+static double get_double_crf(EbSvtAv1EncConfiguration *config_ptr) {
+    if (config_ptr->double_crf != INVALID_DOUBLE_CRF)
+        return config_ptr->double_crf;
+    else
+        return (double)config_ptr->qp + (double)config_ptr->extended_crf_qindex_offset / 4;
 }
 
 //#define DEBUG_BUFFERS
@@ -1634,7 +1631,7 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                     "%d\n",
                     scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
                     scs->tpl || scs->static_config.enable_variance_boost ? "capped CRF" : "CQP",
-                    get_extended_crf(config),
+                    get_double_crf(config),
                     (int)config->max_bit_rate / 1000);
             else {
                 if (!config->enable_variance_boost)
@@ -1642,12 +1639,12 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                              scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
                              scs->tpl || scs->static_config.enable_variance_boost ? "CRF" : "CQP",
                              config->enable_adaptive_quantization,
-                             get_extended_crf(config));
+                             get_double_crf(config));
                 else
                     SVT_INFO("SVT [config]: BRC mode / %s \t\t\t\t\t: %s / %.2f \n",
                              scs->tpl || scs->static_config.enable_variance_boost ? "rate factor" : "CQP assignment",
                              scs->tpl || scs->static_config.enable_variance_boost ? "CRF" : "CQP",
-                             get_extended_crf(config));
+                             get_double_crf(config));
             }
             break;
         case SVT_AV1_RC_MODE_VBR:
@@ -1686,14 +1683,6 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                 SVT_INFO("SVT [config]: QP scale compress strength / frame low-luma bias \t\t: %.2f / %d\n",
                          config->qp_scale_compress_strength,
                          config->frame_luma_bias >= config->luminance_qp_bias ? config->frame_luma_bias : config->luminance_qp_bias);
-
-            if (config->balancing_r0_dampening_layer <= config->balancing_r0_based_layer)
-                SVT_INFO("SVT [config]: balancing bias - r0-based layer / r0 dampening layer \t\t: <=%d / >=%d\n",
-                         config->balancing_r0_based_layer,
-                         config->balancing_r0_dampening_layer);
-            else if (config->balancing_r0_based_layer != -3)
-                SVT_INFO("SVT [config]: balancing bias - r0-based layer / r0 dampening \t\t\t: <=%d / no\n",
-                         config->balancing_r0_based_layer);
         }
         else { // config->balancing_q_bias
             if (config->balancing_noise_level_q_bias == 1.0)
@@ -1704,22 +1693,11 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                          config->balancing_luminance_q_bias,
                          config->balancing_noise_level_q_bias);
 
-            if (config->balancing_r0_based_layer == 0) {
-                if (config->balancing_r0_dampening_layer > config->balancing_r0_based_layer)
-                    SVT_INFO("SVT [config]: balancing - r0-based decision \t\t\t\t\t: full\n");
-                else
-                    SVT_INFO("SVT [config]: balancing - r0-based decision / r0 dampening layer \t\t: full / >=%d\n",
-                             config->balancing_r0_dampening_layer);
-            }
-            else {
-                if (config->balancing_r0_dampening_layer > config->balancing_r0_based_layer)
-                    SVT_INFO("SVT [config]: balancing - r0-based layer \t\t\t\t\t: <=%d\n",
-                             config->balancing_r0_based_layer);
-                else
-                    SVT_INFO("SVT [config]: balancing - r0-based layer / r0 dampening layer \t\t: <=%d / >=%d\n",
-                             config->balancing_r0_based_layer,
-                             config->balancing_r0_dampening_layer);
-            }
+            if (config->balancing_r0_dampening_layer == 1)
+                SVT_INFO("SVT [config]: balancing - r0-based decision \t\t\t\t\t: full\n");
+            else
+                SVT_INFO("SVT [config]: balancing - r0-based decision / r0 dampening layer \t\t: full / >=%d\n",
+                         config->balancing_r0_dampening_layer);
         }
 
         // Film grain
@@ -2283,6 +2261,7 @@ static EbErrorType str_to_crf(const char *nptr, EbSvtAv1EncConfiguration *config
     config_struct->rate_control_mode            = SVT_AV1_RC_MODE_CQP_OR_CRF;
     config_struct->enable_adaptive_quantization = 2;
     config_struct->extended_crf_qindex_offset   = extended_crf_qindex_offset;
+    config_struct->double_crf                   = crf;
 
     return EB_ErrorNone;
 }
@@ -3207,7 +3186,6 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } int8_opts[] = {
         {"preset", &config_struct->enc_mode},
         {"sharpness", &config_struct->sharpness},
-        {"balancing-r0-based-layer", &config_struct->balancing_r0_based_layer},
         {"balancing-r0-dampening-layer", &config_struct->balancing_r0_dampening_layer},
         {"psy-bias-coeff-lvl-offset", &config_struct->psy_bias_coeff_lvl_offset},
         {"cdef-bias-max-sec-cdef-rel", &config_struct->cdef_bias_max_sec_cdef_rel},

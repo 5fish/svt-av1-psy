@@ -3997,12 +3997,6 @@ static void set_param_based_on_input(SequenceControlSet *scs)
     if (scs->static_config.balancing_q_bias && (scs->static_config.frame_luma_bias || scs->static_config.luminance_qp_bias))
         SVT_WARN("balancing-q-bias is not intended to be used together with frame-luma-bias / luminance-qp-bias\n");
 
-    if (scs->static_config.balancing_r0_based_layer == INT8_DEFAULT) {
-        if (scs->static_config.balancing_q_bias)
-            scs->static_config.balancing_r0_based_layer = 0;
-        else
-            scs->static_config.balancing_r0_based_layer = -3;
-    }
     if (scs->static_config.balancing_r0_dampening_layer == INT8_DEFAULT) {
         if (scs->static_config.balancing_q_bias)
             if (scs->static_config.texture_psy_bias >= 5.0 ||
@@ -4790,6 +4784,7 @@ static void copy_api_from_app(
     // Extended CRF
     scs->static_config.qp = ((EbSvtAv1EncConfiguration*)config_struct)->qp;
     scs->static_config.extended_crf_qindex_offset = config_struct->extended_crf_qindex_offset;
+    scs->static_config.double_crf = config_struct->double_crf;
 
     // Balancing Q bias
     scs->static_config.balancing_q_bias = config_struct->balancing_q_bias;
@@ -4797,8 +4792,6 @@ static void copy_api_from_app(
     scs->static_config.balancing_noise_level_q_bias = config_struct->balancing_noise_level_q_bias;
     scs->static_config.balancing_luminance_lambda_bias = config_struct->balancing_luminance_lambda_bias;
     scs->static_config.balancing_texture_lambda_bias = config_struct->balancing_texture_lambda_bias;
-
-    scs->static_config.balancing_r0_based_layer = config_struct->balancing_r0_based_layer;
     scs->static_config.balancing_r0_dampening_layer = config_struct->balancing_r0_dampening_layer;
 
     scs->static_config.balancing_tpl_intra_mode_beta_bias = config_struct->balancing_tpl_intra_mode_beta_bias;

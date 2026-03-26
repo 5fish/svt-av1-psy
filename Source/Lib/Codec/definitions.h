@@ -594,6 +594,9 @@ typedef enum ATTRIBUTE_PACKED {
     COMPONENT_NONE      = 15
 } COMPONENT_TYPE;
 
+#define INVALID_DOUBLE_QSTEP -2
+#define INVALID_DOUBLE_CRF INVALID_DOUBLE_QSTEP
+
 static INLINE int32_t clamp(int32_t value, int32_t low, int32_t high) {
     return value < low ? low : (value > high ? high : value);
 }
