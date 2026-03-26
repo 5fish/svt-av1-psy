@@ -975,16 +975,15 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->noise_strength > 100) {
-        SVT_ERROR("Noise strength value should be in the range [0 - 100]\n");
+    if (config->enable_photon_noise_chroma != 0 && config->enable_photon_noise_chroma != 1) {
+        SVT_ERROR("Instance %u: Photon noise chroma signal can only have a value of 0 or 1.\n",
+				channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->noise_strength_chroma < -2 || config->noise_strength_chroma > 100) {
-        SVT_ERROR("Chroma noise strength value should be in the range [-2 - 100]\n");
-        return_error = EB_ErrorBadParameter;
-    }
-    if (config->noise_size < -1 || config->noise_size > 13) {
-        SVT_ERROR("Noise size value should be in range [-1 - 13]\n");
+
+    if (config->photon_noise_iso > 100000) {
+        SVT_ERROR("Instance %u: Photon noise ISO value should be in range [0-100000]\n",
+				channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1377,9 +1376,8 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     // Film grain denoising
     config_ptr->film_grain_denoise_strength = 0;
     config_ptr->film_grain_denoise_apply    = 0;
-    config_ptr->noise_strength              = 0;
-    config_ptr->noise_strength_chroma       = -1;
-    config_ptr->noise_size                  = -1;
+    config_ptr->photon_noise_iso            = 0;
+    config_ptr->enable_photon_noise_chroma  = 0;
 
     // CPU Flags
     config_ptr->use_cpu_flags = EB_CPU_FLAGS_ALL;
@@ -1722,24 +1720,13 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
                      config->adaptive_film_grain ? "true" : "false");
         if (!config->chroma_grain)
             SVT_INFO("SVT [config]: film grain synth - chroma grain \t\t\t\t: disabled\n");
-        if (config->noise_strength > 0) {
-            if (config->noise_strength_chroma > -1)
-                SVT_INFO(
-                    "SVT [config]: noise table gen - luma / chroma strength / noise size \t\t: %d / %d / %s%.0d\n",
-                    config->noise_strength,
-                    config->noise_strength_chroma,
-                    ((config->noise_size == -1)      ? "auto"
-                         : (config->noise_size == 0) ? "0"
-                                                     : ""),
-                    (config->noise_size > 0 ? config->noise_size : 0));
+        if (config->photon_noise_iso > 0) {
+            if (config->enable_photon_noise_chroma)
+                SVT_INFO("SVT [config]: photon noise synth - ISO / chroma noise \t\t\t: %d / on\n",
+                         config->photon_noise_iso);
             else
-                SVT_INFO("SVT [config]: noise table gen - strength / chroma noise / noise size \t: %d / %s / %s%.0d\n",
-                         config->noise_strength,
-                         config->noise_strength_chroma == -1 ? "on" : "legacy",
-                         ((config->noise_size == -1)      ? "auto"
-                              : (config->noise_size == 0) ? "0"
-                                                          : ""),
-                         (config->noise_size > 0 ? config->noise_size : 0));
+                SVT_INFO("SVT [config]: photon noise synth ISO \t\t\t\t\t: %d\n",
+                         config->photon_noise_iso);
         }
 
         // Global
@@ -3018,6 +3005,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"q", &config_struct->qp},
         {"qp", &config_struct->qp},
         {"film-grain", &config_struct->film_grain_denoise_strength},
+        {"photon-noise", &config_struct->photon_noise_iso},
         {"hierarchical-levels", &config_struct->hierarchical_levels},
         {"tier", &config_struct->tier},
         {"level", &config_struct->level},
@@ -3064,7 +3052,8 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"superres-kf-denom", &config_struct->superres_kf_denom},
         {"tune", &config_struct->tune},
         {"film-grain-denoise", &config_struct->film_grain_denoise_apply},
-        {"noise", &config_struct->noise_strength},
+        {"photon-noise-chroma", &config_struct->enable_photon_noise_chroma},
+        {"enable-hdr", &config_struct->high_dynamic_range_input},
         {"enable-dlf", &config_struct->enable_dlf_flag},
         {"resize-mode", &config_struct->resize_mode},
         {"resize-denom", &config_struct->resize_denom},
@@ -3197,8 +3186,6 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
     } int8_opts[] = {
         {"preset", &config_struct->enc_mode},
         {"sharpness", &config_struct->sharpness},
-        {"noise-chroma", &config_struct->noise_strength_chroma},
-        {"noise-size", &config_struct->noise_size},
         {"balancing-r0-based-layer", &config_struct->balancing_r0_based_layer},
         {"balancing-r0-dampening-layer", &config_struct->balancing_r0_dampening_layer},
         {"psy-bias-coeff-lvl-offset", &config_struct->psy_bias_coeff_lvl_offset},

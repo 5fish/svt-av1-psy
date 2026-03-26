@@ -1329,33 +1329,21 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool auto_tiling;
 
     /**
-     * @brief Noise strength
+     * @brief Photon noise ISO value
      *
-     * 0: off
-     * 1-100: noise strength
      * Default is 0.
      */
-    uint8_t noise_strength;
+    uint32_t photon_noise_iso;
 
     /**
-     * @brief Control whether chroma noise is scaled from luma or as a separate strength value
+     * @brief Enable chroma photon noise, which is scaled based on generated luma values.
      *
-     * -2: enable chroma scaling from luma flag in the noise table (legacy)
-     * -1: chroma strength value is derived from noise strength value
-     *  0: disable chroma noise
-     *  1-100: chroma noise strength
-     * Default is -1.
-     */
-    int8_t noise_strength_chroma;
-
-    /**
-     * @brief Control the grain size of noise
+     * 0: disable chroma scaling
+     * 1: enable chroma scaling
      *
-     * -1: auto adjustment based on resolution
-     *  0-13: adjust grain size
-     * Default is -1.
+     * Default is 0.
      */
-    int8_t noise_size;
+    uint8_t enable_photon_noise_chroma;
 
     /**
      * @brief Check if color range is provided by the user
@@ -1377,6 +1365,11 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 0.
      */
     Bool alt_tf_decay;
+
+    /*Add 128 Byte Padding to Struct to avoid changing the size of the public configuration struct*/
+    // uint8_t padding[128 - 8 * sizeof(Bool) - 15 * sizeof(uint8_t) - 1 * sizeof(int8_t) - sizeof(uint32_t) - sizeof(int32_t) - 2 * sizeof(double)
+                    // - 2 * sizeof(Bool) - 32 * sizeof(uint8_t) - 9 * sizeof(int8_t) - 2 * sizeof(uint16_t) - sizeof(int32_t) - 11 * sizeof(double)];
+
 } EbSvtAv1EncConfiguration;
 
 // Why? How? What?
