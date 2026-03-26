@@ -1817,17 +1817,11 @@ void normalize_sb_delta_q(PictureControlSet *pcs) {
             return;
         }
     }
-    else { // `--balancing-q-bias 1 --enable-variance-boost 0`
-        if (!scs->static_config.high_quality_encode_psy_bias) {
-            if ((pcs->ppcs->temporal_layer_index + scs->static_config.hierarchical_levels - pcs->ppcs->hierarchical_levels) == 0 ||
-                 pcs->ppcs->slice_type == I_SLICE)
-                delta_q_res = 4;
-            else
-                return;
-        }
-        else
+    else // `--balancing-q-bias 1 --enable-variance-boost 0`
+        if (scs->static_config.high_quality_encode_psy_bias)
             return;
-    }
+        else
+            delta_q_res = 4;
 
     assert(delta_q_res == 2 || delta_q_res == 4 || delta_q_res == 8);
 

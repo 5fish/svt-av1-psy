@@ -138,6 +138,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | `--lineart-psy-bias` level | `1` | `2` | `3` | `4` | `5` | `6` | `7` | Note |
 | :-- | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :-- |
 | [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [global] `--noise-level-thr` default to `20000` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Applied when `--crf [> 30.00]`; Can be overridden |
 | [pd] `--startup-mg-size` adjustment | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [me] `--psy-bias-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [me] `--psy-bias-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
@@ -207,7 +208,8 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] `GLOBALMV` bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--psy-bias-inter-mode-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | (◯) | Can be overridden |
 | [dlf] `--dlf-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [dlf] `--dlf-bias-max-dlf 6,2` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [dlf] `--dlf-bias-max-dlf` | `8,2` | `8,2` | `8,2` | `6,2` | `6,2` | `6,2` | `6,2` | Applied when `--crf [<= 30.00]`; Can be overridden |
+| [dlf] `--dlf-bias-max-dlf` | `8,2` | `8,2` | `10,2` | `10,2` | `10,2` | `10,2` | `10,2` | Applied when `--crf [> 30.00]`; Can be overridden |
 | [cdef] `--cdef-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [cdef] bias towards disabling CDEF | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
 | [cdef] `--cdef-bias-max-cdef -,0,-,0` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
@@ -253,7 +255,7 @@ However, apart from this, both parameters have various features such as boosting
 #### `--high-quality-encode-psy-bias` Features
 
 * `--hierarchical-levels`: Default changed from `5` to `4`. Can be overridden.  
-* `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` in frames of lowest temporal layer to always `1`.  
+* `delta_q_res`: Changed `--balancing-q-bias 1`'s default from `4` to `1`.  
 * `bypass_md_stage_2`: Disabled in `--preset 2` and `1`.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Change it from applying only in frames of higher temporals layers to applying to frames of all temporal levels including base frames.  
 * variance cand elimination (`--texture-psy-bias [>= 3]`): Raise variance threshold from `lineart_variance_thr >> 2` to `lineart_variance_thr >> 1` when `--noise-psy-bias [>= 1]`.  

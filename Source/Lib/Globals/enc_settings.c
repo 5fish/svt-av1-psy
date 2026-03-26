@@ -42,10 +42,18 @@ EbErrorType svt_av1_verify_dlf_bias_max_min_dlf(EbSvtAv1EncConfiguration *source
     }
 
     if (target_config->dlf_bias_max_dlf[0] == UINT8_DEFAULT) {
-        if (source_config->texture_psy_bias >= 4.0)
-            target_config->dlf_bias_max_dlf[0] = 6;
-        else
-            target_config->dlf_bias_max_dlf[0] = 8;
+        if ((source_config->qp << 2) + source_config->extended_crf_qindex_offset <= 120) { // --crf 30.00
+            if (source_config->texture_psy_bias >= 4.0)
+                target_config->dlf_bias_max_dlf[0] = 6;
+            else
+                target_config->dlf_bias_max_dlf[0] = 8;
+        }
+        else {
+            if (source_config->texture_psy_bias >= 3.0)
+                target_config->dlf_bias_max_dlf[0] = 10;
+            else
+                target_config->dlf_bias_max_dlf[0] = 8;
+        }
     }
     if (target_config->dlf_bias_max_dlf[1] == UINT8_DEFAULT) {
         target_config->dlf_bias_max_dlf[1] = 2;
@@ -1465,7 +1473,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->satd_bias                         = DEFAULT;
     config_ptr->tx_bias                           = 0;
     config_ptr->low_q_taper                       = 0;
-    config_ptr->noise_level_thr                   = -1;
+    config_ptr->noise_level_thr                   = DEFAULT;
     config_ptr->lineart_psy_bias                  = 0.0;
     config_ptr->texture_psy_bias                  = 0.0;
     config_ptr->noise_psy_bias                    = DEFAULT;

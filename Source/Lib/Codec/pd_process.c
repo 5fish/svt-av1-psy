@@ -2784,9 +2784,16 @@ static int32_t avail_past_pictures(PictureParentControlSet**buf, uint32_t buf_si
     return tot_past;
 }
 
-static int32_t get_noise_level_thr(PictureParentControlSet *pcs, PictureDecisionContext *pd_ctx, bool print) {    
-    if (pcs->scs->static_config.noise_level_thr == -1)
-        return VQ_NOISE_LVL_TH;
+static int32_t get_noise_level_thr(PictureParentControlSet *pcs, PictureDecisionContext *pd_ctx, bool print) {
+    int32_t default_noise_level_thr;
+    if ((pcs->scs->static_config.qp << 2) + pcs->scs->static_config.extended_crf_qindex_offset > 120 && // --crf 30.00
+        pcs->scs->static_config.lineart_psy_bias >= 2.0)
+        default_noise_level_thr = 20000;
+    else
+        default_noise_level_thr = VQ_NOISE_LVL_TH;
+
+    if (pcs->scs->static_config.noise_level_thr == DEFAULT)
+        return default_noise_level_thr;
     else if (pcs->scs->static_config.noise_level_thr == -2) {
         if (print) {
             if (pcs->picture_number == 0) {
@@ -2797,12 +2804,12 @@ static int32_t get_noise_level_thr(PictureParentControlSet *pcs, PictureDecision
                     SVT_INFO("the noise adaptive filtering system might not be functional when enable-tf is set to 0\n");
                     SVT_INFO("-------------------------------------------\n");
                 }
-                SVT_INFO("encoder default noise level thr: %5ld\n", VQ_NOISE_LVL_TH);
+                SVT_INFO("encoder current default noise level thr: %5ld\n", default_noise_level_thr);
             }
             SVT_INFO("noise level for frame %2llu: %5ld\n", pcs->picture_number, pd_ctx->last_i_noise_levels_log1p_fp16[0]);
         }
 
-        return VQ_NOISE_LVL_TH;
+        return default_noise_level_thr;
     }
     else
         return pcs->scs->static_config.noise_level_thr;
