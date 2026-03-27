@@ -7972,7 +7972,8 @@ static void post_mds1_nic_pruning(PictureControlSet *pcs, ModeDecisionContext *c
     const uint64_t                mds2_cand_th         = (pruning_ctrls.mds2_cand_base_th * q_weight) / 1000;
     uint64_t                      mds2_class_th[4];
     mds2_class_th[0] = mds2_class_th[1] = mds2_class_th[2] = mds2_class_th[3] = (pruning_ctrls.mds2_class_th * q_weight) / 1000;
-    if (pcs->scs->static_config.texture_psy_bias >= 4.0 && pcs->enc_mode <= ENC_M6)
+    if ((pcs->scs->static_config.texture_psy_bias >= 4.0 || pcs->scs->static_config.noise_psy_bias >= 1.0) &&
+        pcs->enc_mode <= ENC_M6)
         mds2_class_th[1]                               = (uint64_t)~0;
     const uint8_t                 mds2_band_cnt        = pruning_ctrls.mds2_band_cnt;
     const uint16_t                mds2_relative_dev_th = pruning_ctrls.mds2_relative_dev_th;
@@ -8054,7 +8055,8 @@ static void post_mds2_nic_pruning(PictureControlSet *pcs, ModeDecisionContext *c
     const uint64_t                mds3_cand_th  = (pruning_ctrls.mds3_cand_base_th * q_weight) / 1000;
     uint64_t                      mds3_class_th[4];
     mds3_class_th[0] = mds3_class_th[1] = mds3_class_th[2] = mds3_class_th[3] = (pruning_ctrls.mds3_class_th * q_weight) / 1000;
-    if (pcs->scs->static_config.texture_psy_bias >= 4.0 && pcs->enc_mode <= ENC_M6)
+    if ((pcs->scs->static_config.texture_psy_bias >= 4.0 || pcs->scs->static_config.noise_psy_bias >= 1.0) &&
+        pcs->enc_mode <= ENC_M6)
         mds3_class_th[1]                        = (uint64_t)~0;
     const uint8_t                 mds3_band_cnt = pruning_ctrls.mds3_band_cnt;
     ModeDecisionCandidateBuffer **cand_bf_arr   = ctx->cand_bf_ptr_array;
@@ -10230,12 +10232,14 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
     const uint16_t blk_variance = get_variance_for_cu(blk_geom, pcs->ppcs->variance[ctx->sb_index]);
 
     ctx->blk_skip_taper_active = 0;
-    if (pcs->scs->static_config.lineart_psy_bias >= 6.0 &&
+    if (pcs->scs->static_config.lineart_psy_bias == -2.0 &&
         blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
-        ctx->blk_skip_taper_active = 1;
-    else if (pcs->scs->static_config.lineart_psy_bias == -2.0 &&
-             blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
         ctx->blk_skip_taper_active = 2;
+    else if (pcs->scs->static_config.noise_psy_bias >= 5.0)
+        ctx->blk_skip_taper_active = 1;
+    else if (pcs->scs->static_config.lineart_psy_bias >= 6.0 &&
+             blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
+        ctx->blk_skip_taper_active = 1;
 
     ctx->bsize_bias_mode = 0;
     if (pcs->scs->static_config.lineart_psy_bias >= 4.0) {
@@ -10257,7 +10261,8 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
     }
 
     ctx->cand_elimination_acceptable = 1;
-    if (pcs->scs->static_config.high_fidelity_encode_psy_bias) {
+    if (pcs->scs->static_config.high_quality_encode_psy_bias &&
+        pcs->scs->static_config.noise_psy_bias >= 1.0) {
         if (blk_variance >= pcs->scs->static_config.lineart_variance_thr >> 1)
             ctx->cand_elimination_acceptable = 0;
     }

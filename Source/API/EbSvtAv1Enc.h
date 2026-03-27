@@ -986,6 +986,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * Default is 0 if CRF is an integer.
      */
     uint8_t extended_crf_qindex_offset;
+    double double_crf;
 
     /**
      * @brief compresses the QP hierarchical layer scale to improve temporal video consistency
@@ -1130,6 +1131,12 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     double texture_psy_bias;
     /**
+     * @brief Improve noise retention.
+     * Min value is 0
+     * Max value is 7
+     */
+    double noise_psy_bias;
+    /**
      * @brief Easter egg for `--lineart-psy-bias Kumiko`
      */
     int8_t lineart_psy_bias_easter_egg;
@@ -1157,6 +1164,7 @@ typedef struct EbSvtAv1EncConfiguration {
     uint8_t psy_bias_mds0_intra_inter_mode_bias;
     uint8_t psy_bias_inter_mode_bias;
     uint8_t psy_bias_qm_bias;
+    int32_t psy_bias_sharpness_rounding;
 
     /**
      * @brief Bias various features for high quality encoding.
@@ -1262,12 +1270,6 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     double balancing_texture_lambda_bias;
 
-    /**
-     * @brief Frames with temporal layer lower than or equal to hierarchical levels + `--balancing-r0-based-layer` will use r0-based QPS QPM.
-     * Min value is -5.
-     * Max value is 0.
-     */
-    int8_t balancing_r0_based_layer;
     /**
      * @brief Dampen r0-based boosting in frames with temporal layer higher than or equal to hierarchical levels + `--balancing-r0-dampening-layer`.
      * Min value is -5.

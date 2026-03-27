@@ -234,6 +234,7 @@
 #define NOISE_LEVEL_THR_TOKEN "--noise-level-thr"
 #define LINEART_PSY_BIAS_TOKEN "--lineart-psy-bias"
 #define TEXTURE_PSY_BIAS_TOKEN "--texture-psy-bias"
+#define NOISE_PSY_BIAS_TOKEN "--noise-psy-bias"
 #define LINEART_VARIANCE_THR_TOKEN "--lineart-variance-thr"
 #define TEXTURE_VARIANCE_THR_TOKEN "--texture-variance-thr"
 #define PSY_BIAS_MDS0_SAD_TOKEN "--psy-bias-mds0-sad"
@@ -244,6 +245,7 @@
 #define PSY_BIAS_MDS0_INTRA_INTER_MODE_BIAS_TOKEN "--psy-bias-mds0-intra-inter-mode-bias"
 #define PSY_BIAS_INTER_MODE_BIAS_TOKEN "--psy-bias-inter-mode-bias"
 #define PSY_BIAS_QM_BIAS_TOKEN "--psy-bias-qm-bias"
+#define PSY_BIAS_SHARPNESS_ROUNDIND_TOKEN "--psy-bias-sharpness-rounding"
 #define HIGH_QUALITY_ENCODE_PSY_BIAS "--high-quality-encode-psy-bias"
 #define HIGH_FIDELITY_ENCODE_PSY_BIAS "--high-fidelity-encode-psy-bias"
 #define DLF_BIAS_TOKEN "--dlf-bias"
@@ -263,7 +265,6 @@
 #define BALANCING_NOISE_LEVEL_Q_BIAS_TOKEN "--balancing-noise-level-q-bias"
 #define BALANCING_LUMINANCE_LAMBDA_BIAS_TOKEN "--balancing-luminance-lambda-bias"
 #define BALANCING_TEXTURE_LAMBDA_BIAS_TOKEN "--balancing-texture-lambda-bias"
-#define BALANCING_R0_BASED_LAYER_TOKEN "--balancing-r0-based-layer"
 #define BALANCING_R0_DAMPENING_LAYER_TOKEN "--balancing-r0-dampening-layer"
 #define BALANCING_TPL_INTRA_MODE_BETA_BIAS_TOKEN "--balancing-tpl-intra-mode-beta-bias"
 #define SHARP_TX_TOKEN "--sharp-tx"
@@ -1437,6 +1438,10 @@ ConfigEntry config_entry_psy[] = {
      "[PSY] Improve texture retention. [0-7]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
+     NOISE_PSY_BIAS_TOKEN,
+     "[PSY] Improve noise retention. [0-7]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
      LINEART_VARIANCE_THR_TOKEN,
      "[PSY] Threshold for `--lineart-psy-bias`. [0.0-16.0]",
      set_cfg_generic_token},
@@ -1475,6 +1480,10 @@ ConfigEntry config_entry_psy[] = {
     {SINGLE_INPUT,
      PSY_BIAS_QM_BIAS_TOKEN,
      "[PSY] Increase QM level in `VLOW_LVL`. [0-1]",
+     set_cfg_generic_token},
+    {SINGLE_INPUT,
+     PSY_BIAS_SHARPNESS_ROUNDIND_TOKEN,
+     "[PSY] Quantization rounding. [1-256]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      HIGH_QUALITY_ENCODE_PSY_BIAS,
@@ -1535,10 +1544,6 @@ ConfigEntry config_entry_psy[] = {
     {SINGLE_INPUT,
      BALANCING_Q_BIAS_TOKEN,
      "[PSY] Balancing Q bias, default is 0 [0-1]",
-     set_cfg_generic_token},
-    {SINGLE_INPUT,
-     BALANCING_R0_BASED_LAYER_TOKEN,
-     "[PSY] Balancing r0-based layer, default is -3 [-5-0]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      BALANCING_R0_DAMPENING_LAYER_TOKEN,
@@ -1826,6 +1831,7 @@ ConfigEntry config_entry[] = {
 
     {SINGLE_INPUT, LINEART_PSY_BIAS_TOKEN, "LineartPsyBias", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_PSY_BIAS_TOKEN, "TexturePsyBias", set_cfg_generic_token},
+    {SINGLE_INPUT, NOISE_PSY_BIAS_TOKEN, "NoisePsyBias", set_cfg_generic_token},
     {SINGLE_INPUT, LINEART_VARIANCE_THR_TOKEN, "LineartVarianceThr", set_cfg_generic_token},
     {SINGLE_INPUT, TEXTURE_VARIANCE_THR_TOKEN, "TextureVarianceThr", set_cfg_generic_token},
 
@@ -1837,6 +1843,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, PSY_BIAS_MDS0_INTRA_INTER_MODE_BIAS_TOKEN, "PsyBiasmds0IntraInterModeBias", set_cfg_generic_token},
     {SINGLE_INPUT, PSY_BIAS_INTER_MODE_BIAS_TOKEN, "PsyBiasInterModeBias", set_cfg_generic_token},
     {SINGLE_INPUT, PSY_BIAS_QM_BIAS_TOKEN, "PsyBiasQMBias", set_cfg_generic_token},
+    {SINGLE_INPUT, PSY_BIAS_SHARPNESS_ROUNDIND_TOKEN, "PsyBiasSharpnessRounding", set_cfg_generic_token},
 
     {SINGLE_INPUT, HIGH_QUALITY_ENCODE_PSY_BIAS, "HighQualityEncodePsyBias", set_cfg_generic_token},
     {SINGLE_INPUT, HIGH_FIDELITY_ENCODE_PSY_BIAS, "HighFidelityEncodePsyBias", set_cfg_generic_token},
@@ -1863,8 +1870,6 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, BALANCING_NOISE_LEVEL_Q_BIAS_TOKEN, "BalancingNoiseLevelQBias", set_cfg_generic_token},
     {SINGLE_INPUT, BALANCING_LUMINANCE_LAMBDA_BIAS_TOKEN, "BalancingLuminanceLambdaBias", set_cfg_generic_token},
     {SINGLE_INPUT, BALANCING_TEXTURE_LAMBDA_BIAS_TOKEN, "BalancingTextureLambdaBias", set_cfg_generic_token},
-
-    {SINGLE_INPUT, BALANCING_R0_BASED_LAYER_TOKEN, "BalancingR0BasedLayer", set_cfg_generic_token},
     {SINGLE_INPUT, BALANCING_R0_DAMPENING_LAYER_TOKEN, "BalancingR0DampeningLayer", set_cfg_generic_token},
 
     {SINGLE_INPUT, BALANCING_TPL_INTRA_MODE_BETA_BIAS_TOKEN, "BalancingTPLIntraModeBetaBias", set_cfg_generic_token},

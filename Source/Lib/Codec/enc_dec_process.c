@@ -2715,7 +2715,7 @@ void recode_loop_update_q(PictureParentControlSet *ppcs, int *const loop, int *c
                           int *const q_high, const int top_index, const int bottom_index, int *const undershoot_seen,
                           int *const overshoot_seen, int *const low_cr_seen, const int loop_count);
 void svt_variance_adjust_qp(PictureControlSet *pcs, bool readjust_base_q_idx);
-void svt_aom_sb_qp_derivation_tpl_la(PictureControlSet *pcs);
+void svt_aom_sb_qp_derivation_tpl_la(PictureControlSet *pcs, double *double_frame_qstep);
 void normalize_sb_delta_q(PictureControlSet *pcs);
 void mode_decision_configuration_init_qp_update(PictureControlSet *pcs);
 void svt_aom_init_enc_dec_segement(PictureParentControlSet *ppcs);
@@ -2780,7 +2780,7 @@ static void recode_loop_decision_maker(PictureControlSet *pcs, SequenceControlSe
 
         // 2pass QPM with tpl_la
         if (scs->static_config.enable_adaptive_quantization == 2 && ppcs->tpl_ctrls.enable && ppcs->r0 != 0)
-            svt_aom_sb_qp_derivation_tpl_la(pcs);
+            svt_aom_sb_qp_derivation_tpl_la(pcs, &(double){(double)-2});
 
         if (scs->static_config.enable_variance_boost && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
         {
@@ -3310,7 +3310,8 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                  pcs->ppcs->frm_hdr.allow_intrabc,
                                                  &pcs->md_frame_context,
                                                  scs->static_config.lineart_psy_bias,
-                                                 scs->static_config.texture_psy_bias);
+                                                 scs->static_config.texture_psy_bias,
+                                                 scs->static_config.noise_psy_bias);
                 if (!pcs->cdf_ctrl.update_coef)
                     svt_aom_estimate_coefficients_rate(ed_ctx->md_ctx->rate_est_table, &pcs->md_frame_context);
             }
@@ -3409,7 +3410,8 @@ void *svt_aom_mode_decision_kernel(void *input_ptr) {
                                                              pcs->ppcs->frm_hdr.allow_intrabc,
                                                              &pcs->ec_ctx_array[sb_index],
                                                              scs->static_config.lineart_psy_bias,
-                                                             scs->static_config.texture_psy_bias);
+                                                             scs->static_config.texture_psy_bias,
+                                                             scs->static_config.noise_psy_bias);
                             // Initial Rate Estimation of the Motion vectors
                             if (pcs->cdf_ctrl.update_mv)
                                 svt_aom_estimate_mv_rate(
