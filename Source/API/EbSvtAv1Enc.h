@@ -1331,33 +1331,21 @@ typedef struct EbSvtAv1EncConfiguration {
     Bool auto_tiling;
 
     /**
-     * @brief Noise strength
+     * @brief Photon noise ISO value
      *
-     * 0: off
-     * 1-100: noise strength
      * Default is 0.
      */
-    uint8_t noise_strength;
+    uint32_t photon_noise_iso;
 
     /**
-     * @brief Control whether chroma noise is scaled from luma or as a separate strength value
+     * @brief Enable chroma photon noise, which is scaled based on generated luma values.
      *
-     * -2: enable chroma scaling from luma flag in the noise table (legacy)
-     * -1: chroma strength value is derived from noise strength value
-     *  0: disable chroma noise
-     *  1-100: chroma noise strength
-     * Default is -1.
-     */
-    int8_t noise_strength_chroma;
-
-    /**
-     * @brief Control the grain size of noise
+     * 0: disable chroma scaling
+     * 1: enable chroma scaling
      *
-     * -1: auto adjustment based on resolution
-     *  0-13: adjust grain size
-     * Default is -1.
+     * Default is 0.
      */
-    int8_t noise_size;
+    uint8_t enable_photon_noise_chroma;
 
     /**
      * @brief Check if color range is provided by the user
