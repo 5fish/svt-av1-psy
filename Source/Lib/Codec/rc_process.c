@@ -572,10 +572,17 @@ static int svt_av1_get_deltaq_offset(EbBitDepth bit_depth, int qindex, double be
     else
         q = svt_aom_dc_quant_qtx(qindex, 0, bit_depth);
     double newq;
-    if (balancing_tpl_intra_mode_beta_bias_active && beta > 1)
-        newq = q / pow(beta, (double)3/8);
+    if (balancing_q_bias) {
+        if (balancing_tpl_intra_mode_beta_bias_active)
+            if (beta > 1)
+                newq = q / pow(beta, (double)3/8);
+            else
+                newq = q / pow(beta, (double)1/8);
+        else
+            newq = q / sqrt(sqrt(beta));
+    }
     // use a less aggressive action when lowering the q for non I_slice
-    else if ((!is_intra || balancing_q_bias) && beta > 1)
+    else if (!is_intra && beta > 1)
         newq = q / sqrt(sqrt(beta));
     else
         newq = q / sqrt(beta);
@@ -3521,12 +3528,15 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                     const int32_t scs_qindex = CLIP3(MIN_Q_INDEX,
                                                      MAX_Q_INDEX,
                                                      quantizer_to_qindex[(uint8_t)scs->static_config.qp] + scs->static_config.extended_crf_qindex_offset);
-                    if (scs->static_config.double_crf != INVALID_DOUBLE_CRF &&
-                        scs->static_config.balancing_q_bias) {
-                        const int16_t scs_qstep = svt_aom_dc_quant_qtx(scs_qindex, 0, scs->static_config.encoder_bit_depth);
-                        const int16_t scs_qstep_one_up = svt_aom_dc_quant_qtx(scs_qindex, 1, scs->static_config.encoder_bit_depth);
-                        double_frame_qstep = scs_qstep +
-                                             (scs_qstep_one_up - scs_qstep) * modf(scs->static_config.double_crf * 4, &(double){0});
+                    if (scs->static_config.balancing_q_bias) {
+                        if (scs->static_config.double_crf != INVALID_DOUBLE_CRF) {
+                            const int16_t scs_qstep = svt_aom_dc_quant_qtx(scs_qindex, 0, scs->static_config.encoder_bit_depth);
+                            const int16_t scs_qstep_one_up = svt_aom_dc_quant_qtx(scs_qindex, 1, scs->static_config.encoder_bit_depth);
+                            double_frame_qstep = scs_qstep +
+                                                 (scs_qstep_one_up - scs_qstep) * modf(scs->static_config.double_crf * 4, &(double){0});
+                        }
+                        else
+                            double_frame_qstep = svt_aom_dc_quant_qtx(scs_qindex, 0, scs->static_config.encoder_bit_depth);
                     }
 
                     // if RC mode is 0,  fixed QP is used
@@ -3882,8 +3892,8 @@ void *svt_aom_rate_control_kernel(void *input_ptr) {
                 lowq_taper(pcs);
             }
 
-            if ((scs->static_config.enable_variance_boost ||
-                 scs->static_config.balancing_q_bias) && pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
+            if ((scs->static_config.enable_variance_boost || scs->static_config.balancing_q_bias) &&
+                pcs->ppcs->frm_hdr.delta_q_params.delta_q_present)
             {
                 // adjust delta q res and normalize superblock delta q values to reduce signaling overhead
                 normalize_sb_delta_q(pcs);

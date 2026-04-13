@@ -1587,6 +1587,7 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
     SequenceControlSet *scs                   = pcs->scs;
     int64_t             recrf_dist_base_sum   = 0;
     int64_t             mc_dep_delta_base_sum = 0;
+    double              mean_mc_dep_delta_base_sum;
     int64_t             mc_dep_cost_base      = 0;
     const int32_t       shift = pcs->tpl_ctrls.synth_blk_size == 8 ? 1 : pcs->tpl_ctrls.synth_blk_size == 16 ? 2 : 3;
     const int32_t       step  = 1 << (shift);
@@ -1619,10 +1620,11 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
                 mc_dep_delta_base_sum,
                 (double)mc_dep_delta_base_sum / recrf_dist_base_sum);
 #endif
-        mc_dep_delta_base_sum = AOMMAX(mc_dep_delta_base_sum, recrf_dist_base_sum << 9);
-        mc_dep_delta_base_sum = ((mc_dep_delta_base_sum - (recrf_dist_base_sum << 9)) >> 1) + 
-                                ((mc_dep_delta_base_sum - (recrf_dist_base_sum << 9)) >> 2) +
-                                (recrf_dist_base_sum << 9);
+        mean_mc_dep_delta_base_sum = 
+            mc_dep_delta_base_sum  = AOMMAX(mc_dep_delta_base_sum, recrf_dist_base_sum << 9);
+        mc_dep_delta_base_sum      = ((mc_dep_delta_base_sum - (recrf_dist_base_sum << 9)) >> 1) +
+                                     ((mc_dep_delta_base_sum - (recrf_dist_base_sum << 9)) >> 2) +
+                                     (recrf_dist_base_sum << 9);
     }
 
     mc_dep_cost_base = (recrf_dist_base_sum << RDDIV_BITS) + mc_dep_delta_base_sum;
@@ -1652,6 +1654,8 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
     const uint32_t picture_sb_height = (uint32_t)((pcs->aligned_height + scs->sb_size - 1) / scs->sb_size);
     const int32_t  mi_high           = sb_mi_sz; // sb size in 4x4 units
     const int32_t  mi_wide           = sb_mi_sz;
+    if (scs->static_config.balancing_q_bias)
+        mean_mc_dep_delta_base_sum   /= (double)picture_sb_width * picture_sb_height;
     const int32_t  balancing_luminance_q_bias_base = CLIP3(0x50, 0x70, pcs->avg_luma);
     int64_t        balancing_luminance_q_bias;
     for (uint32_t sb_y = 0; sb_y < picture_sb_height; ++sb_y) {
@@ -1690,8 +1694,11 @@ void svt_aom_generate_r0beta(PictureParentControlSet *pcs) {
             }
 
             if (scs->static_config.balancing_q_bias) {
-                mc_dep_delta_sum = AOMMAX(recrf_dist_sum << 9, mc_dep_delta_sum);
-                mc_dep_delta_sum = ((mc_dep_delta_sum - (recrf_dist_sum << 9)) >> 1) + (recrf_dist_sum << 9);
+                mc_dep_delta_sum = AOMMAX(mean_mc_dep_delta_base_sum, mc_dep_delta_sum);
+                if (mc_dep_delta_sum > recrf_dist_sum << 9)
+                    mc_dep_delta_sum = ((mc_dep_delta_sum - (recrf_dist_sum << 9)) >> 1) +
+                                       ((mc_dep_delta_sum - (recrf_dist_sum << 9)) >> 2) +
+                                       (recrf_dist_sum << 9);
             }
             
             double beta = 1.0;
