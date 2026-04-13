@@ -86,7 +86,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **FilteringNoiseDetection**      | --filtering-noise-detection | [0-4]                          | 0           | Controls noise detection which disables CDEF/restoration when noise level is high enough, enabled by default on tunes 0 and 3 [0: default tune behavior, 1: on, 2: off, 3: on (CDEF only), 4: on (restoration only)] |
 | **NoiseLevelThr**                | --noise-level-thr           | [-2-`(2^31)-1`]                | -1          | Change encoder noise level threshold. Further explanations can be found below. [-1: default encoder behaviour, -2: print the noise level for each frame, >0: set the noise level threshold] |
 | **BalancingQBias**               | --balancing-q-bias          | [0-1]                          | 0           | Enable balancing Q bias. Balancing Q bias biases the TPL system on both per frame and per Super Block level for better detail retention. |
-| **BalancingLuminanceQBias**      | --balancing-luminance-q-bias | [0.0-25.0]                    | 0.0         | Enable balancing luminance Q bias. Boost Super Block with low luminance via beta. Recommended to be used with `--balancing-q-bias` but can be used without. [0: disabled, 8.0: default with `--balancing-q-bias 1`] |
+| **BalancingLuminanceQBias**      | --balancing-luminance-q-bias | [0.0-25.0]                    | 0.0         | Enable balancing luminance Q bias. Boost Super Block with low luminance via beta. Recommended to be used with `--balancing-q-bias` but can be used without. [0: disabled, 4.0: default with `--balancing-q-bias 1`] |
 | **BalancingNoiseLevelQBias**     | --balancing-noise-level-q-bias | [0.5-2.0]                   | 1.0         | Boost a frame's base qindex when noise level is below the threshold. Can be used without `--balancing-q-bias`. [1.0: disabled, >1: boost frames with low noise, <1: dampen frames with low noise, 0.91-1.10: recommended range] |
 | **BalancingLuminanceLambdaBias** | --balancing-luminance-lambda-bias | [0.0-0.999]              | 0.0         | Enable balancing luminance lambda bias. Bias lambda in mode decision in super block with low luminance. [0: default encoder behaviour] |
 | **BalancingTextureLambdaBias**   | --balancing-texture-lambda-bias | [0.0-0.999]                | 0.0         | Enable balancing texture lambda bias. Bias lambda in low variance regions. [0: default encoder behaviour]     |
@@ -143,7 +143,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [me] `--psy-bias-disable-warped-motion 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [me] `--psy-bias-disable-me-8x8 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `8.0` | `10.0` | `10.0` | `12.0` | `12.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
+| [rc] `--balancing-luminance-q-bias` | `4.0` | `4.0` | `4.0` | `4.0` | `6.0` | `6.0` | `6.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative high freq dev thr | ◯ | ◯ | － | － | － | － | － | |
@@ -185,7 +185,6 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [global] `--noise-psy-bias` | ✕ | ✕ | ✕ | ✕ | `2` | `4` | `6` | Can be overridden |
 | [global] `--scm 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `--balancing-q-bias 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [rc] `--balancing-luminance-q-bias` | `8.0` | `8.0` | `10.0` | `12.0` | `12.0` | `12.0` | `12.0` | Applied when `--balancing-q-bias 1`; Can be overridden |
 | [rc] `--balancing-r0-dampening-layer -3` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Applied when `--balancing-q-bias 1`; Can be overridden |
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |

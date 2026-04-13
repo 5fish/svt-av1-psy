@@ -4010,14 +4010,10 @@ static void set_param_based_on_input(SequenceControlSet *scs)
 
     if (scs->static_config.balancing_luminance_q_bias == UINT8_DEFAULT) {
         if (scs->static_config.balancing_q_bias) {
-            if (scs->static_config.lineart_psy_bias >= 6.0 ||
-                scs->static_config.texture_psy_bias >= 4.0)
-                scs->static_config.balancing_luminance_q_bias = 120;
-            else if (scs->static_config.lineart_psy_bias >= 4.0 ||
-                     scs->static_config.texture_psy_bias >= 3.0)
-                scs->static_config.balancing_luminance_q_bias = 100;
+            if (scs->static_config.lineart_psy_bias >= 5.0)
+                scs->static_config.balancing_luminance_q_bias = 60;
             else
-                scs->static_config.balancing_luminance_q_bias = 80;
+                scs->static_config.balancing_luminance_q_bias = 40;
         }
         else
             scs->static_config.balancing_luminance_q_bias     = 0;
