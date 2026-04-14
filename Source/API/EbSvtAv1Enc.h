@@ -1347,6 +1347,8 @@ typedef struct EbSvtAv1EncConfiguration {
      */
     uint8_t enable_photon_noise_chroma;
 
+    int32_t static_fgs_seed;
+
     /**
      * @brief Check if color range is provided by the user
      */

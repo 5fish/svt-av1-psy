@@ -4706,6 +4706,7 @@ static void copy_api_from_app(
     scs->static_config.fgs_table = ((EbSvtAv1EncConfiguration*)config_struct)->fgs_table;
     scs->static_config.photon_noise_iso = ((EbSvtAv1EncConfiguration*)config_struct)->photon_noise_iso;
     scs->static_config.enable_photon_noise_chroma = ((EbSvtAv1EncConfiguration*)config_struct)->enable_photon_noise_chroma;
+    scs->static_config.static_fgs_seed = ((EbSvtAv1EncConfiguration*)config_struct)->static_fgs_seed;
 
     // MD Parameters
     scs->enable_hbd_mode_decision = ((EbSvtAv1EncConfiguration*)config_struct)->encoder_bit_depth > 8 ? DEFAULT : 0;

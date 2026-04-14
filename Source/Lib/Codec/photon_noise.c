@@ -323,7 +323,7 @@ static void svt_av1_generate_photon_noise(const PhotonNoiseArgs *photon_noise_ar
     }
 
     film_grain->apply_grain       = 1;
-    film_grain->ignore_ref        = 1;
+    film_grain->ignore_ref        = 0;
     film_grain->update_parameters = 1;
     film_grain->num_cb_points     = 0;
     film_grain->num_cr_points     = 0;

@@ -995,6 +995,13 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
 
+    if (config->static_fgs_seed != 0 &&
+        config->static_fgs_seed != -2 &&
+        !(config->static_fgs_seed >= 1 && config->static_fgs_seed <= 65535)) {
+        SVT_ERROR("Instance %u: static-fgs-seed should be either -2, 0, or a value between 1 and 65535\n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
     // Limit 8K & 16K support
     if ((uint64_t)(scs->max_input_luma_width * scs->max_input_luma_height) > INPUT_SIZE_4K_TH) {
         SVT_WARN(
@@ -1388,6 +1395,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->film_grain_denoise_apply    = 0;
     config_ptr->photon_noise_iso            = 0;
     config_ptr->enable_photon_noise_chroma  = 0;
+    config_ptr->static_fgs_seed             = 0;
 
     // CPU Flags
     config_ptr->use_cpu_flags = EB_CPU_FLAGS_ALL;
@@ -3166,6 +3174,7 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"chroma-u-ac-qindex-offset", &config_struct->chroma_u_ac_qindex_offset},
         {"chroma-v-dc-qindex-offset", &config_struct->chroma_v_dc_qindex_offset},
         {"chroma-v-ac-qindex-offset", &config_struct->chroma_v_ac_qindex_offset},
+        {"static-fgs-seed", &config_struct->static_fgs_seed},
         {"pass", &config_struct->pass},
         {"enable-cdef", &config_struct->cdef_level},
         {"enable-restoration", &config_struct->enable_restoration_filtering},

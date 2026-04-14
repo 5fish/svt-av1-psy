@@ -68,7 +68,7 @@ EbErrorType svt_sequence_control_set_ctor(SequenceControlSet *scs, EbPtr object_
 
     scs->mvrate_set                   = 0;
     scs->bits_for_picture_order_count = 16;
-    scs->film_grain_random_seed       = 7391;
+    // scs->film_grain_random_seed       = 7391;
 
     // Initialize certain sequence header variables here for write_sequence_header(),
     // which may be called before the first picture hits resource coordination thread

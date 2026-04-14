@@ -85,6 +85,14 @@ static void resource_coordination_context_dctor(EbPtr p) {
     }
 }
 
+static uint16_t magical_seed_pool[30] = {
+    87,  206,  441, 1088, 1249, 1256, 1401, 1400, 1458, 1491, 2154, 2415, 2469, 2545, 2904, 2992, 3172, 3318, 3462, 3534, 3652, 3841, 4028, 4423, 4448, 4555, 4620, 4660, 4773, 4835
+};
+
+static uint8_t magical_seed_randomiser[512] = {
+    4, 13, 9, 0, 2, 10, 17, 28, 21, 27, 23, 6, 3, 18, 22, 19, 16, 1, 26, 12, 15, 5, 11, 8, 28, 2, 9, 7, 21, 23, 3, 4, 25, 14, 18, 27, 1, 10, 12, 11, 6, 13, 28, 22, 16, 17, 8, 24, 26, 25, 5, 20, 9, 23, 29, 0, 3, 18, 7, 15, 22, 6, 19, 17, 4, 16, 28, 26, 21, 24, 1, 14, 29, 2, 23, 18, 3, 7, 20, 9, 12, 22, 25, 11, 19, 4, 28, 21, 26, 6, 5, 17, 10, 1, 8, 20, 7, 12, 0, 2, 24, 29, 23, 13, 16, 14, 28, 3, 22, 15, 21, 26, 20, 9, 11, 1, 4, 0, 2, 29, 18, 19, 5, 16, 23, 3, 14, 15, 28, 21, 22, 20, 17, 4, 7, 25, 6, 18, 24, 0, 9, 19, 29, 13, 16, 5, 2, 1, 14, 22, 23, 15, 10, 28, 21, 20, 24, 7, 6, 12, 11, 16, 25, 26, 2, 3, 13, 14, 17, 23, 9, 4, 28, 19, 21, 10, 12, 20, 11, 16, 29, 1, 5, 7, 13, 14, 26, 6, 17, 8, 15, 22, 21, 25, 20, 4, 16, 27, 11, 23, 1, 29, 12, 5, 0, 17, 8, 18, 6, 2, 26, 10, 13, 4, 7, 14, 15, 28, 3, 22, 9, 12, 0, 8, 18, 19, 29, 27, 5, 17, 16, 1, 23, 25, 26, 14, 28, 11, 9, 2, 24, 21, 10, 12, 4, 27, 7, 20, 13, 8, 22, 26, 14, 5, 3, 6, 2, 1, 0, 9, 25, 28, 23, 10, 24, 27, 20, 15, 26, 7, 14, 11, 16, 21, 13, 12, 0, 17, 18, 25, 28, 4, 27, 23, 3, 20, 15, 8, 19, 2, 5, 13, 24, 26, 22, 21, 11, 25, 6, 18, 28, 9, 29, 4, 3, 19, 20, 10, 2, 16, 7, 13, 12, 0, 22, 5, 23, 17, 1, 25, 18, 21, 9, 14, 4, 28, 26, 19, 11, 7, 10, 29, 12, 16, 3, 20, 15, 0, 6, 22, 27, 5, 1, 23, 18, 26, 7, 9, 10, 4, 13, 19, 21, 8, 3, 17, 22, 11, 2, 25, 28, 12, 1, 14, 16, 27, 7, 9, 23, 6, 15, 24, 0, 4, 17, 3, 26, 22, 21, 5, 13, 2, 10, 27, 12, 25, 11, 9, 28, 6, 24, 8, 15, 17, 29, 14, 23, 19, 21, 26, 5, 18, 4, 1, 0, 9, 28, 11, 24, 6, 15, 7, 10, 16, 12, 23, 22, 2, 19, 25, 29, 1, 8, 9, 27, 13, 6, 5, 0, 14, 17, 15, 20, 11, 10, 4, 19, 21, 28, 26, 25, 3, 29, 6, 24, 13, 2, 22, 12, 20, 16, 7, 17, 4, 10, 0, 26, 23, 15, 29, 5, 28, 8, 25, 3, 21, 20, 13, 18, 22, 11, 16, 7, 1, 10, 6, 4, 14, 26, 23, 8, 15, 27, 0, 13, 21, 28, 24, 11, 20, 18, 17, 22, 9, 5, 26, 14, 6, 15, 19, 4, 13, 8, 10, 24, 2, 27, 3, 11, 21, 16, 22
+};
+
 /************************************************
  * Resource Coordination Context Constructor
  ************************************************/
@@ -303,11 +311,12 @@ void speed_buffer_control(ResourceCoordinationContext *context_ptr, PictureParen
 }
 // Film grain (assigning the random-seed)
 static void assign_film_grain_random_seed(PictureParentControlSet *pcs) {
-    uint16_t *fgn_random_seed_ptr              = &pcs->scs->film_grain_random_seed;
-    pcs->frm_hdr.film_grain_params.random_seed = *fgn_random_seed_ptr;
-    *fgn_random_seed_ptr += 3381; // Changing random seed for film grain
-    if (!(*fgn_random_seed_ptr)) // Random seed should not be zero
-        *fgn_random_seed_ptr += 7391;
+    if (pcs->scs->static_config.static_fgs_seed == 0)
+        pcs->frm_hdr.film_grain_params.random_seed = magical_seed_pool[magical_seed_randomiser[pcs->picture_number % 512]];
+    else if (pcs->scs->static_config.static_fgs_seed == -2)
+        pcs->frm_hdr.film_grain_params.random_seed = magical_seed_pool[0];
+    else
+        pcs->frm_hdr.film_grain_params.random_seed = pcs->scs->static_config.static_fgs_seed;
 }
 static EbErrorType reset_pcs_av1(PictureParentControlSet *pcs) {
     FrameHeader *frm_hdr     = &pcs->frm_hdr;

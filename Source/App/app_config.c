@@ -92,6 +92,7 @@
 #define FILM_GRAIN_DENOISE_APPLY_TOKEN "--film-grain-denoise"
 #define PHOTON_NOISE_TOKEN "--photon-noise"
 #define PHOTON_NOISE_CHROMA_TOKEN "--photon-noise-chroma"
+#define STATIC_FGS_SEED_TOKEN "--static-fgs-seed"
 #define INTRA_REFRESH_TYPE_TOKEN "--irefresh-type" // no Eval
 #define CDEF_ENABLE_TOKEN "--enable-cdef"
 #define SCREEN_CONTENT_TOKEN "--scm"
@@ -1201,6 +1202,11 @@ ConfigEntry config_entry_specific[] = {
      "Enable chroma noise, default is 0 [0: off, 1: on]",
      set_cfg_generic_token},
 
+    {SINGLE_INPUT,
+     STATIC_FGS_SEED_TOKEN,
+     "Use a static seed for FGS [0: disabled, -2: Use a predefined seed, 1-65535: Select a custom seed]",
+     set_cfg_generic_token},
+
     // --- start: SUPER-RESOLUTION SUPPORT
     {SINGLE_INPUT,
      SUPERRES_MODE_INPUT,
@@ -1727,6 +1733,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, FGS_TABLE_TOKEN, "FilmGrainTable", set_cfg_fgs_table_path},
     {SINGLE_INPUT, PHOTON_NOISE_TOKEN, "PhotonNoise", set_cfg_generic_token},
     {SINGLE_INPUT, PHOTON_NOISE_CHROMA_TOKEN, "PhotonNoiseChroma", set_cfg_generic_token},
+    {SINGLE_INPUT, STATIC_FGS_SEED_TOKEN, "StaticFGSSeed", set_cfg_generic_token},
 
     //   Super-resolution support
     {SINGLE_INPUT, SUPERRES_MODE_INPUT, "SuperresMode", set_cfg_generic_token},
@@ -3128,7 +3135,7 @@ static EbErrorType read_fgs_table(EbConfig *cfg) {
     fclose(file);
 
     film_grain->apply_grain = 1;
-    film_grain->ignore_ref  = 1;
+    film_grain->ignore_ref  = 0;
     cfg->config.fgs_table   = film_grain;
 
     return EB_ErrorNone;
