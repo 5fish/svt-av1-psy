@@ -1595,12 +1595,198 @@ void svt_av1_perform_noise_normalization(MacroblockPlane *p,
 
 }
 
+static uint64_t slow_optimize_b_calculate_rate(PictureControlSet *pcs, ModeDecisionContext *ctx,
+                                               int32_t *quant_coeff,
+                                               TxSize txsize, TxType tx_type, int32_t plane, uint16_t eob,
+                                               ModeDecisionCandidateBuffer* cand_bf, int16_t txb_skip_context, int16_t dc_sign_context) {
+    uint64_t rate;
+    rate = svt_av1_cost_coeffs_txb(ctx,
+                                   0,
+                                   NULL,
+                                   cand_bf,
+                                   quant_coeff,
+                                   AOMMAX(eob, 1),
+                                   plane,
+                                   txsize, tx_type,
+                                   txb_skip_context, dc_sign_context,
+                                   pcs->ppcs->frm_hdr.reduced_tx_set ? TRUE : FALSE);
+    if (plane == AOM_PLANE_Y)
+        rate <<= ctx->subres_ctrls.step;
+    return rate;
+}
+
+static uint64_t slow_optimize_b_calculate_dist(PictureControlSet *pcs, ModeDecisionContext *ctx,
+                                               int32_t *recon_coeff,
+                                               TxSize txsize, TxType tx_type, int32_t plane, uint16_t eob,
+                                               uint8_t *input, uint32_t input_offset, uint32_t input_stride,
+                                               uint8_t *pred, uint32_t pred_offset, uint32_t pred_stride,
+                                               uint8_t *recon, int32_t recon_offset, uint32_t recon_stride,
+                                               uint32_t area_width, uint32_t area_height) {
+    if (eob != 0)
+        svt_aom_inv_transform_recon_wrapper(pred, pred_offset, pred_stride,
+                                            recon, recon_offset, recon_stride,
+                                            recon_coeff, 0,
+                                            ctx->hbd_md,
+                                            txsize, tx_type, plane, eob);
+    else {
+        recon = pred;
+        recon_offset = pred_offset;
+        recon_stride = pred_stride;
+    }
+
+    uint64_t dist;
+    dist = svt_spatial_full_distortion_kernel_facade(input, input_offset, input_stride,
+                                                     recon, recon_offset, recon_stride,
+                                                     area_width, area_height,
+                                                     ctx->hbd_md,
+                                                     0, 0, 0, 0, 0, 0, 0, 0);
+    dist += get_psy_dist_satd_bias_only(input, input_offset, input_stride,
+                                        recon, recon_offset, recon_stride,
+                                        area_width, area_height,
+                                        ctx->hbd_md,
+                                        0.5,
+                                        pcs->satd_bias_qmatrix);
+    dist <<= 4;
+    return dist;
+}
+
+static bool slow_optimize_b_compare_cost(uint32_t lambda,
+                                         uint64_t incoming_rate, uint64_t incoming_dist,
+                                         uint64_t existing_rate, uint64_t existing_dist) {
+    const uint64_t incoming_cost = RDCOST_DBL(lambda, incoming_rate, incoming_dist);
+    const uint64_t existing_cost = RDCOST_DBL(lambda, existing_rate, existing_dist);
+    if (incoming_cost != existing_cost)
+        return incoming_cost < existing_cost;
+    else {
+        return incoming_dist < existing_dist;
+    }
+}
+static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
+                            int32_t *quant_coeff, int32_t *recon_coeff,
+                            TxSize txsize, TxType tx_type, int32_t plane, uint16_t *eob,
+                            const ScanOrder *scan_order, const int16_t *zbin_ptr,
+                            const QmVal *iqm_ptr, const int16_t *dequant_ptr, int16_t log_scale,
+                            uint8_t *input, uint32_t input_offset, uint32_t input_stride,
+                            uint8_t *pred, uint32_t pred_offset, uint32_t pred_stride,
+                            uint8_t *recon, int32_t recon_offset, uint32_t recon_stride,
+                            uint32_t area_width, uint32_t area_height,
+                            ModeDecisionCandidateBuffer* cand_bf, int16_t txb_skip_context, int16_t dc_sign_context,
+                            uint32_t lambda) {
+    uint64_t current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                           quant_coeff,
+                                                           txsize, tx_type, plane, *eob,
+                                                           cand_bf, txb_skip_context, dc_sign_context);
+    uint64_t current_dist = slow_optimize_b_calculate_dist(pcs, ctx,
+                                                           recon_coeff,
+                                                           txsize, tx_type, plane, *eob,
+                                                           input, input_offset, input_stride,
+                                                           pred, pred_offset, pred_stride,
+                                                           recon, recon_offset, recon_stride,
+                                                           area_width, area_height);
+    uint16_t zbin_available = av1_get_max_eob(txsize) >> 3;
+    for (int32_t i = (int32_t)(*eob) - 1; i >= 0; i--) {
+        const int             rc             = scan_order->scan[i];
+        if (quant_coeff[rc]) {
+            const int         sign           = quant_coeff[rc] < 0 ? -1 : 0;
+            const int64_t     abs_quant      = (quant_coeff[rc] ^ sign) - sign;
+            {
+                const TranLow pre_quant      = quant_coeff[rc];
+                const TranLow pre_recon      = recon_coeff[rc];
+                const int64_t abs_quant_low  = abs_quant - 1;
+                quant_coeff[rc]              = (abs_quant_low ^ sign) - sign;
+                const QmVal   iwt            = iqm_ptr != NULL ? iqm_ptr[rc] : (1 << AOM_QM_BITS);
+                const int     dequant        = (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
+                const int64_t abs_dquant_low = (abs_quant_low * dequant) >> log_scale;
+                recon_coeff[rc]              = (abs_dquant_low ^ sign) - sign;
+                const uint16_t this_eob      = !quant_coeff[rc] && *eob == i + 1 ? i : *eob;
+                const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                                         quant_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         cand_bf, txb_skip_context, dc_sign_context);
+                const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
+                                                                         recon_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         input, input_offset, input_stride,
+                                                                         pred, pred_offset, pred_stride,
+                                                                         recon, recon_offset, recon_stride,
+                                                                         area_width, area_height);
+                if (slow_optimize_b_compare_cost(lambda,
+                                                 new_rate, new_dist,
+                                                 current_rate, current_dist)) {
+                    current_rate = new_rate;
+                    current_dist = new_dist;
+                }
+                else {
+                    quant_coeff[rc] = pre_quant;
+                    recon_coeff[rc] = pre_recon;
+                }
+            }
+            if (zbin_available && (abs_quant << (1 + log_scale)) < zbin_ptr[rc != 0]) {
+                const TranLow pre_quant = quant_coeff[rc];
+                const TranLow pre_recon = recon_coeff[rc];
+                quant_coeff[rc] = 0;
+                recon_coeff[rc] = 0;
+                const uint16_t this_eob = *eob == i + 1 ? i : *eob;
+                const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                                         quant_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         cand_bf, txb_skip_context, dc_sign_context);
+                const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
+                                                                         recon_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         input, input_offset, input_stride,
+                                                                         pred, pred_offset, pred_stride,
+                                                                         recon, recon_offset, recon_stride,
+                                                                         area_width, area_height);
+                if (slow_optimize_b_compare_cost(lambda,
+                                                 new_rate, new_dist,
+                                                 current_rate, current_dist)) {
+                    current_rate = new_rate;
+                    current_dist = new_dist;
+                }
+                else {
+                    quant_coeff[rc] = pre_quant;
+                    recon_coeff[rc] = pre_recon;
+                }
+            }
+
+            if (!quant_coeff[rc]) {
+                if (*eob == i + 1) {
+                    --*eob;
+                    if (zbin_available)
+                        zbin_available--;
+                }
+            }
+            else
+                zbin_available >>= 1;
+        }
+
+        else { // !quant_coeff[rc]
+            if (*eob == i + 1) {
+                --*eob;
+                if (zbin_available)
+                    zbin_available--;
+                current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                              quant_coeff,
+                                                              txsize, tx_type, plane, i,
+                                                              cand_bf, txb_skip_context, dc_sign_context);
+            }
+        }
+    }
+}
+
 uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContext *ctx, int32_t *coeff,
                                       int32_t *quant_coeff, int32_t *recon_coeff, uint32_t qindex,
                                       int32_t segmentation_qp_offset, TxSize txsize, uint16_t *eob,
                                       uint32_t component_type, uint32_t bit_depth, TxType tx_type,
                                       int16_t txb_skip_context, int16_t dc_sign_context, PredictionMode pred_mode,
-                                      uint32_t lambda, Bool is_encode_pass) {
+                                      uint32_t lambda, Bool is_encode_pass,
+                                      uint8_t psy_bias_optimize_b,
+                                      uint8_t *input, uint32_t input_offset, uint32_t input_stride,
+                                      uint8_t *pred, uint32_t pred_offset, uint32_t pred_stride,
+                                      uint8_t *recon, int32_t recon_offset, uint32_t recon_stride,
+                                      uint32_t area_width, uint32_t area_height,
+                                      ModeDecisionCandidateBuffer* cand_bf) {
     SequenceControlSet *scs     = pcs->scs;
     EncodeContext      *enc_ctx = scs->enc_ctx;
     int32_t plane = component_type == COMPONENT_LUMA ? AOM_PLANE_Y : COMPONENT_CHROMA_CB ? AOM_PLANE_U : AOM_PLANE_V;
@@ -1760,17 +1946,17 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
                                      &qparam);
         }
     }
-    if (perform_rdoq && *eob != 0) {
+
+    if (perform_rdoq && *eob != 0 && !psy_bias_optimize_b) {
         int width    = tx_size_wide[txsize];
         int height   = tx_size_high[txsize];
         int eob_perc = (*eob) * 100 / (width * height);
         if (eob_perc >= ctx->rdoq_ctrls.eob_th) {
             perform_rdoq = 0;
         }
-        if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th)) {
+        if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th))
             svt_fast_optimize_b(
                 (TranLow *)coeff, &candidate_plane, quant_coeff, (TranLow *)recon_coeff, eob, txsize, tx_type);
-        }
         if (perform_rdoq == 0) {
             if ((bit_depth > EB_EIGHT_BIT) || (is_encode_pass && scs->is_16bit_pipeline)) {
                 svt_av1_highbd_quantize_b_facade((TranLow *)coeff,
@@ -1793,7 +1979,7 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
             }
         }
     }
-    if (perform_rdoq && *eob != 0) {
+    if (perform_rdoq && *eob != 0 && !psy_bias_optimize_b) {
         // Perform rdoq
         svt_av1_optimize_b(ctx,
                            txb_skip_context,
@@ -1814,6 +2000,18 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
                            (component_type == COMPONENT_LUMA) ? 0 : 1,
                            pcs);
     }
+    if (perform_rdoq && *eob != 0 && psy_bias_optimize_b)
+        slow_optimize_b(pcs, ctx,
+                        quant_coeff, recon_coeff,
+                        txsize, tx_type, plane, eob,
+                        scan_order, candidate_plane.zbin_qtx,
+                        qparam.iqmatrix, candidate_plane.dequant_qtx, qparam.log_scale,
+                        input, input_offset, input_stride,
+                        pred, pred_offset, pred_stride,
+                        recon, recon_offset, recon_stride,
+                        area_width, area_height,
+                        cand_bf, txb_skip_context, dc_sign_context,
+                        lambda);
 
     if (is_encode_pass && *eob != 0 && tx_type != IDTX && (component_type == COMPONENT_LUMA)) {
         svt_av1_perform_noise_normalization(
@@ -1941,7 +2139,20 @@ void svt_aom_full_loop_chroma_light_pd1(PictureControlSet *pcs, ModeDecisionCont
                                                                0,
                                                                cand_bf->cand->pred_mode,
                                                                full_lambda,
-                                                               FALSE);
+                                                               FALSE,
+                                                               FALSE,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               NULL);
 
         svt_aom_picture_full_distortion32_bits_single_facade(&(((int32_t *)ctx->tx_coeffs->buffer_cb)[0]),
                                                              &(((int32_t *)cand_bf->rec_coeff->buffer_cb)[0]),
@@ -2031,7 +2242,20 @@ void svt_aom_full_loop_chroma_light_pd1(PictureControlSet *pcs, ModeDecisionCont
                                                                0,
                                                                cand_bf->cand->pred_mode,
                                                                full_lambda,
-                                                               FALSE);
+                                                               FALSE,
+                                                               FALSE,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               NULL);
 
         svt_aom_picture_full_distortion32_bits_single_facade(&(((int32_t *)ctx->tx_coeffs->buffer_cr)[0]),
                                                              &(((int32_t *)cand_bf->rec_coeff->buffer_cr)[0]),
@@ -2159,10 +2383,18 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                                     &ctx->cb_txb_skip_context,
                                     &ctx->cb_dc_sign_context);
             // Configure the Chroma Residual Ptr
-
             chroma_residual_ptr = //(cand_bf->cand->type  == INTRA_MODE )?
                 //&(((int16_t*) cand_bf->intraChromaResidualPtr->buffer_cb)[txb_chroma_origin_index]):
                 &(((int16_t *)cand_bf->residual->buffer_cb)[tu_cb_origin_index]);
+
+            uint32_t input_chroma_txb_origin_index = (((ctx->sb_origin_y + ((txb_origin_y >> 3) << 3)) >> 1) +
+                                                      (input_pic->org_y >> 1)) *
+                    input_pic->stride_cb +
+                (((ctx->sb_origin_x + ((txb_origin_x >> 3) << 3)) >> 1) + (input_pic->org_x >> 1));
+
+            int32_t txb_uv_origin_index = (((txb_origin_x >> 3) << 3) +
+                                           (((txb_origin_y >> 3) << 3) * cand_bf->quant->stride_cb)) >>
+                1;
 
             // Cb Transform
             svt_aom_estimate_transform(chroma_residual_ptr,
@@ -2196,7 +2428,21 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                 ctx->cb_dc_sign_context,
                 cand_bf->cand->pred_mode,
                 full_lambda,
-                FALSE);
+                FALSE,
+                TRUE,
+                input_pic->buffer_cb,
+                input_chroma_txb_origin_index,
+                input_pic->stride_cb,
+                cand_bf->pred->buffer_cb,
+                txb_uv_origin_index,
+                cand_bf->pred->stride_cb,
+                cand_bf->recon->buffer_cb,
+                txb_uv_origin_index,
+                cand_bf->recon->stride_cb,
+                cropped_tx_width_uv,
+                cropped_tx_height_uv,
+                cand_bf
+            );
 
             if (is_full_loop && ctx->mds_spatial_sse) {
                 uint32_t cb_has_coeff = cand_bf->eob.u[txb_itr] > 0;
@@ -2228,15 +2474,6 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                                          ctx->blk_geom->tx_height_uv[tx_depth],
                                          PICTURE_BUFFER_DESC_Cb_FLAG,
                                          ctx->hbd_md);
-
-                uint32_t input_chroma_txb_origin_index = (((ctx->sb_origin_y + ((txb_origin_y >> 3) << 3)) >> 1) +
-                                                          (input_pic->org_y >> 1)) *
-                        input_pic->stride_cb +
-                    (((ctx->sb_origin_x + ((txb_origin_x >> 3) << 3)) >> 1) + (input_pic->org_x >> 1));
-
-                int32_t txb_uv_origin_index = (((txb_origin_x >> 3) << 3) +
-                                               (((txb_origin_y >> 3) << 3) * cand_bf->quant->stride_cb)) >>
-                    1;
 
                 if (ssim_level == SSIM_LVL_1 || ssim_level == SSIM_LVL_3) {
                     txb_full_distortion[DIST_SSIM][1][DIST_CALC_PREDICTION] = svt_spatial_full_distortion_ssim_kernel(
@@ -2407,10 +2644,18 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                                     &ctx->cr_txb_skip_context,
                                     &ctx->cr_dc_sign_context);
             // Configure the Chroma Residual Ptr
-
             chroma_residual_ptr = //(cand_bf->cand->type  == INTRA_MODE )?
                 //&(((int16_t*) cand_bf->intraChromaResidualPtr->buffer_cr)[txb_chroma_origin_index]):
                 &(((int16_t *)cand_bf->residual->buffer_cr)[tu_cr_origin_index]);
+
+            uint32_t input_chroma_txb_origin_index = (((ctx->sb_origin_y + ((txb_origin_y >> 3) << 3)) >> 1) +
+                                                      (input_pic->org_y >> 1)) *
+                    input_pic->stride_cb +
+                (((ctx->sb_origin_x + ((txb_origin_x >> 3) << 3)) >> 1) + (input_pic->org_x >> 1));
+
+            int32_t txb_uv_origin_index = (((txb_origin_x >> 3) << 3) +
+                                           (((txb_origin_y >> 3) << 3) * cand_bf->quant->stride_cb)) >>
+                1;
 
             // Cr Transform
             svt_aom_estimate_transform(chroma_residual_ptr,
@@ -2443,7 +2688,21 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                 ctx->cr_dc_sign_context,
                 cand_bf->cand->pred_mode,
                 full_lambda,
-                FALSE);
+                FALSE,
+                TRUE,
+                input_pic->buffer_cr,
+                input_chroma_txb_origin_index,
+                input_pic->stride_cr,
+                cand_bf->pred->buffer_cr,
+                txb_uv_origin_index,
+                cand_bf->pred->stride_cr,
+                cand_bf->recon->buffer_cr,
+                txb_uv_origin_index,
+                cand_bf->recon->stride_cr,
+                cropped_tx_width_uv,
+                cropped_tx_height_uv,
+                cand_bf
+            );
             if (is_full_loop && ctx->mds_spatial_sse) {
                 uint32_t cr_has_coeff = cand_bf->eob.v[txb_itr] > 0;
 
@@ -2474,14 +2733,6 @@ void svt_aom_full_loop_uv(PictureControlSet *pcs, ModeDecisionContext *ctx, Mode
                                          ctx->blk_geom->tx_height_uv[tx_depth],
                                          PICTURE_BUFFER_DESC_Cr_FLAG,
                                          ctx->hbd_md);
-                uint32_t input_chroma_txb_origin_index = (((ctx->sb_origin_y + ((txb_origin_y >> 3) << 3)) >> 1) +
-                                                          (input_pic->org_y >> 1)) *
-                        input_pic->stride_cb +
-                    (((ctx->sb_origin_x + ((txb_origin_x >> 3) << 3)) >> 1) + (input_pic->org_x >> 1));
-
-                int32_t txb_uv_origin_index = (((txb_origin_x >> 3) << 3) +
-                                               (((txb_origin_y >> 3) << 3) * cand_bf->quant->stride_cb)) >>
-                    1;
 
                 if (ssim_level == SSIM_LVL_1 || ssim_level == SSIM_LVL_3) {
                     txb_full_distortion[DIST_SSIM][2][DIST_CALC_PREDICTION] = svt_spatial_full_distortion_ssim_kernel(
