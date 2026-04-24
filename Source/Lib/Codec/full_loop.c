@@ -1614,7 +1614,6 @@ static uint64_t slow_optimize_b_calculate_rate(PictureControlSet *pcs, ModeDecis
         rate <<= ctx->subres_ctrls.step;
     return rate;
 }
-
 static uint64_t slow_optimize_b_calculate_dist(PictureControlSet *pcs, ModeDecisionContext *ctx,
                                                int32_t *recon_coeff,
                                                TxSize txsize, TxType tx_type, int32_t plane, uint16_t eob,
@@ -1649,7 +1648,6 @@ static uint64_t slow_optimize_b_calculate_dist(PictureControlSet *pcs, ModeDecis
     dist <<= 4;
     return dist;
 }
-
 static bool slow_optimize_b_compare_cost(uint32_t lambda,
                                          uint64_t incoming_rate, uint64_t incoming_dist,
                                          uint64_t existing_rate, uint64_t existing_dist) {
@@ -1662,6 +1660,7 @@ static bool slow_optimize_b_compare_cost(uint32_t lambda,
     }
 }
 static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
+                            uint8_t psy_bias_optimize_b,
                             int32_t *quant_coeff, int32_t *recon_coeff,
                             TxSize txsize, TxType tx_type, int32_t plane, uint16_t *eob,
                             const ScanOrder *scan_order, const int16_t *zbin_ptr,
@@ -1683,13 +1682,13 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                                                            pred, pred_offset, pred_stride,
                                                            recon, recon_offset, recon_stride,
                                                            area_width, area_height);
-    uint16_t zbin_available = av1_get_max_eob(txsize) >> 3;
+    uint16_t zbin_available = av1_get_max_eob(txsize) >> 5;
     for (int32_t i = (int32_t)(*eob) - 1; i >= 0; i--) {
         const int             rc             = scan_order->scan[i];
         if (quant_coeff[rc]) {
             const int         sign           = quant_coeff[rc] < 0 ? -1 : 0;
             const int64_t     abs_quant      = (quant_coeff[rc] ^ sign) - sign;
-            {
+            if (psy_bias_optimize_b == 2 || psy_bias_optimize_b == 3) {
                 const TranLow pre_quant      = quant_coeff[rc];
                 const TranLow pre_recon      = recon_coeff[rc];
                 const int64_t abs_quant_low  = abs_quant - 1;
@@ -1721,7 +1720,8 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                     recon_coeff[rc] = pre_recon;
                 }
             }
-            if (zbin_available && (abs_quant << (1 + log_scale)) < zbin_ptr[rc != 0]) {
+            if (zbin_available && (abs_quant << (1 + log_scale)) < zbin_ptr[rc != 0] &&
+                quant_coeff[rc]) {
                 const TranLow pre_quant = quant_coeff[rc];
                 const TranLow pre_recon = recon_coeff[rc];
                 quant_coeff[rc] = 0;
@@ -1749,23 +1749,51 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                     recon_coeff[rc] = pre_recon;
                 }
             }
-
-            if (!quant_coeff[rc]) {
-                if (*eob == i + 1) {
-                    --*eob;
-                    if (zbin_available)
-                        zbin_available--;
+            if (psy_bias_optimize_b == 3) {
+                const TranLow pre_quant       = quant_coeff[rc];
+                const TranLow pre_recon       = recon_coeff[rc];
+                const int64_t abs_quant_high  = abs_quant + 1;
+                quant_coeff[rc]               = (abs_quant_high ^ sign) - sign;
+                const QmVal   iwt             = iqm_ptr != NULL ? iqm_ptr[rc] : (1 << AOM_QM_BITS);
+                const int     dequant         = (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
+                const int64_t abs_dquant_high = (abs_quant_high * dequant) >> log_scale;
+                recon_coeff[rc]               = (abs_dquant_high ^ sign) - sign;
+                const uint16_t this_eob       = !quant_coeff[rc] && *eob == i + 1 ? i : *eob;
+                const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                                         quant_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         cand_bf, txb_skip_context, dc_sign_context);
+                const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
+                                                                         recon_coeff,
+                                                                         txsize, tx_type, plane, this_eob,
+                                                                         input, input_offset, input_stride,
+                                                                         pred, pred_offset, pred_stride,
+                                                                         recon, recon_offset, recon_stride,
+                                                                         area_width, area_height);
+                if (slow_optimize_b_compare_cost(lambda,
+                                                 new_rate, new_dist,
+                                                 current_rate, current_dist)) {
+                    current_rate = new_rate;
+                    current_dist = new_dist;
+                }
+                else {
+                    quant_coeff[rc] = pre_quant;
+                    recon_coeff[rc] = pre_recon;
                 }
             }
+
+            if (!quant_coeff[rc]) {
+                if (*eob == i + 1)
+                    --*eob;
+            }
             else
-                zbin_available >>= 1;
+                if (zbin_available)
+                    zbin_available--;
         }
 
         else { // !quant_coeff[rc]
             if (*eob == i + 1) {
                 --*eob;
-                if (zbin_available)
-                    zbin_available--;
                 current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
                                                               quant_coeff,
                                                               txsize, tx_type, plane, i,
@@ -1781,7 +1809,7 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
                                       uint32_t component_type, uint32_t bit_depth, TxType tx_type,
                                       int16_t txb_skip_context, int16_t dc_sign_context, PredictionMode pred_mode,
                                       uint32_t lambda, Bool is_encode_pass,
-                                      uint8_t psy_bias_optimize_b,
+                                      uint8_t psy_bias_optimize_b_available,
                                       uint8_t *input, uint32_t input_offset, uint32_t input_stride,
                                       uint8_t *pred, uint32_t pred_offset, uint32_t pred_stride,
                                       uint8_t *recon, int32_t recon_offset, uint32_t recon_stride,
@@ -1790,6 +1818,9 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
     SequenceControlSet *scs     = pcs->scs;
     EncodeContext      *enc_ctx = scs->enc_ctx;
     int32_t plane = component_type == COMPONENT_LUMA ? AOM_PLANE_Y : COMPONENT_CHROMA_CB ? AOM_PLANE_U : AOM_PLANE_V;
+    const uint8_t psy_bias_optimize_b = psy_bias_optimize_b_available ?
+                                        scs->static_config.psy_bias_optimize_b :
+                                        0;
     int32_t qmatrix_level    = (IS_2D_TRANSFORM(tx_type) && pcs->ppcs->frm_hdr.quantization_params.using_qmatrix)
            ? pcs->ppcs->frm_hdr.quantization_params.qm[plane]
            : NUM_QM_LEVELS - 1;
@@ -1947,14 +1978,28 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
         }
     }
 
-    if (perform_rdoq && *eob != 0 && !psy_bias_optimize_b) {
+    if (perform_rdoq && *eob != 0) {
         int width    = tx_size_wide[txsize];
         int height   = tx_size_high[txsize];
         int eob_perc = (*eob) * 100 / (width * height);
         if (eob_perc >= ctx->rdoq_ctrls.eob_th) {
             perform_rdoq = 0;
         }
-        if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th))
+        if (perform_rdoq && psy_bias_optimize_b == 1)
+            slow_optimize_b(pcs, ctx,
+                            psy_bias_optimize_b,
+                            quant_coeff, recon_coeff,
+                            txsize, tx_type, plane, eob,
+                            scan_order, candidate_plane.zbin_qtx,
+                            qparam.iqmatrix, candidate_plane.dequant_qtx, qparam.log_scale,
+                            input, input_offset, input_stride,
+                            pred, pred_offset, pred_stride,
+                            recon, recon_offset, recon_stride,
+                            area_width, area_height,
+                            cand_bf, txb_skip_context, dc_sign_context,
+                            lambda);
+        else if (perform_rdoq && (eob_perc >= ctx->rdoq_ctrls.eob_fast_th) &&
+                 psy_bias_optimize_b != 2 && psy_bias_optimize_b != 3)
             svt_fast_optimize_b(
                 (TranLow *)coeff, &candidate_plane, quant_coeff, (TranLow *)recon_coeff, eob, txsize, tx_type);
         if (perform_rdoq == 0) {
@@ -1979,39 +2024,42 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
             }
         }
     }
-    if (perform_rdoq && *eob != 0 && !psy_bias_optimize_b) {
-        // Perform rdoq
-        svt_av1_optimize_b(ctx,
-                           txb_skip_context,
-                           dc_sign_context,
-                           (TranLow *)coeff,
-                           &candidate_plane,
-                           quant_coeff,
-                           (TranLow *)recon_coeff,
-                           eob,
-                           &qparam,
-                           txsize,
-                           tx_type,
-                           is_inter,
-                           scs->vq_ctrls.sharpness_ctrls.rdoq,
-                           pcs->ppcs->frm_hdr.delta_q_params.delta_q_present,
-                           pcs->picture_qp,
-                           lambda,
-                           (component_type == COMPONENT_LUMA) ? 0 : 1,
-                           pcs);
+    if (perform_rdoq && *eob != 0) {
+        if (psy_bias_optimize_b == 2 || psy_bias_optimize_b == 3)
+            slow_optimize_b(pcs, ctx,
+                            psy_bias_optimize_b,
+                            quant_coeff, recon_coeff,
+                            txsize, tx_type, plane, eob,
+                            scan_order, candidate_plane.zbin_qtx,
+                            qparam.iqmatrix, candidate_plane.dequant_qtx, qparam.log_scale,
+                            input, input_offset, input_stride,
+                            pred, pred_offset, pred_stride,
+                            recon, recon_offset, recon_stride,
+                            area_width, area_height,
+                            cand_bf, txb_skip_context, dc_sign_context,
+                            lambda);
+        else {
+            // Perform rdoq
+            svt_av1_optimize_b(ctx,
+                               txb_skip_context,
+                               dc_sign_context,
+                               (TranLow *)coeff,
+                               &candidate_plane,
+                               quant_coeff,
+                               (TranLow *)recon_coeff,
+                               eob,
+                               &qparam,
+                               txsize,
+                               tx_type,
+                               is_inter,
+                               scs->vq_ctrls.sharpness_ctrls.rdoq,
+                               pcs->ppcs->frm_hdr.delta_q_params.delta_q_present,
+                               pcs->picture_qp,
+                               lambda,
+                               (component_type == COMPONENT_LUMA) ? 0 : 1,
+                               pcs);
+        }
     }
-    if (perform_rdoq && *eob != 0 && psy_bias_optimize_b)
-        slow_optimize_b(pcs, ctx,
-                        quant_coeff, recon_coeff,
-                        txsize, tx_type, plane, eob,
-                        scan_order, candidate_plane.zbin_qtx,
-                        qparam.iqmatrix, candidate_plane.dequant_qtx, qparam.log_scale,
-                        input, input_offset, input_stride,
-                        pred, pred_offset, pred_stride,
-                        recon, recon_offset, recon_stride,
-                        area_width, area_height,
-                        cand_bf, txb_skip_context, dc_sign_context,
-                        lambda);
 
     if (is_encode_pass && *eob != 0 && tx_type != IDTX && (component_type == COMPONENT_LUMA)) {
         svt_av1_perform_noise_normalization(
