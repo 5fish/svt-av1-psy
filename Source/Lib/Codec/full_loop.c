@@ -1682,9 +1682,10 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                                                            pred, pred_offset, pred_stride,
                                                            recon, recon_offset, recon_stride,
                                                            area_width, area_height);
-    uint16_t zbin_available = av1_get_max_eob(txsize) >> 5;
+    uint16_t       zbin_available    = av1_get_max_eob(txsize) >> 5;
+    const uint16_t eob_compare_limit = AOMMAX(av1_get_max_eob(txsize) >> 3, 1);
     for (int32_t i = (int32_t)(*eob) - 1; i >= 0; i--) {
-        const int             rc             = scan_order->scan[i];
+        const int16_t         rc             = scan_order->scan[i];
         if (quant_coeff[rc]) {
             const int         sign           = quant_coeff[rc] < 0 ? -1 : 0;
             const int64_t     abs_quant      = (quant_coeff[rc] ^ sign) - sign;
@@ -1697,14 +1698,25 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 const int     dequant        = (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
                 const int64_t abs_dquant_low = (abs_quant_low * dequant) >> log_scale;
                 recon_coeff[rc]              = (abs_dquant_low ^ sign) - sign;
-                const uint16_t this_eob      = !quant_coeff[rc] && *eob == i + 1 ? i : *eob;
+                uint16_t      new_eob        = *eob;
+                if (!quant_coeff[rc] && *eob == i + 1) {
+                    new_eob--;
+                    for (int32_t j = (int32_t)new_eob - 1; j >= 0; j--) {
+                        const int16_t rc     = scan_order->scan[j];
+                        if (!quant_coeff[rc])
+                            new_eob--;
+                        else
+                            break;
+                    }
+                }
+                const uint16_t new_eob_compare = AOMMAX(new_eob + eob_compare_limit, *eob) - eob_compare_limit;
                 const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
                                                                          quant_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, new_eob_compare,
                                                                          cand_bf, txb_skip_context, dc_sign_context);
                 const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
                                                                          recon_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, new_eob_compare,
                                                                          input, input_offset, input_stride,
                                                                          pred, pred_offset, pred_stride,
                                                                          recon, recon_offset, recon_stride,
@@ -1712,7 +1724,17 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 if (slow_optimize_b_compare_cost(lambda,
                                                  new_rate, new_dist,
                                                  current_rate, current_dist)) {
-                    current_rate = new_rate;
+                    if (new_eob != *eob) {
+                        *eob = new_eob;
+                        i = (int32_t)(*eob); // - 1 + 1
+                    }
+                    if (new_eob_compare != *eob)
+                        current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                                      quant_coeff,
+                                                                      txsize, tx_type, plane, *eob,
+                                                                      cand_bf, txb_skip_context, dc_sign_context);
+                    else
+                        current_rate = new_rate;
                     current_dist = new_dist;
                 }
                 else {
@@ -1726,14 +1748,25 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 const TranLow pre_recon = recon_coeff[rc];
                 quant_coeff[rc] = 0;
                 recon_coeff[rc] = 0;
-                const uint16_t this_eob = *eob == i + 1 ? i : *eob;
+                uint16_t      new_eob        = *eob;
+                if (!quant_coeff[rc] && *eob == i + 1) {
+                    new_eob--;
+                    for (int32_t j = (int32_t)new_eob - 1; j >= 0; j--) {
+                        const int16_t rc     = scan_order->scan[j];
+                        if (!quant_coeff[rc])
+                            new_eob--;
+                        else
+                            break;
+                    }
+                }
+                const uint16_t new_eob_compare = AOMMAX(new_eob + eob_compare_limit, *eob) - eob_compare_limit;
                 const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
                                                                          quant_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, new_eob_compare,
                                                                          cand_bf, txb_skip_context, dc_sign_context);
                 const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
                                                                          recon_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, new_eob_compare,
                                                                          input, input_offset, input_stride,
                                                                          pred, pred_offset, pred_stride,
                                                                          recon, recon_offset, recon_stride,
@@ -1741,7 +1774,17 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                 if (slow_optimize_b_compare_cost(lambda,
                                                  new_rate, new_dist,
                                                  current_rate, current_dist)) {
-                    current_rate = new_rate;
+                    if (new_eob != *eob) {
+                        *eob = new_eob;
+                        i = (int32_t)(*eob); // - 1 + 1
+                    }
+                    if (new_eob_compare != *eob)
+                        current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
+                                                                      quant_coeff,
+                                                                      txsize, tx_type, plane, *eob,
+                                                                      cand_bf, txb_skip_context, dc_sign_context);
+                    else
+                        current_rate = new_rate;
                     current_dist = new_dist;
                 }
                 else {
@@ -1749,23 +1792,23 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
                     recon_coeff[rc] = pre_recon;
                 }
             }
-            if (psy_bias_optimize_b == 3) {
-                const TranLow pre_quant       = quant_coeff[rc];
-                const TranLow pre_recon       = recon_coeff[rc];
-                const int64_t abs_quant_high  = abs_quant + 1;
-                quant_coeff[rc]               = (abs_quant_high ^ sign) - sign;
-                const QmVal   iwt             = iqm_ptr != NULL ? iqm_ptr[rc] : (1 << AOM_QM_BITS);
-                const int     dequant         = (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
-                const int64_t abs_dquant_high = (abs_quant_high * dequant) >> log_scale;
-                recon_coeff[rc]               = (abs_dquant_high ^ sign) - sign;
-                const uint16_t this_eob       = !quant_coeff[rc] && *eob == i + 1 ? i : *eob;
+            if (psy_bias_optimize_b == 3 &&
+                quant_coeff[rc]) {
+                const TranLow  pre_quant       = quant_coeff[rc];
+                const TranLow  pre_recon       = recon_coeff[rc];
+                const int64_t  abs_quant_high  = abs_quant + 1;
+                quant_coeff[rc]                = (abs_quant_high ^ sign) - sign;
+                const QmVal    iwt             = iqm_ptr != NULL ? iqm_ptr[rc] : (1 << AOM_QM_BITS);
+                const int      dequant         = (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
+                const int64_t  abs_dquant_high = (abs_quant_high * dequant) >> log_scale;
+                recon_coeff[rc]                = (abs_dquant_high ^ sign) - sign;
                 const uint64_t new_rate = slow_optimize_b_calculate_rate(pcs, ctx,
                                                                          quant_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, *eob,
                                                                          cand_bf, txb_skip_context, dc_sign_context);
                 const uint64_t new_dist = slow_optimize_b_calculate_dist(pcs, ctx,
                                                                          recon_coeff,
-                                                                         txsize, tx_type, plane, this_eob,
+                                                                         txsize, tx_type, plane, *eob,
                                                                          input, input_offset, input_stride,
                                                                          pred, pred_offset, pred_stride,
                                                                          recon, recon_offset, recon_stride,
@@ -1794,9 +1837,17 @@ static void slow_optimize_b(PictureControlSet *pcs, ModeDecisionContext *ctx,
         else { // !quant_coeff[rc]
             if (*eob == i + 1) {
                 --*eob;
+                for (int32_t j = (int32_t)*eob - 1; j >= 0; j--) {
+                    const int16_t rc     = scan_order->scan[j];
+                    if (!quant_coeff[rc])
+                        --*eob;
+                    else
+                        break;
+                }
+                i = (int32_t)(*eob); // - 1 + 1
                 current_rate = slow_optimize_b_calculate_rate(pcs, ctx,
                                                               quant_coeff,
-                                                              txsize, tx_type, plane, i,
+                                                              txsize, tx_type, plane, *eob,
                                                               cand_bf, txb_skip_context, dc_sign_context);
             }
         }
