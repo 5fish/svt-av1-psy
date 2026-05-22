@@ -1482,7 +1482,7 @@ ConfigEntry config_entry_psy[] = {
      set_cfg_generic_token},
     {SINGLE_INPUT,
      PSY_BIAS_OPTIMIZE_B_TOKEN,
-     "[PSY] Optimize quantization using full distortion calculation. Slow. [0-3]",
+     "[PSY] Optimize quantization using full distortion calculation. Slow. [0-1]",
      set_cfg_generic_token},
     {SINGLE_INPUT,
      HIGH_QUALITY_ENCODE_PSY_BIAS,

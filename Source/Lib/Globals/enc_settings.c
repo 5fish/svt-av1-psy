@@ -1214,7 +1214,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         return_error = EB_ErrorBadParameter;
     }
     if (config->psy_bias_optimize_b > 3) {
-        SVT_ERROR("Instance %u: psy-bias-optimize-b must be between 0 and 3\n", channel_number + 1);
+        SVT_ERROR("Instance %u: psy-bias-optimize-b must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
