@@ -153,6 +153,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Only applied when `--preset [<= 2]`; Can be overridden |
 | [md] `--noise-norm-strength 0` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Only applied when `--texture-psy-bias [<= 3.0]`; Can be overridden |
 | [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
@@ -195,6 +196,7 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] allow HVA/HVB at p2 or slower | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Only applied when `--preset [<= 2]`; Can be overridden |
 | [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
 | [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
@@ -273,6 +275,7 @@ In additional to features in `--high-quality-encode-psy-bias 1`:
 
 * `--noise-psy-bias`: Default changed to `4`. Can be overridden.  
 * `--psy-bias-disable-me-8x8`: Revert `--lineart-psy-bias [>= 2]` settings back to `0`. Can be overridden.  
+* `--psy-bias-optimize-b`: Reset `--lineart-psy-bias [>= 1]` and `--texture-psy-bias [>= 1]` settings back to `--psy-bias-optimize-b 0` due to `--psy-bias-optimize-b 1` being ineffective at such high quality. Can be overridden.  
 * `--ac-bias` and `--texture-ac-bias`: Boost `--texture-psy-bias`'s default for `--ac-bias` and `--texture-ac-bias` by 1.5 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--ac-bias` or `--texture-ac-bias` value.  
 * `--texture-energy-bias`: Boost `--texture-psy-bias`'s default by 2 times when `--texture-psy-bias [1 ~ 4]` is used. Does not apply to manually specified `--texture-energy-bias` value.  
 * `--dlf-bias-min-dlf`: Default changed to `0,0`. Can be overridden.  
