@@ -2089,7 +2089,7 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
                             area_width, area_height,
                             cand_bf, txb_skip_context, dc_sign_context,
                             lambda);
-        else {
+        else if (!ctx->disable_svt_av1_optimize_b) {
             // Perform rdoq
             svt_av1_optimize_b(ctx,
                                txb_skip_context,
