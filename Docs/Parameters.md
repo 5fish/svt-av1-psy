@@ -151,12 +151,12 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [rc] `chroma_qindex` bias | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative high freq dev thr | ◯ | ◯ | － | － | － | － | － | |
 | [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [>= 0]` |
 | [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Only applied when `--preset [<= 2]`; Can be overridden |
+| [md] `--psy-bias-qm-bias 1` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 2]`; Can be overridden |
 | [md] `--noise-norm-strength 0` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Only applied when `--texture-psy-bias [<= 3.0]`; Can be overridden |
-| [md] use better `pic_obmc_level` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
+| [md] use better `pic_obmc_level` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `NEARESTMV` rate adjustment | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
@@ -193,18 +193,19 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [rc] `--enable-variance-boost 0` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [rc] `chroma_qindex` bias | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disable detect high freq | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] disallow HV4 at p0 or faster | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | |
-| [md] allow HVA/HVB at p2 or slower | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
+| [md] disallow HV4 | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [>= 0]` |
+| [md] allow HVA/HVB | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 3]` |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-qm-bias 1` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Only applied when `--preset [<= 2]`; Can be overridden |
+| [md] `--psy-bias-qm-bias 1` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
+| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 2]`; Can be overridden |
+| [md] `--psy-bias-disable-svt-av1-optimize-b 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Only applied when `--psy-bias-optimize-b 1` is used; Can be overridden |
 | [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
 | [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |
 | [md] disable mds0 unipred bias | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] `--noise-norm-strength 4` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--ac-bias` | `1.0` | `1.0` | `1.0` | `1.0` | `2.5` | `2.5` | `2.5` | Can be overridden |
-| [md] `--texture-ac-bias` | － | － | － | `2.0` | `6.0` | `6.0` | `6.0` | Can be overridden |
+| [md] `--texture-ac-bias` | － | － | － | `2.5` | `6.0` | `6.0` | `6.0` | Can be overridden |
 | [md] `--texture-energy-bias` | `1.00` | `1.00` | `1.02` | `1.02` | `1.10` | `1.10` | `1.10` | Can be overridden |
 | [md] variance obmc decision | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] alternative tx search grouping | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |

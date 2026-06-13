@@ -1224,7 +1224,7 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: psy-bias-optimize-b must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->psy_bias_disable_svt_av1_optimize_b> 1) {
+    if (config->psy_bias_disable_svt_av1_optimize_b > 1 && config->psy_bias_disable_svt_av1_optimize_b != UINT8_DEFAULT) {
         SVT_ERROR("Instance %u: psy-bias-disable-svt-av1-optimize-b must be between 0 and 1\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
@@ -1505,7 +1505,7 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->psy_bias_qm_bias                  = UINT8_DEFAULT;
     config_ptr->psy_bias_sharpness_rounding       = DEFAULT;
     config_ptr->psy_bias_optimize_b               = UINT8_DEFAULT;
-    config_ptr->psy_bias_disable_svt_av1_optimize_b = 0;
+    config_ptr->psy_bias_disable_svt_av1_optimize_b = UINT8_DEFAULT;
     config_ptr->high_quality_encode_psy_bias      = DEFAULT;
     config_ptr->high_fidelity_encode_psy_bias     = DEFAULT;
     config_ptr->dlf_bias                          = 0;
