@@ -122,8 +122,7 @@ Do note however, that there is no error checking for duplicate keys and only for
 | **PsyBiasInterModeBias**         | --psy-bias-inter-mode-bias  | [0-5]                          | 0           | Bias against intra mode in non base layers                                                                    |
 | **PsyBiasQMBias**                | --psy-bias-qm-bias          | [0-1]                          | 0           | Increase QM level in frames of higher temporal layer                                                          |
 | **PsyBiasSharpnessRounding**     | --psy-bias-sharpness-rounding | [1-256]                      | -2          | Quantization rounding [-2: `64` in every `--tune` but `--tune 3`, which is `48`]                              |
-| **PsyBiasOptimizeB**             | --psy-bias-optimize-b       | [0-1]                          | 0           | Optimize quantization using full distortion calculation. Slow. [0: Disabled, 1: Use slow method to optimize eob, and then proceed with normal optimization] |
-| **PsyBiasDisableSVTAV1OptimizeB** | --psy-bias-disable-svt-av1-optimize-b | [0-1]               | 0           | Disable `svt_av1_optimize_b` in low variance region. This should be used only when `--psy-bias-optimize-b` is used. Application based on `--texture-variance-thr`. |
+| **PsyBiasOptimizeB**             | --psy-bias-optimize-b       | [0,1,4,5]                      | 0           | Optimize quantization using full distortion calculation. Slow. [0: Disabled, 1: Use slow method to optimize eob, and then proceed with normal optimization, 4: Same as 1, expect for low variance regions based on `--texture-variance-thr` in which to use slow method to optimize eob, and disable normal optimization, 5: Same as 1, expect for low variance regions based on `--texture-variance-thr` in which to use slow method to optimize eob and adjust coefficients, and disable normal optimization] |
 | **HighQualityEncodePsyBias**     | --high-quality-encode-psy-bias | [0-1]                       | 0           | Bias various features for high quality encoding. Check below for more description. [Default to `1` when `--crf [<= 24.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 | **HighFidelityEncodePsyBias**    | --high-fidelity-encode-psy-bias | [0-1]                      | 0           | Bias various features for high fidelity encoding. Check below for more description. [Default to `1` when `--crf [<= 16.00]`, and either `--lineart-psy-bias` or `--texture-psy-bias` are set; Default to `0` otherwise] |
 
@@ -154,7 +153,7 @@ Try not to deviate too much from the default threshold, which is `16000` as of e
 | [md] disallow HV4 | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [>= 0]` |
 | [md] `--chroma-qm-min 11` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--psy-bias-qm-bias 1` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 2]`; Can be overridden |
+| [md] `--psy-bias-optimize-b` | `1` | `1` | `1` | `5` | `5` | `5` | `5` | Applied when `--preset [<= 2]`; `--lineart-psy-bias [>= 4.0]` overrides the setting of `--texture-psy-bias [>= 3.0]`; Can be overridden |
 | [md] `--noise-norm-strength 0` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Only applied when `--texture-psy-bias [<= 3.0]`; Can be overridden |
 | [md] use better `pic_obmc_level` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | |
 | [md] variance skip taper | ✕ | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | |
@@ -197,8 +196,7 @@ You should use `--lineart-variance-thr` to adjust the threshold above which a de
 | [md] allow HVA/HVB | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 3]` |
 | [md] `--qm-min 9` | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] `--psy-bias-qm-bias 1` | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Can be overridden |
-| [md] `--psy-bias-optimize-b 1` | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | ◯ | Applied when `--preset [<= 2]`; Can be overridden |
-| [md] `--psy-bias-disable-svt-av1-optimize-b 1` | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | Only applied when `--psy-bias-optimize-b 1` is used; Can be overridden |
+| [md] `--psy-bias-optimize-b` | `1` | `1` | `4` | `4` | `4` | `4` | `4` | Applied when `--preset [<= 2]`; Can be overridden |
 | [md] `--psy-bias-coeff-lvl-offset 2` | ✕ | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | Can be overridden |
 | [md] variance cand elimination | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | ◯ | Using `--lineart-variance-thr` |
 | [md] no nic post mds1/2 `CAND_CLASS_1` class pruning | ✕ | ✕ | ✕ | ◯ | ◯ | ◯ | ◯ | |

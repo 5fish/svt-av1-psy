@@ -1220,12 +1220,8 @@ EbErrorType svt_av1_verify_settings(SequenceControlSet *scs) {
         SVT_ERROR("Instance %u: psy-bias-sharpness-rounding must be between 1 and 256\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->psy_bias_optimize_b > 3 && config->psy_bias_optimize_b != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: psy-bias-optimize-b must be between 0 and 1\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
-    if (config->psy_bias_disable_svt_av1_optimize_b > 1 && config->psy_bias_disable_svt_av1_optimize_b != UINT8_DEFAULT) {
-        SVT_ERROR("Instance %u: psy-bias-disable-svt-av1-optimize-b must be between 0 and 1\n", channel_number + 1);
+    if (config->psy_bias_optimize_b > 5 && config->psy_bias_optimize_b != UINT8_DEFAULT) {
+        SVT_ERROR("Instance %u: psy-bias-optimize-b must be between 0 and 5\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
@@ -1505,7 +1501,6 @@ EbErrorType svt_av1_set_default_params(EbSvtAv1EncConfiguration *config_ptr) {
     config_ptr->psy_bias_qm_bias                  = UINT8_DEFAULT;
     config_ptr->psy_bias_sharpness_rounding       = DEFAULT;
     config_ptr->psy_bias_optimize_b               = UINT8_DEFAULT;
-    config_ptr->psy_bias_disable_svt_av1_optimize_b = UINT8_DEFAULT;
     config_ptr->high_quality_encode_psy_bias      = DEFAULT;
     config_ptr->high_fidelity_encode_psy_bias     = DEFAULT;
     config_ptr->dlf_bias                          = 0;
@@ -1800,6 +1795,9 @@ void svt_av1_print_lib_params(SequenceControlSet *scs) {
         if (config->noise_psy_bias >= 1.0)
             SVT_INFO("SVT [config]: noise PSY bias \t\t\t\t\t\t: %.0f\n",
                      floor(config->noise_psy_bias));
+        if (config->psy_bias_optimize_b)
+            SVT_INFO("SVT [config]: PSY bias optimize B \t\t\t\t\t\t: %d\n",
+                     config->psy_bias_optimize_b);
 
         // Motion Estimation
         if (config->enable_tf) {
@@ -3106,7 +3104,6 @@ EB_API EbErrorType svt_av1_enc_parse_parameter(EbSvtAv1EncConfiguration *config_
         {"psy-bias-inter-mode-bias", &config_struct->psy_bias_inter_mode_bias},
         {"psy-bias-qm-bias", &config_struct->psy_bias_qm_bias},
         {"psy-bias-optimize-b", &config_struct->psy_bias_optimize_b},
-        {"psy-bias-disable-svt-av1-optimize-b", &config_struct->psy_bias_disable_svt_av1_optimize_b},
         {"dlf-bias", &config_struct->dlf_bias},
         {"dlf-sharpness", &config_struct->dlf_sharpness},
         {"cdef-bias", &config_struct->cdef_bias},
