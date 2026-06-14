@@ -24,10 +24,9 @@ set(PACKAGE_VERSION_STRING "v${PACKAGE_VERSION_STRING}")
 find_package(Git QUIET)
 if(Git_FOUND AND EXISTS "${GIT_ROOT_DIR}/.git")
     execute_process(COMMAND
-        ${GIT_EXECUTABLE}  -C ${GIT_ROOT_DIR}
-            describe
-            --tags --dirty --abbrev=7
-            --always --match "v[0-9].[0-9]*"
+        ${GIT_EXECUTABLE} -C ${GIT_ROOT_DIR}
+            log -1
+            "--date=format:%F %T" "--format=Commit %h / %ad"
         RESULT_VARIABLE git_describe_status
         OUTPUT_VARIABLE git_describe_output
         ERROR_VARIABLE git_describe_error

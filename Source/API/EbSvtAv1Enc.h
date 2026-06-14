@@ -1376,17 +1376,8 @@ typedef struct EbSvtAv1EncConfiguration {
 // Apparently C has internal paddings, so the manual padding doesn't work at all. The size of this is different in all forks and mainline.
 // _Static_assert(sizeof(EbSvtAv1EncConfiguration) == 640, "Unexpected size of EbSvtAv1EncConfiguration");
 
-/**
- * Returns a string containing "v$tag-$commit_count-g$hash${dirty:+-dirty}"
- * @param[out] SVT_AV1_CVS_VERSION
- */
-EB_API const char *svt_av1_get_version(void);
-
-/**
- * Returns a string containing only the SVT-AV1-PSY micro-release letter
- * @param[out] SVT_AV1_PSY_RELEASE
- */
-EB_API const char *svt_psy_get_version(void);
+EB_API const char *svt_av1_get_cvs_version(void);
+EB_API const char *svt_av1_get_commit_version(void);
 
 /**
  * Prints the version header and build information to the file

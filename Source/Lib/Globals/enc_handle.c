@@ -6187,19 +6187,19 @@ static void lib_svt_encoder_send_error_exit(
     svt_post_full_object(eb_wrapper_ptr);
 }
 
-EB_API const char *svt_av1_get_version(void) {
+EB_API const char *svt_av1_get_cvs_version(void) {
     return SVT_AV1_CVS_VERSION;
 }
-
-EB_API const char *svt_psy_get_version(void) {
-    return SVT_AV1_PSY_RELEASE;
+EB_API const char *svt_av1_get_commit_version(void) {
+    return SVT_AV1_COMMIT_VERSION;
 }
 
 EB_API void svt_av1_print_version(void) {
     SVT_INFO("-------------------------------------------\n");
-    SVT_INFO("SVT [version]: SVT-AV1-PSY [5fish:main] %s\n", SVT_AV1_CVS_VERSION);
+    SVT_INFO("SVT [version]: SVT-AV1-PSY [5fish] %s\n", SVT_AV1_CVS_VERSION);
+    SVT_INFO("SVT [version]: %s\n", SVT_AV1_COMMIT_VERSION);
     const char *compiler =
-#if defined(__clang__) && defined(__apple_build_version__)
+#if defined(__clang__) && (defined(__apple_build_version__) || defined(__INTEL_LLVM_COMPILER))
     __VERSION__
 #elif defined(__clang__)
     "Clang " CONVERT_TO_STR_COMPILE_TIME(__clang_major__) "." CONVERT_TO_STR_COMPILE_TIME(__clang_minor__) "." CONVERT_TO_STR_COMPILE_TIME(__clang_patchlevel__)
@@ -6220,8 +6220,8 @@ EB_API void svt_av1_print_version(void) {
 #endif
     ;
 #if !REPRODUCIBLE_BUILDS
-    SVT_INFO("SVT [build]  : %s %zu bit / %s %s\n", compiler, sizeof(void*) * 8,
-             __DATE__, __TIME__);
+    SVT_INFO("SVT [build]  : %s %zu bit / %04d-%02d-%02d %s\n", compiler, sizeof(void*) * 8,
+             BUILD_YEAR, BUILD_MONTH, BUILD_DAY, __TIME__);
 #else
     SVT_INFO("SVT [build]  : %s %zu bit\n", compiler, sizeof(void*) * 8);
 #endif
