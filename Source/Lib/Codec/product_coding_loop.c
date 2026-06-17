@@ -10311,9 +10311,10 @@ static void init_block_data(PictureControlSet *pcs, ModeDecisionContext *ctx, co
             ctx->cand_elimination_acceptable = 0;
     }
 
-    ctx->psy_bias_optimize_b_low_variance = 0;
     if (blk_variance <= pcs->scs->static_config.texture_variance_thr >> 4)
-        ctx->psy_bias_optimize_b_low_variance = 1;
+        ctx->active_psy_bias_optimize_b = pcs->scs->static_config.texture_psy_bias_optimize_b;
+    else
+        ctx->active_psy_bias_optimize_b = pcs->scs->static_config.psy_bias_optimize_b;
 }
 static void check_curr_to_parent_cost_light_pd0(SequenceControlSet *scs, PictureControlSet *pcs,
                                                 ModeDecisionContext *ctx, uint32_t *next_non_skip_blk_idx_mds,

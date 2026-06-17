@@ -1870,29 +1870,28 @@ uint8_t svt_aom_quantize_inv_quantize(PictureControlSet *pcs, ModeDecisionContex
     EncodeContext      *enc_ctx = scs->enc_ctx;
     int32_t plane = component_type == COMPONENT_LUMA ? AOM_PLANE_Y : COMPONENT_CHROMA_CB ? AOM_PLANE_U : AOM_PLANE_V;
     uint8_t slow_optimize_b_mode = 0;
-    if (psy_bias_optimize_b_available) {
-        if (scs->static_config.psy_bias_optimize_b == 1 ||
-            scs->static_config.psy_bias_optimize_b == 2 ||
-            scs->static_config.psy_bias_optimize_b == 3)
-            slow_optimize_b_mode = scs->static_config.psy_bias_optimize_b;
-        else if (scs->static_config.psy_bias_optimize_b == 4)
-            slow_optimize_b_mode = 1;
-        else if (scs->static_config.psy_bias_optimize_b == 5) {
-            if (!ctx->psy_bias_optimize_b_low_variance)
-                slow_optimize_b_mode = 1;
-            else
-                slow_optimize_b_mode = 2;
-        }
-    }
     bool svt_av1_optimize_b_mode = 1;
-    if (psy_bias_optimize_b_available && scs->static_config.psy_bias_optimize_b) {
-        if (scs->static_config.psy_bias_optimize_b == 2 ||
-            scs->static_config.psy_bias_optimize_b == 3)
-            svt_av1_optimize_b_mode = 0;
-        else if ((scs->static_config.psy_bias_optimize_b == 4 ||
-                  scs->static_config.psy_bias_optimize_b == 5) &&
-                 ctx->psy_bias_optimize_b_low_variance)
-            svt_av1_optimize_b_mode = 0;
+    if (psy_bias_optimize_b_available) {
+        switch (ctx->active_psy_bias_optimize_b) {
+            case -2:
+                svt_av1_optimize_b_mode = 0;
+                break;
+            case 1:
+                slow_optimize_b_mode = 1;
+                break;
+            case 2:
+                slow_optimize_b_mode = 2;
+                svt_av1_optimize_b_mode = 0;
+                break;
+            case 3:
+                slow_optimize_b_mode = 3;
+                svt_av1_optimize_b_mode = 0;
+                break;
+            case 4:
+                slow_optimize_b_mode = 1;
+                svt_av1_optimize_b_mode = 0;
+                break;
+        }
     }
     int32_t qmatrix_level    = (IS_2D_TRANSFORM(tx_type) && pcs->ppcs->frm_hdr.quantization_params.using_qmatrix)
            ? pcs->ppcs->frm_hdr.quantization_params.qm[plane]
